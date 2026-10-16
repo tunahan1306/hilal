@@ -26,7 +26,7 @@ export async function locationMetadata(
     seo?.description ??
     truncate(
       seo?.intro ??
-        `${place} bölgesindeki ${summary.total} doğrulanmış sosyal profili ilgi alanı ve yaş aralığına göre keşfedin. Yalnızca 18+ ve rızası alınmış profiller.`,
+        `${place} bölgesindeki ${summary.total} doğrulanmış sosyal profili ilçe ve yaş aralığına göre keşfedin. Yalnızca 18+ ve rızası alınmış profiller.`,
     );
   return {
     title,

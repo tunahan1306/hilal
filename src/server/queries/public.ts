@@ -75,31 +75,22 @@ export async function getLocationSummary(il: string, ilce?: string) {
   "use cache";
   cacheLife("hours");
   cacheTag(TAGS.public);
-  const { items, total } = await getRepository().searchPublicProfiles(
-    { il, ilce, ilgi: [], dogrulanmis: false, sayfa: 1 },
-    { limit: 500, offset: 0 },
-  );
-  const interestCounts = new Map<string, { slug: string; name: string; count: number }>();
-  for (const p of items) {
-    for (const i of p.interests) {
-      const cur = interestCounts.get(i.slug) ?? { ...i, count: 0 };
-      cur.count += 1;
-      interestCounts.set(i.slug, cur);
-    }
-  }
-  const districtCounts = new Map<string, { slug: string; name: string; count: number }>();
-  for (const p of items) {
-    if (!p.district) continue;
-    const cur = districtCounts.get(p.district.slug) ?? { ...p.district, count: 0 };
-    cur.count += 1;
-    districtCounts.set(p.district.slug, cur);
-  }
-  const ages = items.map((p) => p.age).sort((a, b) => a - b);
-  return {
-    total,
-    verified: items.filter((p) => p.verified).length,
-    topInterests: [...interestCounts.values()].sort((a, b) => b.count - a.count).slice(0, 6),
-    districts: [...districtCounts.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "tr")),
-    ageRange: ages.length ? { min: ages[0], max: ages[ages.length - 1] } : null,
-  };
+  const counts = await getLocationCounts();
+  const { getProvince, listDistricts } = await import("@/domain/locations");
+  const province = getProvince(il);
+  const total = province ? profileCountFor(counts, province.plate, ilce ?? null) : 0;
+  return { total, districts: province ? listDistricts(province.plate).map((d) => ({ slug: d.slug, name: d.name, count: profileCountFor(counts, province.plate, d.slug) })).filter((d) => d.count > 0) : [] };
+
+}
+
+/** Bounded keyset read; no offset drift during progressive discovery. */
+export async function discoverProfiles(filters: ProfileFilters, cursor?: import("@/domain/discovery-cursor").DiscoveryCursor) {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(TAGS.public);
+  const { encodeCursor } = await import("@/domain/discovery-cursor");
+  const result = await getRepository().searchPublicProfiles({ ...filters, ilgi: [], sayfa: 1 }, { limit: PAGE_SIZE + 1, offset: 0, cursor });
+  const items = result.items.slice(0, PAGE_SIZE);
+  const last = items.at(-1);
+  return { items, total: result.total, nextCursor: result.items.length > PAGE_SIZE && last ? encodeCursor({ publishedAt: last.publishedAt, id: last.id }) : null };
 }

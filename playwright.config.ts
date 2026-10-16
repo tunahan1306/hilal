@@ -16,7 +16,7 @@ export default defineConfig({
   workers: 1, // Demo modu tek süreçte bellek içi veri kullanır.
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"]],
-  use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure", locale: "tr-TR" },
+  use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure", locale: "tr-TR", storageState: { cookies: [{ name: "hilal_adult", value: "declared-v1", domain: "localhost", path: "/", expires: -1, httpOnly: true, secure: false, sameSite: "Lax" }], origins: [] } },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] }, testIgnore: /mobile\.spec/ },
     { name: "mobile", use: { ...devices["Pixel 7"] }, testMatch: /mobile\.spec/ },

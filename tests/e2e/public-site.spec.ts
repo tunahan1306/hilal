@@ -28,19 +28,17 @@ test.describe("şehir ve ilçe filtreleri", () => {
     await expect(page.getByRole("switch", { name: "Doğrulanmış" })).toBeChecked();
   });
 
-  test("ilgi alanı filtresi uygulanır", async ({ page }) => {
+  test("ilgi alanı arayüzü kaldırıldı, eski bağlantılar kullanılabilir", async ({ page }) => {
     await page.goto("/kesfet?ilgi=yoga");
-    await expect(page.getByRole("button", { name: "Yoga", pressed: true })).toBeVisible();
-    const tags = await page.locator("article ul[aria-label='İlgi alanları']").allTextContents();
-    expect(tags.length).toBeGreaterThan(0);
-    for (const t of tags) expect(t).toContain("Yoga");
+    await expect(page.getByRole("button", { name: "Yoga" })).toHaveCount(0);
+    await expect(page.locator("article").first()).toBeVisible();
   });
 
   test("il ve ilçe sayfaları doğru profilleri gösterir", async ({ page }) => {
     await page.goto("/sehir/istanbul/kadikoy");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Kadıköy, İstanbul sosyal profilleri");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Kadıköy");
     await page.goto("/sehir/ankara");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Ankara sosyal profilleri");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Ankara");
     await expect(page.getByRole("link", { name: /Çankaya/ }).first()).toBeVisible();
   });
 

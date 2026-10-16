@@ -1,6 +1,6 @@
 # Hilal — sosyal keşif platformu (MVP)
 
-Türkiye'nin 81 ilinde ve 973 ilçesinde, 18 yaş üstü yetişkinlerin **yönetim tarafından, açık rıza ile oluşturulan** sosyal profillerini şehir/ilçe ve ilgi alanına göre keşfetmesini sağlayan web uygulaması.
+Türkiye'nin 81 ilinde ve 973 ilçesinde, 18 yaş üstü yetişkinlerin **yönetim tarafından, açık rıza ile oluşturulan** sosyal profillerini şehir/ilçe ve yaş aralığına göre keşfetmesini sağlayan web uygulaması.
 
 > **Kesin ürün kuralı:** Platform ücretli cinsel hizmet tanıtımı, fuhşa aracılık veya müşteri yönlendirme amacıyla kullanılamaz. Bu kural yalnızca metinle değil; içerik taraması, yayın ön koşulları, iletişim bilgisi yasağı, otomatik yayından kaldırma ve veritabanı tetikleyicileriyle uygulanır (bkz. [SECURITY.md](SECURITY.md)).
 
@@ -64,3 +64,9 @@ npm run dev
 - [LEGAL_REVIEW_CHECKLIST.md](LEGAL_REVIEW_CHECKLIST.md) — hukuk incelemesi gereken konular
 - [DEPLOYMENT.md](DEPLOYMENT.md) — Vercel + Supabase kurulumu
 - [TASKS.md](TASKS.md) — aşama durumu ve açık işler
+
+## Premium keşif arayüzü
+
+Varsayılan koyu tema, 2/3/4 sütunlu fotoğraf kartları, konum filtresi ve cursor tabanlı “Daha fazla göster” akışı. Kamuya açık hobi filtreleri kaldırılmıştır; yönetim ve tarihsel veriler korunur. İlk ziyarette sunucu tarafında 18+ beyanı istenir (30 günlük HttpOnly / SameSite=Lax çerez). Bu beyan belgeyle yaş doğrulaması değildir.
+
+Uygulama planı, medya uyumluluk düzeltmeleri ve SEO/depolama sınırları: [IMPLEMENTATION.md](IMPLEMENTATION.md). Canonical konum yolları `/sehir/istanbul/atasehir` biçiminde korunur.

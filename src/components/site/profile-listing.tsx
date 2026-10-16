@@ -1,46 +1,38 @@
 import Link from "next/link";
 import { Users } from "lucide-react";
-import { hasActiveFilters, serializeFilters, type ProfileFilters } from "@/domain/filters";
+import { hasActiveFilters, type ProfileFilters } from "@/domain/filters";
 import { getProvince, listDistricts, listProvinces } from "@/domain/locations";
 import { Button } from "@/components/ui/button";
-import { getInterests, searchProfiles } from "@/server/queries/public";
+import { discoverProfiles } from "@/server/queries/public";
 import { EmptyState } from "./empty-state";
 import { FilterBar, FilterRail, type FilterMode } from "./filter-bar";
-import { Pagination } from "./pagination";
-import { ProfileGrid, ProfileGridSkeleton } from "./profile-grid";
+import { ProgressiveProfiles } from "./progressive-profiles";
+import { ProfileGridSkeleton } from "./profile-grid";
 
 /** Keşfet, il ve ilçe sayfalarının ortak listeleme bölümü. */
 export async function ProfileListing({ filters, mode }: { filters: ProfileFilters; mode: FilterMode }) {
-  const [result, interests] = await Promise.all([searchProfiles(filters), getInterests()]);
+  filters = { ...filters, ilgi: [], sayfa: 1 };
+  const result = await discoverProfiles(filters);
   const province = filters.il ? getProvince(filters.il) : undefined;
   const provinces = listProvinces().map(({ slug, name }) => ({ slug, name }));
   const districts = province ? listDistricts(province.plate).map(({ slug, name }) => ({ slug, name })) : [];
-  const basePath = mode.type === "explore" ? "/kesfet" : filters.ilce ? `/sehir/${mode.il}/${filters.ilce}` : `/sehir/${mode.il}`;
-  const omit: (keyof ProfileFilters)[] = mode.type === "explore" ? [] : ["il", "ilce"];
-
   const filterProps = {
     mode,
     filters,
     provinces,
     districts,
-    interests: interests.map(({ slug, name }) => ({ slug, name })),
     total: result.total,
   };
 
   return (
-    <div className="lg:grid lg:grid-cols-[15rem_1fr] lg:gap-x-12 xl:grid-cols-[16.5rem_1fr] xl:gap-x-16">
+    <div className="lg:grid lg:grid-cols-[12rem_1fr] lg:gap-x-6 xl:grid-cols-[12rem_1fr] xl:gap-x-8">
       <FilterRail {...filterProps} />
       <div className="min-w-0 space-y-8">
       <FilterBar {...filterProps} />
       <h2 className="sr-only">Profiller</h2>
       {result.items.length ? (
         <>
-          <ProfileGrid profiles={result.items} columns={3} priorityCount={filters.sayfa === 1 ? 2 : 0} />
-          <Pagination
-            page={filters.sayfa}
-            total={result.total}
-            hrefFor={(sayfa) => `${basePath}${serializeFilters({ ...filters, sayfa }, omit)}`}
-          />
+          <ProgressiveProfiles key={JSON.stringify(filters)} initial={result} filters={filters} />
         </>
       ) : (
         hasActiveFilters({ ...filters, il: mode.type === "location" ? undefined : filters.il, ilce: mode.type === "location" ? undefined : filters.ilce }) ? (
@@ -76,13 +68,13 @@ export async function ProfileListing({ filters, mode }: { filters: ProfileFilter
 
 export function ProfileListingSkeleton() {
   return (
-    <div className="lg:grid lg:grid-cols-[15rem_1fr] lg:gap-x-12 xl:grid-cols-[16.5rem_1fr] xl:gap-x-16">
+    <div className="lg:grid lg:grid-cols-[12rem_1fr] lg:gap-x-6 xl:grid-cols-[12rem_1fr] xl:gap-x-8">
       <div className="hidden space-y-4 lg:block">
         {Array.from({ length: 5 }, (_, i) => <div key={i} className="h-10 animate-pulse rounded-md bg-muted" />)}
       </div>
       <div className="space-y-8">
         <div className="h-10 animate-pulse rounded-md bg-muted" />
-        <ProfileGridSkeleton columns={3} count={6} />
+        <ProfileGridSkeleton columns={4} count={6} />
       </div>
     </div>
   );

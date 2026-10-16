@@ -27,7 +27,6 @@ type Props = {
   filters: ProfileFilters;
   provinces: Option[];
   districts: Option[];
-  interests: Option[];
   total: number;
 };
 
@@ -56,7 +55,7 @@ export function useFilterNavigation({ mode, filters }: Pick<Props, "mode" | "fil
   return { update, clear, pending };
 }
 
-function FilterFields({ mode, filters, provinces, districts, interests, update, idPrefix }: Props & { update: (p: Partial<ProfileFilters>) => void; idPrefix: string }) {
+function FilterFields({ mode, filters, provinces, districts, update, idPrefix }: Props & { update: (p: Partial<ProfileFilters>) => void; idPrefix: string }) {
   return (
     <div className="grid gap-7">
       <Group label="Konum">
@@ -108,28 +107,7 @@ function FilterFields({ mode, filters, provinces, districts, interests, update, 
         <Switch id={`${idPrefix}-verified`} aria-label="Doğrulanmış" checked={filters.dogrulanmis} onCheckedChange={(v) => update({ dogrulanmis: v })} />
       </div>
 
-      <fieldset>
-        <legend className="eyebrow mb-3 text-muted-foreground">İlgi alanları</legend>
-        <div className="flex flex-wrap gap-1.5">
-          {interests.map((i) => {
-            const on = filters.ilgi.includes(i.slug);
-            return (
-              <button
-                key={i.slug}
-                type="button"
-                aria-pressed={on}
-                onClick={() => update({ ilgi: on ? filters.ilgi.filter((s) => s !== i.slug) : [...filters.ilgi, i.slug].slice(0, 5) })}
-                className={cn(
-                  "min-h-9 rounded-full border px-3 text-[0.8125rem] transition-colors",
-                  on ? "border-foreground bg-foreground text-background" : "border-hairline text-foreground/80 hover:border-foreground/40 hover:text-foreground",
-                )}
-              >
-                {i.name}
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
+
     </div>
   );
 }
@@ -157,20 +135,19 @@ export function FilterRail(props: Props) {
 /** Sonuç çubuğu: sayı, etkin filtre çipleri, mobil filtre düğmesi. */
 export function FilterBar(props: Props) {
   const { update, clear, pending } = useFilterNavigation(props);
-  const { filters, mode, provinces, districts, interests, total } = props;
+  const { filters, mode, provinces, districts, total } = props;
   const activeCount =
     (mode.type === "explore" && filters.il ? 1 : 0) +
     (mode.type === "explore" && filters.ilce ? 1 : 0) +
     (filters.yasMin || filters.yasMax ? 1 : 0) +
-    (filters.dogrulanmis ? 1 : 0) +
-    filters.ilgi.length;
+    (filters.dogrulanmis ? 1 : 0);
 
   const chips: { key: string; label: string; remove: () => void }[] = [];
   if (mode.type === "explore" && filters.il) chips.push({ key: "il", label: provinces.find((p) => p.slug === filters.il)?.name ?? filters.il, remove: () => update({ il: undefined }) });
   if (mode.type === "explore" && filters.ilce) chips.push({ key: "ilce", label: districts.find((d) => d.slug === filters.ilce)?.name ?? filters.ilce, remove: () => update({ ilce: undefined }) });
   if (filters.yasMin || filters.yasMax) chips.push({ key: "yas", label: `${filters.yasMin ?? 18}–${filters.yasMax ?? "99"} yaş`, remove: () => update({ yasMin: undefined, yasMax: undefined }) });
   if (filters.dogrulanmis) chips.push({ key: "dog", label: "Doğrulanmış", remove: () => update({ dogrulanmis: false }) });
-  for (const slug of filters.ilgi) chips.push({ key: `i-${slug}`, label: interests.find((i) => i.slug === slug)?.name ?? slug, remove: () => update({ ilgi: filters.ilgi.filter((s) => s !== slug) }) });
+
 
   return (
     <div className="space-y-4">

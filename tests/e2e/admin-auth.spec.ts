@@ -31,7 +31,7 @@ test.describe("yönetici kimlik doğrulama", () => {
 
   test("doğru bilgiler ve TOTP ile giriş, ardından çıkış", async ({ page }) => {
     await login(page);
-    await expect(page.getByText("Toplam profil")).toBeVisible();
+    await expect(page.getByText("Yayında", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Çıkış yap" }).click();
     await expect(page).toHaveURL(/\/admin\/giris/);
     await page.goto("/admin");

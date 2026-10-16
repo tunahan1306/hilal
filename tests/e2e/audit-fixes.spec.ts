@@ -18,7 +18,7 @@ test("KVKK başvurusu gönderilir ve yönetim panelinde görünür", async ({ pa
 
   await login(page);
   await page.goto("/admin/talepler");
-  const row = page.getByTestId("privacy-row").filter({ hasText: "E2E Başvuru Sahibi" });
+  const row = page.getByTestId("privacy-row").filter({ hasText: "E2E Başvuru Sahibi" }).filter({ visible: true });
   await expect(row).toContainText("Profil kaldırma");
   await expect(row.getByRole("link", { name: "İlgili profili aç" })).toBeVisible();
   await row.getByRole("button", { name: "İşleme al" }).click();

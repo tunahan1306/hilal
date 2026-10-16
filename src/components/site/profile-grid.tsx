@@ -6,8 +6,8 @@ export function ProfileGrid({ profiles, priorityCount = 0, columns = 4, classNam
   return (
     <ul
       className={cn(
-        "grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 sm:gap-x-6 lg:gap-y-14",
-        columns === 4 ? "lg:grid-cols-4 lg:gap-x-8" : "lg:gap-x-8",
+        "grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 sm:gap-x-6 lg:gap-y-8",
+        columns === 4 ? "lg:grid-cols-4 lg:gap-x-5" : "lg:gap-x-5",
         className,
       )}
       role="list"
@@ -29,7 +29,7 @@ export function ProfileGrid({ profiles, priorityCount = 0, columns = 4, classNam
 export function ProfileGridSkeleton({ count = 8, columns = 4 }: { count?: number; columns?: 3 | 4 }) {
   return (
     <div
-      className={cn("grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 sm:gap-x-6", columns === 4 ? "lg:grid-cols-4 lg:gap-x-8" : "lg:gap-x-8")}
+      className={cn("grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 sm:gap-x-6", columns === 4 ? "lg:grid-cols-4 lg:gap-x-5" : "lg:gap-x-5")}
       aria-busy="true"
       aria-label="Profiller yükleniyor"
     >

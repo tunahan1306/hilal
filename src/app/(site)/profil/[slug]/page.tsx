@@ -17,7 +17,7 @@ import { VerifiedMark } from "@/components/site/verified-mark";
 import { ViewTracker } from "@/components/site/view-tracker";
 import { truncate } from "@/domain/seo";
 import type { PublicProfile } from "@/domain/types";
-import { formatDate, SITE, siteUrl } from "@/lib/site";
+import { SITE, siteUrl } from "@/lib/site";
 import { getPublicProfile, getPublicProfileSlugs, searchProfiles } from "@/server/queries/public";
 
 export async function generateStaticParams() {
@@ -31,7 +31,6 @@ export async function generateMetadata({ params }: PageProps<"/profil/[slug]">):
   const place = profile.district ? `${profile.district.name}, ${profile.province.name}` : profile.province.name;
   const title = profile.seo.title ?? `${profile.nickname}, ${profile.age} — ${place}`;
   const description = profile.seo.description ?? truncate(profile.bio);
-  const image = profile.images[0];
   return {
     title,
     description,
@@ -42,7 +41,7 @@ export async function generateMetadata({ params }: PageProps<"/profil/[slug]">):
       title: `${title} | ${SITE.name}`,
       description,
       url: `/profil/${profile.slug}`,
-      images: image ? [{ url: image.url, width: image.width, height: image.height, alt: image.alt }] : undefined,
+
     },
     twitter: { card: "summary_large_image", title, description },
   };
@@ -142,26 +141,9 @@ async function ProfileContent({ params }: Pick<PageProps<"/profil/[slug]">, "par
               </div>
 
               <dl className="mt-8 grid grid-cols-2 border-t border-hairline text-sm">
-                <Fact label="Konum" value={place} />
-                <Fact label="Yaş" value={String(profile.age)} />
                 <Fact label="Galeri" value={`${imageCount} fotoğraf${videoCount ? ` · ${videoCount} video` : ""}`} />
-                <Fact label="Güncelleme" value={formatDate(profile.updatedAt, { month: "long", year: "numeric" })} />
               </dl>
 
-              {profile.interests.length ? (
-                <div className="mt-8">
-                  <h2 className="eyebrow text-muted-foreground">İlgi alanları</h2>
-                  <ul className="mt-3 flex flex-wrap gap-1.5">
-                    {profile.interests.map((i) => (
-                      <li key={i.slug}>
-                        <Link href={`/kesfet?ilgi=${i.slug}`} className="inline-flex min-h-9 items-center rounded-full border border-hairline px-3.5 text-[0.8125rem] transition-colors hover:border-foreground/40">
-                          {i.name}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
 
               <div className="mt-8 flex flex-wrap gap-2 border-t border-hairline pt-6">
                 {media.length > 1 ? (
@@ -176,7 +158,7 @@ async function ProfileContent({ params }: Pick<PageProps<"/profil/[slug]">, "par
         </div>
 
         {/* ——— Hakkında ——— */}
-        <section className="mt-20 grid gap-y-6 border-t border-hairline pt-10 lg:mt-28 lg:grid-cols-12 lg:gap-x-12" aria-labelledby="hakkinda">
+        <section className="mt-12 grid gap-y-6 border-t border-hairline pt-10 lg:mt-16 lg:grid-cols-12 lg:gap-x-12" aria-labelledby="hakkinda">
           <h2 id="hakkinda" className="eyebrow text-muted-foreground lg:col-span-3">Hakkında</h2>
           <div className="lg:col-span-8 lg:col-start-5">
             <ProfileBio profile={profile} />
@@ -185,7 +167,7 @@ async function ProfileContent({ params }: Pick<PageProps<"/profil/[slug]">, "par
 
         {/* ——— Galeri ——— */}
         {media.length > 1 ? (
-          <section className="mt-20 border-t border-hairline pt-10 lg:mt-28" aria-labelledby="galeri">
+          <section className="mt-12 border-t border-hairline pt-10 lg:mt-16" aria-labelledby="galeri">
             <div className="mb-8 flex items-baseline justify-between gap-4">
               <h2 id="galeri" className="font-display text-display-md">Galeri</h2>
               <p className="text-sm tabular-nums text-muted-foreground">
@@ -197,7 +179,7 @@ async function ProfileContent({ params }: Pick<PageProps<"/profil/[slug]">, "par
         ) : null}
 
         {/* ——— Güvenlik ——— */}
-        <section className="mt-20 grid gap-y-8 border-t border-hairline pt-10 lg:mt-28 lg:grid-cols-12 lg:gap-x-12" aria-labelledby="guvenlik">
+        <section className="mt-12 grid gap-y-8 border-t border-hairline pt-10 lg:mt-16 lg:grid-cols-12 lg:gap-x-12" aria-labelledby="guvenlik">
           <h2 id="guvenlik" className="eyebrow flex items-center gap-2 text-muted-foreground lg:col-span-3"><ShieldCheck className="size-3.5" aria-hidden /> Güvenlik</h2>
           <div className="grid gap-8 sm:grid-cols-2 lg:col-span-8 lg:col-start-5">
             <div>
@@ -224,7 +206,7 @@ async function ProfileContent({ params }: Pick<PageProps<"/profil/[slug]">, "par
         </section>
 
         {similar.length ? (
-          <section className="mt-20 border-t border-hairline pt-10 lg:mt-28" aria-labelledby="benzer">
+          <section className="mt-12 border-t border-hairline pt-10 lg:mt-16" aria-labelledby="benzer">
             <h2 id="benzer" className="font-display mb-10 text-display-md">{profile.province.name} bölgesinden</h2>
             <ProfileGrid profiles={similar} />
           </section>

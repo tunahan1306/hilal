@@ -18,8 +18,8 @@ test.describe("mobil navigasyon", () => {
     await page.getByRole("button", { name: /Filtreler/ }).click();
     const sheet = page.getByRole("dialog");
     await expect(sheet.getByRole("heading", { name: "Filtreler" })).toBeVisible();
-    await sheet.getByRole("button", { name: "Kitap kulübü" }).click();
-    await expect(page).toHaveURL(/ilgi=kitap-kulubu/);
+    await sheet.getByRole("switch", { name: "Doğrulanmış" }).click();
+    await expect(page).toHaveURL(/dogrulanmis=1/);
     await sheet.getByRole("button", { name: /sonucu göster/ }).click();
     await expect(sheet).toBeHidden();
   });

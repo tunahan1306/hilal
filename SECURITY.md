@@ -55,3 +55,11 @@ Amaç: platformun ücretli cinsel hizmet tanıtımı, fuhşa aracılık veya mü
 ## Olay müdahalesi
 
 Reşit olmayan kişiye ait içerik şüphesinde: profil otomatik kaldırılır → içerik silinmeden delil olarak korunur → hukuk birimi ve yetkili makamlara (ör. EGM Siber, İhbar Web) bildirim süreci hukuk danışmanıyla tanımlanmalıdır.
+
+## Ziyaretçi yaş beyanı
+
+`src/proxy.ts`, onay yoksa kamu profil sayfalarını yaş onayı sayfasına yeniden yazar; profil HTML/RSC verisi üretilmez. Yerel demo/medya ve görsel optimizasyon istekleri 403 döner. `/api/discovery` ayrıca kendi çerez kontrolünü uygular. Same-origin POST onayı `hilal_adult` HttpOnly, SameSite=Lax, HTTPS'te Secure, 30 günlük çerezini yazar. Ret çerezi siler ve içeriksiz sayfa gösterir. Bu kontrol kişinin yaşının doğrulandığı anlamına gelmez; yayın ön koşulları ve AAL2 yönetim kontrolleri ayrıdır.
+
+Mevcut Supabase public bucket adresleri depolama kaynağında hâlâ herkese açıktır. Uygulama yaş kapısı, daha önce bilinen bu adresler için kaynak düzeyinde erişim kontrolü değildir. Bunun değiştirilmesi ayrı bir özel medya teslim mimarisi gerektirir.
+
+Görseller, çerezi taşıyan tarayıcı isteğini denetleyen `/api/image` üzerinden responsive WebP olarak sunulur. Kaynaklar yapılandırılmış Supabase public-storage origin'i ve yerel demo/kamu medyasıyla sınırlıdır; yönlendirmeler izlenmez, gövde boyutu ve çözünürlük sınırlıdır. Kaldırılmış medyanın dönüştürülmüş kopyası sunulmadan önce kaynağın hâlâ mevcut olduğu kontrol edilir. Özel yönetim önizlemeleri bu uç noktadan geçmez ve AAL2 oturumu gerektirir.

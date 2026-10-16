@@ -29,7 +29,7 @@ Sitemap aynı kuralı kullanır; boş/ince il-ilçe sayfaları sitemap'e girmez.
 
 Şehir sayfalarında "yalnızca şehir adı değişen" şablon metin **üretilmez**. İçerik:
 - Admin'in `/admin/seo` üzerinden yazdığı şehre özgü tanıtım metni,
-- O şehirdeki gerçek profillerden türetilen veriler (profil/doğrulanmış sayısı, en sık ilgi alanları, profil bulunan ilçeler),
+- O şehirdeki gerçek profillerden türetilen veriler (profil/doğrulanmış sayısı, profil bulunan ilçeler),
 - TÜİK kaynaklı il bilgileri (bölge, nüfus, plaka).
 
 Tanıtım metni olmayan ve yeterli profili bulunmayan sayfalar otomatik noindex'tir. Google'ın doorway ve "scaled content abuse" politikaları gereği tanıtım metinleri toplu/otomatik üretilmemelidir.
@@ -39,3 +39,9 @@ Tanıtım metni olmayan ve yeterli profili bulunmayan sayfalar otomatik noindex'
 - Search Console doğrulaması ve sitemap gönderimi (domain belli olunca).
 - `opengraph-image` ile dinamik OG görseli (profil fotoğrafı kullanımı rıza kapsamında değerlendirilmeli).
 - Lighthouse CI ile CWV bütçesi.
+
+## Yaş kapısı ve ilerlemeli listeleme
+
+Canonical adresler ve indeks/noindex kuralları korunur. Onaylı ziyaretçi ilk sonuçları SSR olarak alır; cursor devamları URL'ye ayrı indekslenebilir sayfalar eklemez. Eski filtre/sayfa varyantları noindex kalır. Kamuya hobi bağlantıları üretilmez. İlk ziyaretçiler ve çerezsiz tarayıcı botları aynı yaş kapısını görür; SEO için botlara özel içerik geçişi yoktur. Bu nedenle profil içeriğinin arama motorlarınca keşfi yaş kapısından etkilenebilir. Sitemap ve yasal sayfalar açık kalır.
+
+Görsel optimizasyonu `next/image` custom loader + yaş çerezini denetleyen `/api/image` üzerinden responsive WebP üretir. Mevcut boyut/aspect-ratio ve öncelikli ilk görseller korunur; anonim ziyaretçi görsel uç noktasından 403 alır.

@@ -11,14 +11,14 @@ const GROUPS = [
 
 export function SiteFooter() {
   return (
-    <footer className="mt-28 border-t border-hairline pb-20 md:pb-0">
-      <div className="container-page grid grid-cols-2 gap-x-6 gap-y-12 py-16 md:grid-cols-12">
+    <footer className="mt-10 border-t border-hairline pb-20 md:pb-0">
+      <div className="container-page grid grid-cols-2 gap-x-6 gap-y-6 py-9 md:grid-cols-12">
         <div className="col-span-2 md:col-span-5">
-          <p className="flex items-center gap-3 font-display text-[clamp(3rem,2rem+5vw,6rem)] leading-none tracking-[-0.03em]">
+          <p className="flex items-center gap-3 font-display text-[clamp(2.5rem,2rem+3vw,4rem)] leading-none tracking-[-0.03em]">
             <CrescentMark className="size-[0.7em]" /> Hilal
           </p>
           <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-            Türkiye&apos;nin 81 ilinde ortak ilgi alanlarıyla tanışmak isteyen yetişkinlerin, rızası alınmış ve doğrulanmış sosyal profilleri.
+            Türkiye&apos;nin 81 ilinde sosyal keşif yapmak isteyen yetişkinlerin, rızası alınmış ve doğrulanmış sosyal profilleri.
           </p>
         </div>
         {GROUPS.map((g) => (

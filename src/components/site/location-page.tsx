@@ -31,7 +31,7 @@ export async function LocationPage({
   return (
     <div className="container-page pb-8 pt-6 sm:pt-10">
       <Breadcrumbs items={crumbs} />
-      <header className="mb-10 mt-8 grid gap-8 border-b border-hairline pb-10 lg:mb-12 lg:grid-cols-12 lg:items-end">
+      <header className="mb-6 mt-6 grid gap-8 border-b border-hairline pb-6 lg:mb-8 lg:grid-cols-12 lg:items-end">
         <div className="lg:col-span-7">
           <p className="eyebrow text-muted-foreground">
             {district ? `${province.name} · ilçe` : `${province.region} Bölgesi · ${String(province.plate).padStart(2, "0")}`}
@@ -40,13 +40,12 @@ export async function LocationPage({
           <p className="mt-5 max-w-[56ch] text-lede text-muted-foreground">
             {seo?.intro ??
               (summary.total > 0
-                ? `${place} bölgesinde şu anda ${summary.total} yayında profil bulunuyor${summary.verified ? `; bunların ${summary.verified} tanesi kimlik doğrulamalı` : ""}.${summary.topInterests.length ? ` En sık görülen ilgi alanları: ${summary.topInterests.slice(0, 3).map((i) => i.name.toLocaleLowerCase("tr")).join(", ")}.` : ""}`
+                ? `${place} bölgesinde şu anda ${summary.total} yayında profil bulunuyor.`
                 : `${place} için henüz yayında profil bulunmuyor. Yakın illere göz atabilir veya daha sonra tekrar kontrol edebilirsiniz.`)}
           </p>
         </div>
-        <dl className="grid grid-cols-3 border-t border-hairline lg:col-span-4 lg:col-start-9 lg:border-t-0">
+        <dl className="grid grid-cols-2 border-t border-hairline lg:col-span-4 lg:col-start-9 lg:border-t-0">
           <Stat label="Profil" value={formatNumber(summary.total)} />
-          <Stat label="Doğrulanmış" value={formatNumber(summary.verified)} />
           <Stat label={district ? "Nüfus" : "İlçe"} value={district ? formatNumber(district.population) : String(listDistricts(province.plate).length)} />
         </dl>
       </header>
@@ -56,7 +55,7 @@ export async function LocationPage({
       </Suspense>
 
       {!district && summary.districts.length ? (
-        <section className="mt-24 grid gap-6 border-t border-hairline pt-10 lg:grid-cols-12" aria-labelledby="ilce-baslik">
+        <section className="mt-12 grid gap-6 border-t border-hairline pt-10 lg:grid-cols-12" aria-labelledby="ilce-baslik">
           <h2 id="ilce-baslik" className="font-display text-display-md lg:col-span-4">{province.name} ilçeleri</h2>
           <ul className="grid grid-cols-1 sm:grid-cols-2 lg:col-span-7 lg:col-start-6">
             {summary.districts.map((d) => (

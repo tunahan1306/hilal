@@ -21,7 +21,7 @@ test("profil oluşturma → yayın engeli → ön koşullar → yayın → arşi
   // Yayın yetkisi yokken yayınlanamaz
   const publish = page.getByTestId("publish-button");
   await expect(publish).toBeDisabled();
-  await expect(page.getByTestId("publish-checklist").locator('[data-passed="false"]')).toHaveCount(6);
+  await expect(page.getByTestId("publish-checklist").locator('[data-passed="false"]')).toHaveCount(5);
 
   // Rıza + doğrulama
   await page.getByRole("tab", { name: "Rıza ve doğrulama" }).click();
@@ -75,7 +75,7 @@ test("profil oluşturma → yayın engeli → ön koşullar → yayın → arşi
 test("yayın ön koşulu eksik profil liste görünümünde 'Eksik' olarak işaretlenir", async ({ page }) => {
   await login(page);
   await page.goto("/admin/profiller?durum=in_review");
-  const row = page.getByTestId("profile-row").filter({ hasText: "İnceleme Örnek" });
+  const row = page.getByTestId("profile-row").filter({ hasText: "İnceleme Örnek" }).filter({ visible: true });
   await expect(row).toContainText("Eksik");
   await row.getByRole("link").click();
   await expect(page.getByTestId("publish-button")).toBeDisabled();

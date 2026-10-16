@@ -83,3 +83,7 @@ Son doğrulama (2026-10-16, denetim sonrası): typecheck ✅ · ESLint ✅ · Vi
 - Yönetim işlemleri tüm rota önbelleğini temizler (`revalidatePath("/", "layout")`); yüksek hacimde daha hedefli etiketleme gerekir.
 - Playwright public senaryoları demo verisine dayanır; Supabase modunda yalnızca kimlik doğrulama akışı E2E ile test edildi (repository ise entegrasyon testleriyle).
 - İlgi alanı filtresi büyük veri setleri için RPC'ye taşınmalı.
+
+## Premium vibrant discovery — yeni dal çalışması
+
+Uygulama ve denetim notları [IMPLEMENTATION.md](IMPLEMENTATION.md) içinde. Kamu hobi arayüzü kaldırıldı; veri ve yönetim korunuyor. Sunucuda 18+ beyan kapısı, çerez denetimli responsive görsel teslimi, tarih+id cursor keşfi, 2/3/4 sütunlu kartlar, koyu öncelikli yeni palet ve kompakt sayfalar eklendi. Mevcut medya migration'ına uymayan eski adapter/çağrılar uyarlanmıştır; migration çalıştırılmamıştır. Son doğrulama sonucu ve dosya listesi [QA_REPORT.md](QA_REPORT.md) içindedir; yukarıdaki eski test adetleri bu dalın sonucu olarak yorumlanmamalıdır.

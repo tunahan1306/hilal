@@ -2,7 +2,7 @@ export const SITE = {
   name: "Hilal",
   tagline: "Türkiye'nin sosyal keşif platformu",
   description:
-    "Hilal, Türkiye'nin 81 ilinde ortak ilgi alanlarına sahip yetişkinlerin doğrulanmış sosyal profillerini keşfetmesini sağlayan güvenli bir platformdur.",
+    "Hilal, Türkiye'nin 81 ilinde sosyal profillerini paylaşan yetişkinlerin doğrulanmış sosyal profillerini keşfetmesini sağlayan güvenli bir platformdur.",
   locale: "tr_TR",
 };
 

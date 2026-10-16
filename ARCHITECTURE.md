@@ -69,3 +69,11 @@ Supabase değişkenleri yoksa `memory` repository kullanılır. Production'da `A
 - Kamu sorguları view üzerinden; filtrelenmiş kolonlar indeksli. İlgi alanı filtresi şu an iki aşamalı (id listesi + `in`); büyük veri setinde bir Postgres RPC'ye taşınmalı.
 - Süreç içi rate limit sunucusuz ortamda instance başınadır; şikâyetler ayrıca DB sayacıyla sınırlanır. Ölçekte Vercel WAF / paylaşımlı depo eklenmeli.
 - Ödeme sağlayıcı `PaymentProvider` arayüzüyle eklenecek (şu an devre dışı).
+
+## Premium keşif güncellemesi
+
+Ziyaretçi isteği → proxy yaş beyanı kontrolü → SSR ilk 12 sonuç → istemcide “Daha fazla göster” → yaş kontrollü `/api/discovery` → etiketli `discoverProfiles` önbelleği → repository. Anahtar sırası `published_at DESC, id DESC`; cursor filtre değerlerinin yerine geçmez. Her batch en fazla 13 kayıt ister, 12 gösterir. Eski offset sözleşmesi yönetim/uyumluluk için korunur; ziyaretçi listesinde numaralı sayfalama yoktur. Konum özeti profil biyografilerini toplu okumak yerine konum sayaçlarını kullanır.
+
+Eski fotoğraf yöneticisi için service giriş noktaları mevcut requestUpload/finalizeUpload/setMediaRights/moderateMedia hattına uyarlanmıştır. Supabase adapter mevcut `profile_media`, `profile_media_public`, `bio_doc`, `storage_quota_mb` sözleşmesini kullanır. Migration çalıştırılmamıştır.
+
+Yönetim değişikliği/önbellek geçersizleştirmesi sonrası profilin istemci RSC geçişinde bağlantı kapanması gözlendi. Profil kartları bu nedenle normal belge bağlantılarıyla sunucudan açılır. Cache Components, SSR/PPR, partial prefetch, etiketli önbellek ve anlık yayından kaldırma korunur. Standart Tailwind 4 PostCSS yapılandırması her iki Next bundler'ında da utility CSS üretir.
