@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { MobileNav } from "@/components/site/mobile-nav";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteHeader } from "@/components/site/site-header";
@@ -10,7 +11,9 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
         {children}
       </main>
       <SiteFooter />
-      <MobileNav />
+      <Suspense fallback={null}>
+        <MobileNav />
+      </Suspense>
     </>
   );
 }

@@ -44,7 +44,7 @@ export function ProfileCard({ profile, priority = false, className }: { profile:
           </h3>
           <span className="shrink-0 text-sm tabular-nums text-muted-foreground">{profile.age}</span>
         </div>
-        <p className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+        <p className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm" data-testid="card-location">
           <MapPin className="size-3.5 shrink-0" aria-hidden />
           <span className="truncate">{location}</span>
         </p>

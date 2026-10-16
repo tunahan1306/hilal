@@ -46,7 +46,8 @@ export async function LocationPage({
             </p>
           )}
         </div>
-        <dl className="grid grid-cols-3 gap-2 rounded-2xl border border-border/70 bg-card p-4 text-sm">
+        <div className="rounded-2xl border border-border/70 bg-card p-4 text-sm">
+        <dl className="grid grid-cols-3 gap-2">
           <Stat icon={Users} label="Profil" value={formatNumber(summary.total)} />
           <Stat icon={BadgeCheck} label="Doğrulanmış" value={formatNumber(summary.verified)} />
           <Stat
@@ -54,13 +55,14 @@ export async function LocationPage({
             label={district ? "Nüfus" : "İlçe"}
             value={district ? formatNumber(district.population) : String(listDistricts(province.plate).length)}
           />
+        </dl>
           {!district ? (
-            <p className="col-span-3 mt-1 border-t border-border/70 pt-3 text-xs text-muted-foreground">
+            <p className="mt-3 border-t border-border/70 pt-3 text-xs text-muted-foreground">
               {province.region} Bölgesi · Plaka {String(province.plate).padStart(2, "0")} · Nüfus {formatNumber(province.population)}
               {province.metropolitan ? " · Büyükşehir" : ""}
             </p>
           ) : null}
-        </dl>
+        </div>
       </header>
 
       <Suspense fallback={<ProfileListingSkeleton />}>
@@ -103,6 +105,16 @@ function Stat({ icon: Icon, label, value }: { icon: typeof Users; label: string;
     <div className="rounded-xl bg-muted/50 p-3">
       <dt className="flex items-center gap-1 text-xs text-muted-foreground"><Icon className="size-3.5" aria-hidden />{label}</dt>
       <dd className="mt-1 text-lg font-semibold tabular-nums">{value}</dd>
+    </div>
+  );
+}
+
+export function LocationPageSkeleton() {
+  return (
+    <div className="container-page py-8 sm:py-12" aria-busy="true">
+      <div className="h-4 w-48 animate-pulse rounded bg-muted" />
+      <div className="mb-8 mt-4 h-10 w-2/3 animate-pulse rounded bg-muted" />
+      <ProfileListingSkeleton />
     </div>
   );
 }

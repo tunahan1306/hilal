@@ -2,7 +2,7 @@
 
 import { useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -43,11 +43,11 @@ export function ProfileForm({
     defaultValues: { nickname: "", birthDate: "", provincePlate: 0, districtSlug: "", bio: "", interestIds: [], seoTitle: "", seoDescription: "", noindex: false, ...defaults },
     mode: "onBlur",
   });
-  const { register, control, handleSubmit, watch, setValue, formState } = form;
-  const plate = Number(watch("provincePlate"));
+  const { register, control, handleSubmit, setValue, formState } = form;
+  const plate = Number(useWatch({ control, name: "provincePlate" }));
   const districts = useMemo(() => (plate ? listDistricts(plate) : []), [plate]);
-  const nickname = watch("nickname");
-  const bio = watch("bio");
+  const nickname = useWatch({ control, name: "nickname" });
+  const bio = useWatch({ control, name: "bio" });
   const findings = useMemo(() => scanProfileContent({ nickname: nickname ?? "", bio: bio ?? "" }), [nickname, bio]);
 
   const onSubmit = handleSubmit((values) => {

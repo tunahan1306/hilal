@@ -1,5 +1,6 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { invalidatePublic } from "@/server/cache";
 import { clientFingerprint, rateLimit } from "@/server/rate-limit";
@@ -20,6 +21,7 @@ function failure(e: unknown): FormState {
 }
 
 export async function reportProfileAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  let removed = false;
   try {
     const { autoUnpublished } = await submitReport(
       {
@@ -31,16 +33,16 @@ export async function reportProfileAction(_prev: FormState, formData: FormData):
       },
       await clientFingerprint(),
     );
-    if (autoUnpublished) invalidatePublic();
-    return {
-      ok: true,
-      message: autoUnpublished
-        ? "Bildiriminiz alındı. Profil, inceleme tamamlanana kadar yayından kaldırıldı."
-        : "Bildiriminiz alındı. Moderasyon ekibimiz en kısa sürede inceleyecek.",
-    };
+    if (autoUnpublished) {
+      invalidatePublic();
+      removed = true;
+    }
   } catch (e) {
     return failure(e);
   }
+  // Profil sayfası artık kamuya kapalı; onay ayrı bir sayfada gösterilir.
+  if (removed) redirect("/bildirim-alindi");
+  return { ok: true, message: "Bildiriminiz alındı. Moderasyon ekibimiz en kısa sürede inceleyecek." };
 }
 
 export async function privacyRequestAction(_prev: FormState, formData: FormData): Promise<FormState> {

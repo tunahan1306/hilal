@@ -7,7 +7,7 @@ import { demoAdminConfig, safeEqual, verifyTotp } from "@/server/auth/demo-crede
 import { DEMO_SESSION_COOKIE, SESSION_TTL_SECONDS, signSession } from "@/server/auth/demo-session";
 import { createSupabaseServerClient } from "@/server/auth/supabase-server";
 import { isSupabaseConfigured } from "@/server/env";
-import { clientFingerprint, rateLimit } from "@/server/rate-limit";
+import { clearRateLimit, clientFingerprint, rateLimit } from "@/server/rate-limit";
 import { getRepository } from "@/server/repositories";
 import { audit } from "@/server/services/audit";
 
@@ -16,9 +16,15 @@ export type LoginState = { message: string } | null;
 const GENERIC = "E-posta, şifre veya doğrulama kodu hatalı.";
 const WINDOW = 15 * 60_000;
 
+/** Her deneme sayılır; başarılı girişte o hesabın ve istemcinin sayaçları sıfırlanır. */
 async function limited(email: string): Promise<boolean> {
   const fp = await clientFingerprint();
   return !rateLimit(`login:${fp}`, 10, WINDOW).ok || !rateLimit(`login-email:${email.toLowerCase()}`, 5, WINDOW).ok;
+}
+
+async function clearLimits(email: string): Promise<void> {
+  clearRateLimit(`login:${await clientFingerprint()}`);
+  clearRateLimit(`login-email:${email.toLowerCase()}`);
 }
 
 export async function loginAction(_prev: LoginState, formData: FormData): Promise<LoginState> {
@@ -46,6 +52,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     if (!totp) redirect("/admin/giris?adim=mfa");
     const verified = await supabase.auth.mfa.challengeAndVerify({ factorId: totpFactor.id, code: totp });
     if (verified.error) return { message: GENERIC };
+    await clearLimits(email);
     await audit(admin, "admin.login", "admin", admin.id);
     redirect("/admin");
   }
@@ -63,6 +70,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     signSession({ sub: admin.id, aal: "aal2", exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS }),
     { httpOnly: true, secure: process.env.NODE_ENV === "production" && !process.env.NEXT_PUBLIC_SITE_URL?.startsWith("http://"), sameSite: "strict", path: "/", maxAge: SESSION_TTL_SECONDS },
   );
+  await clearLimits(email);
   await audit(admin, "admin.login", "admin", admin.id, { mode: "demo" });
   redirect("/admin");
 }

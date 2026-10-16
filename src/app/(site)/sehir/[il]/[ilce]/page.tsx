@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { LocationPage } from "@/components/site/location-page";
+import { Suspense } from "react";
+import { LocationPage, LocationPageSkeleton } from "@/components/site/location-page";
 import { getDistrict, getProvince, getProvinceByPlate } from "@/domain/locations";
 import { getLocationCounts } from "@/server/queries/public";
 import { locationMetadata } from "@/server/queries/location-seo";
@@ -22,7 +23,15 @@ export async function generateMetadata({ params, searchParams }: PageProps<"/seh
   return locationMetadata(province, district, await searchParams);
 }
 
-export default async function DistrictPage({ params, searchParams }: PageProps<"/sehir/[il]/[ilce]">) {
+export default function DistrictPage({ params, searchParams }: PageProps<"/sehir/[il]/[ilce]">) {
+  return (
+    <Suspense fallback={<LocationPageSkeleton />}>
+      <DistrictContent params={params} searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function DistrictContent({ params, searchParams }: PageProps<"/sehir/[il]/[ilce]">) {
   const { il, ilce } = await params;
   const province = getProvince(il);
   const district = getDistrict(il, ilce);

@@ -15,7 +15,7 @@ const REL = { self: "Profil sahibi", representative: "Yasal temsilci", other: "D
 export default async function PrivacyRequestsPage() {
   await requireAdmin();
   const requests = await getRepository().listPrivacyRequests();
-  const now = Date.now();
+  const now = new Date().getTime();
   return (
     <>
       <PageHeader title="KVKK ve kaldırma talepleri" description="KVKK m.13 uyarınca başvurular en geç 30 gün içinde sonuçlandırılmalıdır. Kimlik doğrulaması yapılmadan kişisel veri paylaşılmaz." />

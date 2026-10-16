@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { getDistrict, getProvince } from "@/domain/locations";
 
 /**
  * Yalnızca iyimser kontrol: yönetim sayfalarına oturum çerezi olmadan gelen
@@ -9,6 +10,17 @@ import { createServerClient } from "@supabase/ssr";
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Geçersiz il/ilçe slug'ları için gerçek 404 (akış başlamadan önce).
+  if (pathname.startsWith("/sehir/")) {
+    const [, , il, ilce, ...rest] = pathname.split("/");
+    const valid = rest.length === 0 && getProvince(il ?? "") && (!ilce || getDistrict(il!, ilce));
+    if (valid) return NextResponse.next();
+    // rewrite() durum kodunu korumadığından statik 404 sayfası 404 koduyla döndürülür.
+    const page = await fetch(new URL("/bulunamadi", request.url), { headers: { accept: "text/html" } });
+    return new NextResponse(page.body, { status: 404, headers: { "content-type": "text/html; charset=utf-8" } });
+  }
+
   if (pathname.startsWith("/admin/giris")) return NextResponse.next();
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -37,5 +49,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/sehir/:path*"],
 };

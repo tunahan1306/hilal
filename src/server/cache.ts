@@ -1,5 +1,5 @@
 import "server-only";
-import { updateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 
 export const TAGS = {
   public: "public-profiles",
@@ -15,4 +15,8 @@ export const TAGS = {
 export function invalidatePublic(...extra: (keyof typeof TAGS)[]): void {
   updateTag(TAGS.public);
   for (const t of extra) updateTag(TAGS[t]);
+  // Build sırasında tamamen statik üretilen sayfalar (ör. profil detayları) da
+  // ilk istekte bayat sunulmasın diye rota önbelleği de temizlenir. Yönetim
+  // işlemleri seyrek olduğundan maliyeti kabul edilebilir.
+  revalidatePath("/", "layout");
 }

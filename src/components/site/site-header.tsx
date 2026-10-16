@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "./logo";
-import { NavLinks } from "./nav-links";
+import { Suspense } from "react";
+import { NavLinks, NavLinksFallback } from "./nav-links";
 import { ThemeToggle } from "./theme-toggle";
 
 export const MAIN_NAV = [
@@ -20,7 +21,9 @@ export function SiteHeader() {
       <div className="container-page flex h-14 items-center gap-6">
         <Logo />
         <nav aria-label="Ana menü" className="hidden md:block">
-          <NavLinks items={MAIN_NAV} />
+          <Suspense fallback={<NavLinksFallback items={MAIN_NAV} />}>
+            <NavLinks items={MAIN_NAV} />
+          </Suspense>
         </nav>
         <div className="ml-auto flex items-center gap-1">
           <Button asChild variant="ghost" size="icon" className="md:hidden" aria-label="Profil ara">

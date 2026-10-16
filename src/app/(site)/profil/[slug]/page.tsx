@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { BadgeCheck, CircleSlash, Info, MapPin, ShieldAlert, UserX } from "lucide-react";
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
 import { Gallery } from "@/components/site/gallery";
@@ -9,6 +10,7 @@ import { ProfileGrid } from "@/components/site/profile-grid";
 import { ReportDialog } from "@/components/site/report-dialog";
 import { ViewTracker } from "@/components/site/view-tracker";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { truncate } from "@/domain/seo";
 import { formatDate, SITE, siteUrl } from "@/lib/site";
 import { getPublicProfile, getPublicProfileSlugs, searchProfiles } from "@/server/queries/public";
@@ -41,7 +43,27 @@ export async function generateMetadata({ params }: PageProps<"/profil/[slug]">):
   };
 }
 
-export default async function ProfilePage({ params }: PageProps<"/profil/[slug]">) {
+export default function ProfilePage({ params }: PageProps<"/profil/[slug]">) {
+  return (
+    <Suspense fallback={<ProfileSkeleton />}>
+      <ProfileContent params={params} />
+    </Suspense>
+  );
+}
+
+function ProfileSkeleton() {
+  return (
+    <div className="container-page py-8 sm:py-12" aria-busy="true">
+      <Skeleton className="h-4 w-48" />
+      <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,480px)_1fr] lg:gap-12">
+        <Skeleton className="aspect-[4/5] rounded-2xl" />
+        <div className="space-y-4"><Skeleton className="h-10 w-2/3" /><Skeleton className="h-4 w-1/3" /><Skeleton className="h-24 w-full" /></div>
+      </div>
+    </div>
+  );
+}
+
+async function ProfileContent({ params }: Pick<PageProps<"/profil/[slug]">, "params">) {
   const profile = await getPublicProfile((await params).slug);
   if (!profile) notFound();
   const place = profile.district ? `${profile.district.name}, ${profile.province.name}` : profile.province.name;

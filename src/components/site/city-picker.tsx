@@ -34,6 +34,7 @@ export function CityPicker({ cities, className, size = "lg" }: { cities: CityOpt
           variant="outline"
           size={size}
           role="combobox"
+          aria-label="Şehir seçin"
           aria-expanded={open}
           aria-haspopup="listbox"
           className={cn("w-full justify-between bg-card font-normal text-muted-foreground", className)}

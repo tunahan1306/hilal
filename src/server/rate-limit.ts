@@ -28,6 +28,10 @@ export function rateLimit(key: string, limit: number, windowMs: number, now = Da
   return b.count > limit ? { ok: false, retryAfterMs: b.resetAt - now } : { ok: true, retryAfterMs: 0 };
 }
 
+export function clearRateLimit(key: string): void {
+  buckets.delete(key);
+}
+
 export function resetRateLimits(): void {
   buckets.clear();
 }

@@ -1,6 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import type { Admin } from "@/domain/types";
 import { isSupabaseConfigured } from "../env";
 import { getRepository } from "../repositories";
@@ -14,6 +15,8 @@ export type AdminSession = { admin: Admin; aal: "aal1" | "aal2" };
  * istemciden gelen hiçbir bilgiye güvenilmez.
  */
 export async function getAdminSession(): Promise<AdminSession | null> {
+  // Oturum doğrulaması (süre kontrolü dahil) her zaman istek anında yapılır.
+  await connection();
   const repo = getRepository();
   if (isSupabaseConfigured()) {
     const supabase = await createSupabaseServerClient();

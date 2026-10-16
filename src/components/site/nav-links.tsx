@@ -28,3 +28,18 @@ export function NavLinks({ items }: { items: readonly { href: string; label: str
     </ul>
   );
 }
+
+/** usePathname dinamik olduğundan statik shell için etkin durum içermeyen yedek. */
+export function NavLinksFallback({ items }: { items: readonly { href: string; label: string }[] }) {
+  return (
+    <ul className="flex items-center gap-1">
+      {items.map((item) => (
+        <li key={item.href}>
+          <Link href={item.href} className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+            {item.label}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}

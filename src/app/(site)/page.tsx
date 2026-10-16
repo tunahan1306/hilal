@@ -65,7 +65,7 @@ export default async function HomePage() {
       <section className="relative overflow-hidden border-b border-border/60">
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60rem_30rem_at_50%_-10%,var(--brand-soft),transparent_70%)]" aria-hidden />
         <div className="container-page grid gap-10 py-16 sm:py-24 lg:grid-cols-[1.15fr_1fr] lg:items-center">
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-700">
+          <div>
             <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground">
               <ShieldCheck className="size-3.5 text-brand" aria-hidden /> Yalnızca doğrulanmış, 18+ ve rızası alınmış profiller
             </p>

@@ -1,0 +1,184 @@
+import AxeBuilder from "@axe-core/playwright";
+import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { login, pick } from "./helpers";
+
+/** Kaldırılan profil: içerik gösterilmez, sayfa noindex'tir (akış sonrası 404 "soft 404" olabilir). */
+async function expectRemoved(page: Page, url: string) {
+  await page.goto(url);
+  await expect(page.getByRole("heading", { name: "Sayfa bulunamadı" })).toBeVisible();
+  await expect(page.locator('meta[name="robots"]').first()).toHaveAttribute("content", /noindex/);
+  await expect(page.getByRole("button", { name: "Şikâyet et" })).toHaveCount(0);
+}
+
+test.describe("şehir ve ilçe filtreleri", () => {
+  test("keşfet filtreleri URL ile senkronize çalışır", async ({ page }) => {
+    await page.goto("/kesfet");
+    await expect(page.getByText(/profil bulundu/)).toBeVisible();
+    await pick(page, "İl", "İstanbul");
+    await expect(page).toHaveURL(/il=istanbul/);
+    await pick(page, "İlçe", "Kadıköy");
+    await expect(page).toHaveURL(/il=istanbul&ilce=kadikoy/);
+    const cards = page.locator("article");
+    await expect(cards.first()).toBeVisible();
+    for (const text of await cards.getByTestId("card-location").allTextContents()) expect(text).toContain("Kadıköy");
+    await page.getByRole("switch", { name: "Doğrulanmış" }).click();
+    await expect(page).toHaveURL(/dogrulanmis=1/);
+    await page.reload();
+    await expect(page.getByRole("switch", { name: "Doğrulanmış" })).toBeChecked();
+  });
+
+  test("ilgi alanı filtresi uygulanır", async ({ page }) => {
+    await page.goto("/kesfet?ilgi=yoga");
+    await expect(page.getByRole("button", { name: "Yoga", pressed: true })).toBeVisible();
+    const tags = await page.locator("article ul[aria-label='İlgi alanları']").allTextContents();
+    expect(tags.length).toBeGreaterThan(0);
+    for (const t of tags) expect(t).toContain("Yoga");
+  });
+
+  test("il ve ilçe sayfaları doğru profilleri gösterir", async ({ page }) => {
+    await page.goto("/sehir/istanbul/kadikoy");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Kadıköy, İstanbul sosyal profilleri");
+    await page.goto("/sehir/ankara");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Ankara sosyal profilleri");
+    await expect(page.getByRole("link", { name: /Çankaya/ }).first()).toBeVisible();
+  });
+
+  test("geçersiz il/ilçe 404 döner", async ({ page }) => {
+    expect((await page.goto("/sehir/olmayan-il"))?.status()).toBe(404);
+    expect((await page.goto("/sehir/izmir/kadikoy"))?.status()).toBe(404);
+  });
+
+  test("şehir seçici il sayfasına götürür", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("combobox").first().click();
+    await page.getByLabel("İl ara").fill("eskişe");
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/sehir\/eskisehir$/);
+  });
+});
+
+test.describe("SEO", () => {
+  test("profil sayfası metadata, canonical, OG ve JSON-LD içerir", async ({ page }) => {
+    await page.goto("/kesfet");
+    await page.locator("article a").first().click();
+    await expect(page).toHaveURL(/\/profil\//);
+    const url = new URL(page.url());
+    await expect(page).toHaveTitle(/ \| Hilal$/);
+    expect(await page.locator('link[rel="canonical"]').getAttribute("href")).toContain(url.pathname);
+    expect(await page.locator('meta[property="og:title"]').getAttribute("content")).toBeTruthy();
+    expect(await page.locator('meta[name="description"]').getAttribute("content")).toBeTruthy();
+    const ld = await page.locator('script[type="application/ld+json"]').allTextContents();
+    expect(ld.some((s) => s.includes('"ProfilePage"'))).toBe(true);
+    expect(ld.some((s) => s.includes('"BreadcrumbList"'))).toBe(true);
+    expect(await page.locator('meta[name="robots"]').count()).toBe(0);
+  });
+
+  test("boş il sayfası ve filtreli varyantlar noindex", async ({ page }) => {
+    await page.goto("/sehir/hakkari");
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    await page.goto("/sehir/istanbul");
+    expect(await page.locator('meta[name="robots"]').count()).toBe(0);
+    await page.goto("/sehir/istanbul?yasMin=30");
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    expect(await page.locator('link[rel="canonical"]').getAttribute("href")).toMatch(/\/sehir\/istanbul$/);
+    await page.goto("/kesfet?il=ankara");
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  });
+
+  test("sitemap yalnızca indekslenebilir sayfaları, robots admin'i engeller", async ({ request }) => {
+    const sitemap = await (await request.get("/sitemap.xml")).text();
+    expect(sitemap).toContain("/sehir/istanbul</loc>");
+    expect(sitemap).toContain("/profil/");
+    expect(sitemap).not.toContain("/sehir/hakkari");
+    expect(sitemap).not.toContain("/admin");
+    const robots = await (await request.get("/robots.txt")).text();
+    expect(robots).toContain("Disallow: /admin");
+    expect(robots).toContain("Sitemap:");
+  });
+
+  test("sponsorlu profiller etiketlenir", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator("article").filter({ hasText: "Sponsorlu" }).first()).toBeVisible();
+  });
+});
+
+test.describe("şikâyet akışı", () => {
+  test("ziyaretçi şikâyeti → yönetici incelemesi → içerik kaldırma", async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.goto("/sehir/ankara");
+    const card = page.locator("article").first();
+    const name = (await card.locator("h3 a").textContent())!.trim();
+    await card.locator("h3 a").click();
+    await expect(page).toHaveURL(/\/profil\//);
+    const profileUrl = page.url();
+
+    await page.getByRole("button", { name: "Şikâyet et" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByText("Sahte profil").click();
+    await dialog.getByLabel("Açıklama").fill("E2E: bu profil başka bir kişinin fotoğrafını kullanıyor olabilir.");
+    await dialog.getByRole("button", { name: "Bildirimi gönder" }).click();
+    await expect(dialog.getByRole("status")).toContainText("Bildiriminiz alındı");
+
+    await login(page);
+    await page.goto("/admin/sikayetler");
+    await page.getByTestId("report-row").filter({ hasText: name }).filter({ hasText: "Açık" }).first().getByRole("link").click();
+    await page.getByRole("button", { name: "İncelemeye al" }).click();
+    await expect(page.getByTestId("moderation-history")).toContainText("İncelemeye alındı");
+    await page.getByRole("button", { name: "İçeriği kaldır" }).click();
+    await page.getByRole("dialog").getByRole("textbox").fill("E2E: şikâyet doğrulandı.");
+    await page.getByRole("dialog").getByRole("button", { name: "Kaldır" }).click();
+    await expect(page.getByTestId("moderation-history")).toContainText("İçerik kaldırıldı");
+    await expect(page.getByText("Kaldırıldı", { exact: true }).first()).toBeVisible();
+
+    await expectRemoved(page, profileUrl);
+  });
+
+  test("kritik şikâyet profili anında yayından kaldırır", async ({ page }) => {
+    await page.goto("/sehir/izmir");
+    await page.locator("article h3 a").first().click();
+    await expect(page).toHaveURL(/\/profil\//);
+    const url = page.url();
+    await page.getByRole("button", { name: "Şikâyet et" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByText("Ücretli cinsel hizmet tanıtımı").click();
+    await dialog.getByLabel("Açıklama").fill("E2E: profil ücretli hizmet çağrışımı yapıyor.");
+    await dialog.getByRole("button", { name: "Bildirimi gönder" }).click();
+    await expect(page).toHaveURL(/\/bildirim-alindi$/);
+    await expect(page.getByRole("status")).toContainText("yayından kaldırıldı");
+    await expectRemoved(page, url);
+  });
+});
+
+test("abonelik durumları yönetilir", async ({ page }) => {
+  await login(page);
+  await page.goto("/admin/abonelikler");
+  await expect(page.getByTestId("subscription-row").first()).toBeVisible();
+  await expect(page.getByText("Aktif", { exact: true }).first()).toBeVisible();
+  await page.goto("/admin/abonelikler?filtre=yakinda");
+  const soon = page.getByTestId("subscription-row");
+  await expect(soon.first()).toContainText("Yakında");
+  await soon.first().getByRole("button", { name: "İptal" }).click();
+  await page.getByRole("dialog").getByRole("textbox").fill("E2E iptal");
+  await page.getByRole("dialog").getByRole("button", { name: "İptal et" }).click();
+  await expect(page.locator("[data-sonner-toast]").filter({ hasText: "iptal edildi" })).toBeVisible();
+});
+
+test.describe("erişilebilirlik", () => {
+  for (const path of ["/", "/kesfet", "/sehir/istanbul", "/guvenlik", "/kaldirma-talebi", "/admin/giris"]) {
+    test(`${path} ciddi a11y ihlali içermez`, async ({ page }) => {
+      await page.goto(path);
+      const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+      const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
+      expect(serious.map((v) => `${v.id}: ${v.nodes.length} — ${v.nodes[0]?.target}`)).toEqual([]);
+    });
+  }
+  test("profil sayfası ciddi a11y ihlali içermez", async ({ page }) => {
+    await page.goto("/sehir/bursa");
+    await page.locator("article h3 a").first().click();
+    await expect(page).toHaveURL(/\/profil\//);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+    expect(results.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
+  });
+});
