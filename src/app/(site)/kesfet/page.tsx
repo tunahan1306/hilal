@@ -18,11 +18,13 @@ export async function generateMetadata({ searchParams }: PageProps<"/kesfet">): 
 
 export default function ExplorePage({ searchParams }: PageProps<"/kesfet">) {
   return (
-    <div className="container-page py-8 sm:py-12">
+    <div className="container-page pb-8 pt-6 sm:pt-10">
       <Breadcrumbs items={[{ name: "Keşfet", href: "/kesfet" }]} />
-      <header className="mb-8 mt-4">
-        <h1 className="text-3xl font-semibold sm:text-4xl">Profilleri keşfet</h1>
-        <p className="mt-2 max-w-2xl text-muted-foreground">Şehir, yaş aralığı ve ortak ilgi alanlarına göre filtreleyin.</p>
+      <header className="mb-10 mt-8 grid gap-4 border-b border-hairline pb-10 lg:mb-12 lg:grid-cols-12 lg:items-end">
+        <h1 className="font-display text-display-xl lg:col-span-7">Keşfet</h1>
+        <p className="max-w-[44ch] text-lede text-muted-foreground lg:col-span-5 lg:justify-self-end">
+          Türkiye genelinde, rızası alınmış ve yaşı doğrulanmış yetişkin profiller. Şehir, yaş aralığı ve ortak ilgi alanlarına göre daraltın.
+        </p>
       </header>
       <Suspense fallback={<ProfileListingSkeleton />}>
         <ExploreResults searchParams={searchParams} />

@@ -267,7 +267,18 @@ export type PublicProfile = {
   verified: boolean;
   sponsored: boolean;
   images: Pick<ProfileImage, "url" | "alt" | "width" | "height">[];
+  videos?: PublicVideo[];
   publishedAt: string;
   updatedAt: string;
   seo: { title: string | null; description: string | null; noindex: boolean };
+};
+
+export type PublicVideo = {
+  url: string;
+  posterUrl: string | null;
+  alt: string;
+  width: number;
+  height: number;
+  durationSeconds: number | null;
+  mimeType: string;
 };

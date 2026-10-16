@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, CalendarClock, FileClock, Flag, Users } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { ViewsChart } from "@/components/admin/views-chart";
 import { isExpiringSoon } from "@/domain/subscriptions";
-import { REPORT_CATEGORY_LABELS, CRITICAL_REPORT_CATEGORIES } from "@/domain/types";
+import { CRITICAL_REPORT_CATEGORIES, PRIVACY_REQUEST_LABELS, REPORT_CATEGORY_LABELS } from "@/domain/types";
 import { formatDate, formatNumber } from "@/lib/site";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
 
 export const metadata: Metadata = { title: "Gösterge paneli" };
+
+type QueueItem = { key: string; priority: number; kind: string; title: string; detail: string; href: string; tone: "danger" | "warning" | "brand" | "neutral"; at: string };
 
 export default async function DashboardPage() {
   await requireAdmin();
@@ -18,90 +20,103 @@ export default async function DashboardPage() {
   const now = new Date();
   const [counts, views, reports, subs, profiles, privacy] = await Promise.all([
     repo.getDashboardCounts(now),
-    repo.getDailyViews(14),
+    repo.getDailyViews(30),
     repo.listReports(),
     repo.listSubscriptions(),
     repo.listProfiles(),
     repo.listPrivacyRequests(),
   ]);
   const nameOf = new Map(profiles.map((p) => [p.id, p.nickname]));
-  const openReports = reports.filter((r) => ["open", "in_review", "appealed"].includes(r.status)).slice(0, 6);
   const expiring = subs.filter((s) => isExpiringSoon(s, now)).sort((a, b) => a.endsAt.localeCompare(b.endsAt)).slice(0, 6);
-  const duePrivacy = privacy.filter((p) => p.status === "received" || p.status === "in_progress").slice(0, 5);
+
+  const queue: QueueItem[] = [
+    ...reports
+      .filter((r) => ["open", "in_review", "appealed"].includes(r.status))
+      .map((r) => {
+        const critical = CRITICAL_REPORT_CATEGORIES.includes(r.category);
+        return {
+          key: r.id, priority: critical ? 0 : 2, kind: critical ? "Kritik şikâyet" : "Şikâyet",
+          title: nameOf.get(r.profileId) ?? "Silinmiş profil", detail: REPORT_CATEGORY_LABELS[r.category],
+          href: `/admin/sikayetler/${r.id}`, tone: critical ? "danger" : "warning", at: r.createdAt,
+        } satisfies QueueItem;
+      }),
+    ...privacy
+      .filter((p) => p.status === "received" || p.status === "in_progress")
+      .map((p) => ({
+        key: p.id, priority: 1, kind: "KVKK", title: p.requesterName, detail: `${PRIVACY_REQUEST_LABELS[p.type]} · son gün ${formatDate(p.dueAt, { day: "numeric", month: "short" })}`,
+        href: "/admin/talepler", tone: "brand", at: p.createdAt,
+      }) satisfies QueueItem),
+    ...profiles
+      .filter((p) => p.status === "in_review")
+      .map((p) => ({ key: p.id, priority: 3, kind: "İnceleme", title: p.nickname, detail: "Moderasyon bekliyor", href: `/admin/profiller/${p.id}`, tone: "neutral", at: p.updatedAt }) satisfies QueueItem),
+  ].sort((a, b) => a.priority - b.priority || b.at.localeCompare(a.at));
 
   const kpis = [
-    { label: "Toplam profil", value: counts.totalProfiles, href: "/admin/profiller" },
-    { label: "Aktif (yayında)", value: counts.published, href: "/admin/profiller?durum=published" },
-    { label: "Taslak", value: counts.drafts, href: "/admin/profiller?durum=draft" },
+    { label: "Yayında", value: counts.published, sub: `${counts.totalProfiles} profilden`, href: "/admin/profiller?durum=published" },
     { label: "İnceleme bekleyen", value: counts.inReview, href: "/admin/profiller?durum=in_review", warn: counts.inReview > 0 },
+    { label: "Taslak", value: counts.drafts, href: "/admin/profiller?durum=draft" },
     { label: "Açık şikâyet", value: counts.openReports, href: "/admin/sikayetler", warn: counts.openReports > 0 },
-    { label: "Aktif abonelik", value: counts.activeSubscriptions, href: "/admin/abonelikler" },
-    { label: "7 gün içinde bitecek", value: counts.expiringSoon, href: "/admin/abonelikler?filtre=yakinda", warn: counts.expiringSoon > 0 },
-    { label: "Açık KVKK talebi", value: counts.openPrivacyRequests, href: "/admin/talepler", warn: counts.openPrivacyRequests > 0 },
+    { label: "KVKK talebi", value: counts.openPrivacyRequests, href: "/admin/talepler", warn: counts.openPrivacyRequests > 0 },
+    { label: "Aktif abonelik", value: counts.activeSubscriptions, sub: `${counts.expiringSoon} tanesi 7 gün içinde bitiyor`, href: "/admin/abonelikler" },
   ];
 
   return (
     <>
-      <PageHeader title="Gösterge paneli" description={`Güncel durum · ${formatDate(now.toISOString())}`} />
-      <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <PageHeader title="Gösterge paneli" eyebrow={formatDate(now.toISOString(), { weekday: "long", day: "numeric", month: "long" })} />
+      <dl className="grid grid-cols-2 overflow-hidden rounded-lg border border-hairline sm:grid-cols-3 xl:grid-cols-6">
         {kpis.map((k) => (
-          <li key={k.label}>
-            <Link prefetch={false} href={k.href} className="block rounded-xl border border-border/70 bg-card p-4 transition-shadow hover:shadow-[var(--shadow-card)]">
-              <p className="text-xs text-muted-foreground">{k.label}</p>
-              <p className={`mt-1 text-2xl font-semibold tabular-nums ${k.warn ? "text-warning" : ""}`}>{formatNumber(k.value)}</p>
-            </Link>
-          </li>
+          <Link key={k.label} href={k.href} prefetch={false} className="group border-b border-r border-hairline p-4 transition-colors hover:bg-secondary/60 [&:nth-child(2n)]:border-r-0 sm:[&:nth-child(2n)]:border-r sm:[&:nth-child(3n)]:border-r-0 xl:border-b-0 xl:[&:nth-child(3n)]:border-r xl:last:border-r-0">
+            <dt className="text-xs text-muted-foreground">{k.label}</dt>
+            <dd className={`mt-1.5 text-2xl font-semibold tabular-nums tracking-tight ${k.warn ? "text-warning" : ""}`}>{formatNumber(k.value)}</dd>
+            {k.sub ? <dd className="mt-0.5 truncate text-xs text-muted-foreground">{k.sub}</dd> : null}
+          </Link>
         ))}
-      </ul>
+      </dl>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <section className="rounded-xl border border-border/70 bg-card p-5">
-          <ViewsChart data={views} label="Profil görüntülemeleri (son 14 gün)" />
-        </section>
-        <section className="rounded-xl border border-border/70 bg-card p-5" aria-labelledby="sk">
-          <h2 id="sk" className="mb-3 flex items-center gap-2 text-sm font-medium"><Flag className="size-4" aria-hidden /> İşlem bekleyen şikâyetler</h2>
-          {openReports.length ? (
-            <ul className="divide-y divide-border/70 text-sm">
-              {openReports.map((r) => (
-                <li key={r.id} className="flex items-center justify-between gap-2 py-2">
-                  <Link prefetch={false} href={`/admin/sikayetler/${r.id}`} className="min-w-0 truncate hover:underline">
-                    {nameOf.get(r.profileId) ?? "Silinmiş profil"} · {REPORT_CATEGORY_LABELS[r.category]}
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1.5fr_1fr]">
+        <section className="self-start rounded-lg border border-hairline" aria-labelledby="kuyruk">
+          <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
+            <h2 id="kuyruk" className="text-sm font-medium">İşlem kuyruğu</h2>
+            <span className="text-xs tabular-nums text-muted-foreground">{queue.length} öğe · önceliğe göre</span>
+          </div>
+          {queue.length ? (
+            <ul className="divide-y divide-hairline">
+              {queue.slice(0, 10).map((q) => (
+                <li key={q.key}>
+                  <Link href={q.href} prefetch={false} className="grid grid-cols-[7.5rem_1fr_auto] items-center gap-3 px-4 py-2.5 text-[0.8125rem] transition-colors hover:bg-secondary/60">
+                    <StatusBadge tone={q.tone}>{q.kind}</StatusBadge>
+                    <span className="min-w-0 truncate"><span className="font-medium">{q.title}</span> <span className="text-muted-foreground">· {q.detail}</span></span>
+                    <span className="text-xs tabular-nums text-muted-foreground">{formatDate(q.at, { day: "numeric", month: "short" })}</span>
                   </Link>
-                  {CRITICAL_REPORT_CATEGORIES.includes(r.category) ? <StatusBadge tone="danger"><AlertTriangle className="mr-1 size-3" aria-hidden />Kritik</StatusBadge> : <StatusBadge>{formatDate(r.createdAt, { day: "numeric", month: "short" })}</StatusBadge>}
                 </li>
               ))}
             </ul>
-          ) : <p className="text-sm text-muted-foreground">Bekleyen şikâyet yok.</p>}
+          ) : (
+            <p className="px-4 py-10 text-center text-sm text-muted-foreground">Bekleyen işlem yok.</p>
+          )}
         </section>
-      </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <section className="rounded-xl border border-border/70 bg-card p-5" aria-labelledby="ab">
-          <h2 id="ab" className="mb-3 flex items-center gap-2 text-sm font-medium"><CalendarClock className="size-4" aria-hidden /> Yaklaşan abonelik bitişleri</h2>
-          {expiring.length ? (
-            <ul className="divide-y divide-border/70 text-sm">
-              {expiring.map((s) => (
-                <li key={s.id} className="flex justify-between py-2">
-                  <Link prefetch={false} href={`/admin/profiller/${s.profileId}`} className="hover:underline">{nameOf.get(s.profileId)}</Link>
-                  <span className="text-muted-foreground">{formatDate(s.endsAt, { day: "numeric", month: "short" })}</span>
-                </li>
-              ))}
-            </ul>
-          ) : <p className="text-sm text-muted-foreground">7 gün içinde bitecek abonelik yok.</p>}
-        </section>
-        <section className="rounded-xl border border-border/70 bg-card p-5" aria-labelledby="kv">
-          <h2 id="kv" className="mb-3 flex items-center gap-2 text-sm font-medium"><FileClock className="size-4" aria-hidden /> KVKK başvuruları (30 gün yasal süre)</h2>
-          {duePrivacy.length ? (
-            <ul className="divide-y divide-border/70 text-sm">
-              {duePrivacy.map((p) => (
-                <li key={p.id} className="flex justify-between py-2">
-                  <Link prefetch={false} href="/admin/talepler" className="hover:underline">{p.requesterName}</Link>
-                  <span className="text-muted-foreground">Son gün {formatDate(p.dueAt, { day: "numeric", month: "short" })}</span>
-                </li>
-              ))}
-            </ul>
-          ) : <p className="flex items-center gap-2 text-sm text-muted-foreground"><Users className="size-4" aria-hidden /> Açık başvuru yok.</p>}
-        </section>
+        <div className="grid gap-6">
+          <section className="rounded-lg border border-hairline p-4">
+            <ViewsChart data={views} label="Profil görüntülemeleri · 30 gün" />
+          </section>
+          <section className="rounded-lg border border-hairline" aria-labelledby="bitis">
+            <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
+              <h2 id="bitis" className="text-sm font-medium">Yaklaşan abonelik bitişleri</h2>
+              <Link href="/admin/abonelikler?filtre=yakinda" prefetch={false} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">Tümü <ArrowUpRight className="size-3" aria-hidden /></Link>
+            </div>
+            {expiring.length ? (
+              <ul className="divide-y divide-hairline text-[0.8125rem]">
+                {expiring.map((s) => (
+                  <li key={s.id} className="flex justify-between px-4 py-2.5">
+                    <Link href={`/admin/profiller/${s.profileId}`} prefetch={false} className="hover:underline">{nameOf.get(s.profileId)}</Link>
+                    <span className="tabular-nums text-muted-foreground">{formatDate(s.endsAt, { day: "numeric", month: "short" })}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="px-4 py-6 text-sm text-muted-foreground">7 gün içinde bitecek abonelik yok.</p>}
+          </section>
+        </div>
       </div>
     </>
   );

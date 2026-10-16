@@ -159,17 +159,21 @@ export function createDemoStore(now: Date): DemoStore {
       updatedAt: iso(-30 + (i % 20)),
     });
 
-    const imageCount = 1 + Math.floor(rnd() * 3);
+    // Galeri: kapakta soyut portre, ardından portre ve sahne karışımı (3–8 görsel)
+    const imageCount = 3 + Math.floor(rnd() * 6);
     for (let k = 0; k < imageCount; k++) {
-      const av = ((n * 3 + k) % 24) + 1;
+      const portrait = k === 0 || k % 3 === 0;
+      const file = portrait ? `portrait-${((n * 7 + k) % 30) + 1}.webp` : `scene-${((n * 5 + k) % 24) + 1}.webp`;
+      const sceneIndex = ((n * 5 + k) % 24) + 1;
+      const landscape = !portrait && sceneIndex % 3 !== 0;
       images.push({
         id: id("img", images.length + 1),
         profileId: pid,
-        storagePath: `demo/avatar-${av}.webp`,
-        url: `/demo/avatar-${av}.webp`,
-        alt: `${nickname} için sentetik profil görseli ${k + 1}`,
-        width: 800,
-        height: 1000,
+        storagePath: `demo/${file}`,
+        url: `/demo/${file}`,
+        alt: portrait ? `${nickname} için sentetik, soyut portre görseli` : `${nickname} profilinde sentetik manzara görseli`,
+        width: portrait ? 1200 : landscape ? 1600 : 1200,
+        height: portrait ? 1500 : landscape ? 1200 : 1600,
         position: k,
         rightsConfirmed: status !== "in_review",
         createdAt: created,
@@ -232,7 +236,7 @@ export function createDemoStore(now: Date): DemoStore {
         endsAt: iso(startOffset + lengthDays),
         status: "active",
         autoRenew: n % 2 === 0,
-        sponsored: plan.sponsoredEligible && n % 4 === 1,
+        sponsored: plan.sponsoredEligible && n % 9 === 1,
         cancelledAt: null,
         externalRef: null,
         note: "Demo kaydı — tahsilat yapılmadı",

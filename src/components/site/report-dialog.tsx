@@ -18,7 +18,7 @@ export function ReportDialog({ profileId, nickname }: { profileId: string; nickn
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full"><Flag className="size-4" aria-hidden /> Şikâyet et</Button>
+        <Button variant="outline" className="h-11 rounded-md border-hairline bg-transparent px-4"><Flag className="size-4" aria-hidden /> Şikâyet et</Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>

@@ -5,7 +5,7 @@ import { getProvince, listDistricts, listProvinces } from "@/domain/locations";
 import { Button } from "@/components/ui/button";
 import { getInterests, searchProfiles } from "@/server/queries/public";
 import { EmptyState } from "./empty-state";
-import { FilterBar, type FilterMode } from "./filter-bar";
+import { FilterBar, FilterRail, type FilterMode } from "./filter-bar";
 import { Pagination } from "./pagination";
 import { ProfileGrid, ProfileGridSkeleton } from "./profile-grid";
 
@@ -18,20 +18,24 @@ export async function ProfileListing({ filters, mode }: { filters: ProfileFilter
   const basePath = mode.type === "explore" ? "/kesfet" : filters.ilce ? `/sehir/${mode.il}/${filters.ilce}` : `/sehir/${mode.il}`;
   const omit: (keyof ProfileFilters)[] = mode.type === "explore" ? [] : ["il", "ilce"];
 
+  const filterProps = {
+    mode,
+    filters,
+    provinces,
+    districts,
+    interests: interests.map(({ slug, name }) => ({ slug, name })),
+    total: result.total,
+  };
+
   return (
-    <div className="space-y-6">
-      <FilterBar
-        mode={mode}
-        filters={filters}
-        provinces={provinces}
-        districts={districts}
-        interests={interests.map(({ slug, name }) => ({ slug, name }))}
-        total={result.total}
-      />
+    <div className="lg:grid lg:grid-cols-[15rem_1fr] lg:gap-x-12 xl:grid-cols-[16.5rem_1fr] xl:gap-x-16">
+      <FilterRail {...filterProps} />
+      <div className="min-w-0 space-y-8">
+      <FilterBar {...filterProps} />
       <h2 className="sr-only">Profiller</h2>
       {result.items.length ? (
         <>
-          <ProfileGrid profiles={result.items} priorityCount={filters.sayfa === 1 ? 2 : 0} />
+          <ProfileGrid profiles={result.items} columns={3} priorityCount={filters.sayfa === 1 ? 2 : 0} />
           <Pagination
             page={filters.sayfa}
             total={result.total}
@@ -65,15 +69,21 @@ export async function ProfileListing({ filters, mode }: { filters: ProfileFilter
           />
         )
       )}
+      </div>
     </div>
   );
 }
 
 export function ProfileListingSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="h-10 animate-pulse rounded-lg bg-muted lg:h-24" />
-      <ProfileGridSkeleton />
+    <div className="lg:grid lg:grid-cols-[15rem_1fr] lg:gap-x-12 xl:grid-cols-[16.5rem_1fr] xl:gap-x-16">
+      <div className="hidden space-y-4 lg:block">
+        {Array.from({ length: 5 }, (_, i) => <div key={i} className="h-10 animate-pulse rounded-md bg-muted" />)}
+      </div>
+      <div className="space-y-8">
+        <div className="h-10 animate-pulse rounded-md bg-muted" />
+        <ProfileGridSkeleton columns={3} count={6} />
+      </div>
     </div>
   );
 }

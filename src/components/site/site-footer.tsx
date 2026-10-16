@@ -1,64 +1,46 @@
 import Link from "next/link";
 import { cacheLife } from "next/cache";
-import { Logo } from "./logo";
+import { AgeBadge } from "./age-badge";
+import { CrescentMark } from "./logo";
 
 const GROUPS = [
-  {
-    title: "Keşfet",
-    links: [
-      { href: "/kesfet", label: "Tüm profiller" },
-      { href: "/sehirler", label: "Şehirler" },
-      { href: "/sehir/istanbul", label: "İstanbul" },
-      { href: "/sehir/ankara", label: "Ankara" },
-      { href: "/sehir/izmir", label: "İzmir" },
-    ],
-  },
-  {
-    title: "Güven",
-    links: [
-      { href: "/guvenlik", label: "Güvenlik ve topluluk kuralları" },
-      { href: "/kaldirma-talebi", label: "Profil kaldırma başvurusu" },
-      { href: "/paketler", label: "Üyelik paketleri" },
-    ],
-  },
-  {
-    title: "Yasal",
-    links: [
-      { href: "/kvkk", label: "KVKK aydınlatma metni" },
-      { href: "/kullanim-kosullari", label: "Kullanım koşulları" },
-    ],
-  },
-];
+  { title: "Keşfet", links: [["/kesfet", "Tüm profiller"], ["/sehirler", "81 il"], ["/sehir/istanbul", "İstanbul"], ["/sehir/ankara", "Ankara"], ["/sehir/izmir", "İzmir"]] },
+  { title: "Topluluk", links: [["/guvenlik", "Kurallar ve güvenlik"], ["/kaldirma-talebi", "Profil kaldırma"], ["/paketler", "Üyelik paketleri"]] },
+  { title: "Yasal", links: [["/kvkk", "KVKK aydınlatma"], ["/kullanim-kosullari", "Kullanım koşulları"]] },
+] as const;
 
 export function SiteFooter() {
   return (
-    <footer className="mt-24 border-t border-border/70 bg-muted/40 pb-20 md:pb-0">
-      <div className="container-page grid grid-cols-2 gap-x-6 gap-y-10 py-12 md:grid-cols-[1.4fr_repeat(3,1fr)]">
-        <div className="col-span-2 space-y-3 md:col-span-1">
-          <Logo />
-          <p className="max-w-xs text-sm text-muted-foreground">
-            Yalnızca 18 yaş üstü, açık rızası alınmış ve doğrulanmış sosyal profiller. Ücretli hizmet tanıtımına izin verilmez.
+    <footer className="mt-28 border-t border-hairline pb-20 md:pb-0">
+      <div className="container-page grid grid-cols-2 gap-x-6 gap-y-12 py-16 md:grid-cols-12">
+        <div className="col-span-2 md:col-span-5">
+          <p className="flex items-center gap-3 font-display text-[clamp(3rem,2rem+5vw,6rem)] leading-none tracking-[-0.03em]">
+            <CrescentMark className="size-[0.7em]" /> Hilal
+          </p>
+          <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted-foreground">
+            Türkiye&apos;nin 81 ilinde ortak ilgi alanlarıyla tanışmak isteyen yetişkinlerin, rızası alınmış ve doğrulanmış sosyal profilleri.
           </p>
         </div>
         {GROUPS.map((g) => (
-          <div key={g.title}>
-            <h2 className="mb-3 text-sm font-medium">{g.title}</h2>
-            <ul className="space-y-0.5 text-sm text-muted-foreground">
-              {g.links.map((l) => (
-                <li key={l.href}>
-                  <Link href={l.href} className="inline-flex min-h-8 items-center rounded-sm transition-colors hover:text-foreground">
-                    {l.label}
-                  </Link>
+          <div key={g.title} className="md:col-span-2">
+            <h2 className="eyebrow mb-4 text-muted-foreground">{g.title}</h2>
+            <ul className="space-y-0.5 text-sm">
+              {g.links.map(([href, label]) => (
+                <li key={href}>
+                  <Link href={href} className="inline-flex min-h-8 items-center underline-offset-4 hover:underline">{label}</Link>
                 </li>
               ))}
             </ul>
           </div>
         ))}
       </div>
-      <div className="border-t border-border/70">
-        <p className="container-page py-5 text-xs text-muted-foreground">
-          © <CopyrightYear /> Hilal. Profiller yalnızca yönetim tarafından, profil sahibinin açık yetkilendirmesiyle oluşturulur.
-        </p>
+      <div className="border-t border-hairline">
+        <div className="container-page flex flex-col gap-3 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <p className="flex items-center gap-2">
+            <AgeBadge /> Yalnızca 18 yaş ve üzeri. Ücretli hizmet tanıtımına izin verilmez.
+          </p>
+          <p>© <CopyrightYear /> Hilal · Profiller yalnızca yönetim tarafından, açık rıza ile oluşturulur.</p>
+        </div>
       </div>
     </footer>
   );

@@ -10,7 +10,7 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
   const all = [{ name: "Ana sayfa", href: "/" }, ...items];
   return (
     <>
-      <nav aria-label="Konum" className="text-sm text-muted-foreground">
+      <nav aria-label="Konum" className="text-[0.8125rem] text-muted-foreground">
         <ol className="flex flex-wrap items-center gap-1">
           {all.map((c, i) => {
             const last = i === all.length - 1;
@@ -21,7 +21,7 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
                 ) : (
                   <Link href={c.href} className="inline-flex min-h-6 items-center rounded-sm hover:text-foreground">{c.name}</Link>
                 )}
-                {!last ? <ChevronRight className="size-3.5" aria-hidden /> : null}
+                {!last ? <ChevronRight className="size-3 opacity-60" aria-hidden /> : null}
               </li>
             );
           })}

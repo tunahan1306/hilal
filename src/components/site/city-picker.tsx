@@ -37,7 +37,7 @@ export function CityPicker({ cities, className, size = "lg" }: { cities: CityOpt
           aria-label="Şehir seçin"
           aria-expanded={open}
           aria-haspopup="listbox"
-          className={cn("w-full justify-between bg-card font-normal text-muted-foreground", className)}
+          className={cn("h-12 w-full justify-between rounded-md border-input bg-paper px-4 font-normal text-muted-foreground hover:bg-paper hover:text-foreground", className)}
         >
           <span className="flex items-center gap-2"><MapPin className="size-4" aria-hidden /> Şehir seçin</span>
           <ChevronsUpDown className="size-4 opacity-60" aria-hidden />

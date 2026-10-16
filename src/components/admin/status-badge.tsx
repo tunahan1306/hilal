@@ -10,7 +10,12 @@ const TONES = {
 } as const;
 
 export function StatusBadge({ tone = "neutral", children, className }: { tone?: keyof typeof TONES; children: React.ReactNode; className?: string }) {
-  return <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", TONES[tone], className)}>{children}</span>;
+  return (
+    <span className={cn("inline-flex w-fit items-center gap-1.5 whitespace-nowrap rounded-sm px-1.5 py-0.5 text-[0.6875rem] font-medium", TONES[tone], className)}>
+      <span className="size-1.5 rounded-full bg-current opacity-80" aria-hidden />
+      {children}
+    </span>
+  );
 }
 
 export const PROFILE_STATUS_TONE = {

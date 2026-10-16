@@ -1,17 +1,22 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { BadgeCheck, CircleSlash, Info, MapPin, ShieldAlert, UserX } from "lucide-react";
+import { Expand, Flag, ShieldCheck, UserX } from "lucide-react";
+import { AgeBadge } from "@/components/site/age-badge";
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
-import { Gallery } from "@/components/site/gallery";
 import { JsonLd } from "@/components/site/json-ld";
+import { MediaMosaic } from "@/components/site/profile/media-mosaic";
+import { MediaStrip } from "@/components/site/profile/media-strip";
+import { OpenMediaButton, ProfileMediaProvider, type MediaItem } from "@/components/site/profile/media-lightbox";
+import { ProfileBio } from "@/components/site/profile/profile-bio";
 import { ProfileGrid } from "@/components/site/profile-grid";
 import { ReportDialog } from "@/components/site/report-dialog";
+import { VerifiedMark } from "@/components/site/verified-mark";
 import { ViewTracker } from "@/components/site/view-tracker";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { truncate } from "@/domain/seo";
+import type { PublicProfile } from "@/domain/types";
 import { formatDate, SITE, siteUrl } from "@/lib/site";
 import { getPublicProfile, getPublicProfileSlugs, searchProfiles } from "@/server/queries/public";
 
@@ -53,127 +58,187 @@ export default function ProfilePage({ params }: PageProps<"/profil/[slug]">) {
 
 function ProfileSkeleton() {
   return (
-    <div className="container-page py-8 sm:py-12" aria-busy="true">
-      <Skeleton className="h-4 w-48" />
-      <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,480px)_1fr] lg:gap-12">
-        <Skeleton className="aspect-[4/5] rounded-2xl" />
-        <div className="space-y-4"><Skeleton className="h-10 w-2/3" /><Skeleton className="h-4 w-1/3" /><Skeleton className="h-24 w-full" /></div>
+    <div className="container-page pt-6 sm:pt-10" aria-busy="true">
+      <div className="h-4 w-48 animate-pulse rounded-xs bg-muted" />
+      <div className="mt-8 grid gap-10 lg:grid-cols-12">
+        <div className="aspect-[4/5] animate-pulse rounded-xs bg-muted lg:col-span-7" />
+        <div className="space-y-4 lg:col-span-5"><div className="h-16 w-2/3 animate-pulse rounded-xs bg-muted" /><div className="h-4 w-1/3 animate-pulse rounded-xs bg-muted" /></div>
       </div>
     </div>
   );
+}
+
+function mediaOf(profile: PublicProfile): MediaItem[] {
+  return [
+    ...profile.images.map((i) => ({ kind: "image" as const, url: i.url, alt: i.alt, width: i.width, height: i.height })),
+    ...(profile.videos ?? []).map((v) => ({ kind: "video" as const, url: v.url, poster: v.posterUrl, alt: v.alt, width: v.width, height: v.height, mimeType: v.mimeType })),
+  ];
 }
 
 async function ProfileContent({ params }: Pick<PageProps<"/profil/[slug]">, "params">) {
   const profile = await getPublicProfile((await params).slug);
   if (!profile) notFound();
   const place = profile.district ? `${profile.district.name}, ${profile.province.name}` : profile.province.name;
-  const similar = (
-    await searchProfiles({ il: profile.province.slug, ilgi: [], dogrulanmis: false, sayfa: 1 })
-  ).items.filter((p) => p.id !== profile.id).slice(0, 4);
+  const media = mediaOf(profile);
+  const cover = profile.images[0];
+  const imageCount = profile.images.length;
+  const videoCount = profile.videos?.length ?? 0;
+  const similar = (await searchProfiles({ il: profile.province.slug, ilgi: [], dogrulanmis: false, sayfa: 1 })).items
+    .filter((p) => p.id !== profile.id)
+    .slice(0, 4);
 
   return (
-    <div className="container-page py-8 sm:py-12">
-      <ViewTracker profileId={profile.id} />
-      <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@type": "ProfilePage",
-          dateModified: profile.updatedAt,
-          url: `${siteUrl()}/profil/${profile.slug}`,
-          mainEntity: {
-            "@type": "Person",
-            alternateName: profile.nickname,
-            description: truncate(profile.bio, 200),
-            homeLocation: { "@type": "Place", name: place },
-          },
-        }}
-      />
-      <Breadcrumbs
-        items={[
-          { name: profile.province.name, href: `/sehir/${profile.province.slug}` },
-          ...(profile.district ? [{ name: profile.district.name, href: `/sehir/${profile.province.slug}/${profile.district.slug}` }] : []),
-          { name: profile.nickname, href: `/profil/${profile.slug}` },
-        ]}
-      />
+    <ProfileMediaProvider items={media} name={profile.nickname}>
+      <article className="container-page pt-6 sm:pt-10">
+        <ViewTracker profileId={profile.id} />
+        <JsonLd
+          data={{
+            "@context": "https://schema.org",
+            "@type": "ProfilePage",
+            dateModified: profile.updatedAt,
+            url: `${siteUrl()}/profil/${profile.slug}`,
+            mainEntity: { "@type": "Person", alternateName: profile.nickname, description: truncate(profile.bio, 200), homeLocation: { "@type": "Place", name: place } },
+          }}
+        />
+        <Breadcrumbs
+          items={[
+            { name: profile.province.name, href: `/sehir/${profile.province.slug}` },
+            ...(profile.district ? [{ name: profile.district.name, href: `/sehir/${profile.province.slug}/${profile.district.slug}` }] : []),
+            { name: profile.nickname, href: `/profil/${profile.slug}` },
+          ]}
+        />
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,480px)_1fr] lg:gap-12">
-        <Gallery images={profile.images} name={profile.nickname} />
-
-        <div className="space-y-8">
-          <header className="space-y-3">
-            {profile.sponsored ? (
-              <span className="inline-block rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-muted-foreground">Sponsorlu profil</span>
+        {/* ——— Hero ——— */}
+        <div className="mt-6 grid gap-y-8 sm:mt-8 lg:grid-cols-12 lg:gap-x-12">
+          <div className="lg:col-span-7">
+            <MediaStrip items={media} name={profile.nickname} />
+            {cover ? (
+              <OpenMediaButton index={0} label="Kapak fotoğrafını tam ekran aç" className="group relative hidden aspect-[4/5] w-full overflow-hidden rounded-xs bg-muted md:block">
+                <Image src={cover.url} alt={cover.alt || `${profile.nickname} kapak fotoğrafı`} fill priority sizes="(min-width: 1376px) 760px, (min-width: 1024px) 56vw, 92vw" className="object-cover object-[50%_30%]" />
+                <span className="absolute bottom-4 right-4 inline-flex items-center gap-2 rounded-xs bg-background/88 px-3 py-1.5 text-xs backdrop-blur transition-opacity group-hover:opacity-100 lg:opacity-0">
+                  <Expand className="size-3.5" aria-hidden /> Tam ekran
+                </span>
+              </OpenMediaButton>
             ) : null}
-            <h1 className="flex flex-wrap items-baseline gap-x-3 text-3xl font-semibold sm:text-4xl">
-              {profile.nickname}
-              <span className="text-2xl font-normal text-muted-foreground tabular-nums">{profile.age}</span>
-            </h1>
-            <p className="flex items-center gap-1.5 text-muted-foreground">
-              <MapPin className="size-4" aria-hidden /> {place}
-            </p>
-            {profile.verified ? (
-              <p className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-sm text-brand">
-                <BadgeCheck className="size-4" aria-hidden /> Kimliği doğrulanmış profil
-              </p>
-            ) : (
-              <p className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-sm text-muted-foreground">
-                <CircleSlash className="size-4" aria-hidden /> Kimlik doğrulaması yapılmamış (yaş doğrulaması tamamlandı)
-              </p>
-            )}
-          </header>
-
-          <section aria-labelledby="hakkinda">
-            <h2 id="hakkinda" className="mb-2 text-lg font-semibold">Hakkında</h2>
-            <p className="whitespace-pre-line leading-relaxed text-foreground/90">{profile.bio}</p>
-          </section>
-
-          {profile.interests.length ? (
-            <section aria-labelledby="ilgi">
-              <h2 id="ilgi" className="mb-3 text-lg font-semibold">İlgi alanları</h2>
-              <ul className="flex flex-wrap gap-2">
-                {profile.interests.map((i) => (
-                  <li key={i.slug}>
-                    <Link href={`/kesfet?ilgi=${i.slug}`} className="inline-flex min-h-9 items-center rounded-full bg-secondary px-3.5 text-sm hover:bg-accent">
-                      {i.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-
-          <section aria-labelledby="iletisim" className="rounded-2xl border border-border/70 bg-card p-5">
-            <h2 id="iletisim" className="flex items-center gap-2 font-semibold"><Info className="size-4 text-brand" aria-hidden /> İletişim</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Profil sahiplerinin kişisel iletişim bilgileri gizlilik ve güvenlik nedeniyle herkese açık paylaşılmaz. Profillerde telefon, e-posta veya sosyal medya hesabı yer alamaz.
-            </p>
-          </section>
-
-          <section aria-labelledby="guvenlik" className="rounded-2xl border border-border/70 bg-muted/40 p-5">
-            <h2 id="guvenlik" className="flex items-center gap-2 font-semibold"><ShieldAlert className="size-4 text-brand" aria-hidden /> Güvenlik bilgilendirmesi</h2>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-              <li>Hiç kimseye para göndermeyin, ödeme veya &quot;rezervasyon&quot; talep eden kişileri bildirin.</li>
-              <li>Ücretli hizmet teklifi, reşit olmadığından şüphelendiğiniz kişi veya izinsiz fotoğraf görürseniz hemen şikâyet edin.</li>
-              <li>İlk buluşmaları kalabalık ve herkese açık yerlerde yapın.</li>
-            </ul>
-            <p className="mt-3 text-xs text-muted-foreground">Son güncelleme: {formatDate(profile.updatedAt)}</p>
-          </section>
-
-          <div className="grid gap-2 sm:grid-cols-2">
-            <ReportDialog profileId={profile.id} nickname={profile.nickname} />
-            <Button asChild variant="ghost" className="w-full">
-              <Link href={`/kaldirma-talebi?profil=${profile.slug}`}><UserX className="size-4" aria-hidden /> Profil kaldırma başvurusu</Link>
-            </Button>
           </div>
-        </div>
-      </div>
 
-      {similar.length ? (
-        <section className="mt-16" aria-labelledby="benzer">
-          <h2 id="benzer" className="mb-5 text-xl font-semibold">{profile.province.name} bölgesindeki diğer profiller</h2>
-          <ProfileGrid profiles={similar} />
+          <header className="lg:col-span-5">
+            <div className="lg:sticky lg:top-24">
+              <p className="eyebrow flex flex-wrap items-center gap-x-3 gap-y-2 text-muted-foreground">
+                <AgeBadge />
+                {profile.sponsored ? <span className="text-brand">Sponsorlu profil</span> : null}
+                <span>{place}</span>
+              </p>
+              <h1 className="font-display mt-5 flex flex-wrap items-baseline gap-x-4 text-display-xl">
+                {profile.nickname}
+                <span className="font-sans text-display-sm font-light tabular-nums text-muted-foreground">{profile.age}</span>
+              </h1>
+              <div className="mt-5">
+                {profile.verified ? (
+                  <VerifiedMark withLabel />
+                ) : (
+                  <p className="text-sm text-muted-foreground">Yaş belgeyle doğrulandı · kimlik doğrulaması yapılmadı</p>
+                )}
+              </div>
+
+              <dl className="mt-8 grid grid-cols-2 border-t border-hairline text-sm">
+                <Fact label="Konum" value={place} />
+                <Fact label="Yaş" value={String(profile.age)} />
+                <Fact label="Galeri" value={`${imageCount} fotoğraf${videoCount ? ` · ${videoCount} video` : ""}`} />
+                <Fact label="Güncelleme" value={formatDate(profile.updatedAt, { month: "long", year: "numeric" })} />
+              </dl>
+
+              {profile.interests.length ? (
+                <div className="mt-8">
+                  <h2 className="eyebrow text-muted-foreground">İlgi alanları</h2>
+                  <ul className="mt-3 flex flex-wrap gap-1.5">
+                    {profile.interests.map((i) => (
+                      <li key={i.slug}>
+                        <Link href={`/kesfet?ilgi=${i.slug}`} className="inline-flex min-h-9 items-center rounded-full border border-hairline px-3.5 text-[0.8125rem] transition-colors hover:border-foreground/40">
+                          {i.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              <div className="mt-8 flex flex-wrap gap-2 border-t border-hairline pt-6">
+                {media.length > 1 ? (
+                  <OpenMediaButton index={0} label={`Galeriyi aç, ${media.length} öğe`} className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">
+                    Galeriyi aç <span className="tabular-nums opacity-70">{media.length}</span>
+                  </OpenMediaButton>
+                ) : null}
+                <ReportDialog profileId={profile.id} nickname={profile.nickname} />
+              </div>
+            </div>
+          </header>
+        </div>
+
+        {/* ——— Hakkında ——— */}
+        <section className="mt-20 grid gap-y-6 border-t border-hairline pt-10 lg:mt-28 lg:grid-cols-12 lg:gap-x-12" aria-labelledby="hakkinda">
+          <h2 id="hakkinda" className="eyebrow text-muted-foreground lg:col-span-3">Hakkında</h2>
+          <div className="lg:col-span-8 lg:col-start-5">
+            <ProfileBio profile={profile} />
+          </div>
         </section>
-      ) : null}
+
+        {/* ——— Galeri ——— */}
+        {media.length > 1 ? (
+          <section className="mt-20 border-t border-hairline pt-10 lg:mt-28" aria-labelledby="galeri">
+            <div className="mb-8 flex items-baseline justify-between gap-4">
+              <h2 id="galeri" className="font-display text-display-md">Galeri</h2>
+              <p className="text-sm tabular-nums text-muted-foreground">
+                {imageCount} fotoğraf{videoCount ? ` · ${videoCount} video` : ""}
+              </p>
+            </div>
+            <MediaMosaic items={media} name={profile.nickname} />
+          </section>
+        ) : null}
+
+        {/* ——— Güvenlik ——— */}
+        <section className="mt-20 grid gap-y-8 border-t border-hairline pt-10 lg:mt-28 lg:grid-cols-12 lg:gap-x-12" aria-labelledby="guvenlik">
+          <h2 id="guvenlik" className="eyebrow flex items-center gap-2 text-muted-foreground lg:col-span-3"><ShieldCheck className="size-3.5" aria-hidden /> Güvenlik</h2>
+          <div className="grid gap-8 sm:grid-cols-2 lg:col-span-8 lg:col-start-5">
+            <div>
+              <h3 className="font-medium">İletişim</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Kişisel iletişim bilgileri gizlilik ve güvenlik nedeniyle paylaşılmaz; profillerde telefon, e-posta veya sosyal medya hesabı yer alamaz.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-medium">Kendinizi koruyun</h3>
+              <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-muted-foreground">
+                <li>Kimseye para veya ön ödeme göndermeyin.</li>
+                <li>Ücretli hizmet teklifi, reşit olmadığından şüphelendiğiniz biri veya izinsiz fotoğraf görürseniz bildirin.</li>
+                <li>İlk buluşmaları kalabalık, herkese açık yerlerde yapın.</li>
+              </ul>
+            </div>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm sm:col-span-2">
+              <span className="inline-flex items-center gap-2 text-muted-foreground"><Flag className="size-3.5" aria-hidden /> Bildirimler gizli tutulur.</span>
+              <Link href={`/kaldirma-talebi?profil=${profile.slug}`} className="inline-flex min-h-6 items-center gap-2 underline-offset-4 hover:underline">
+                <UserX className="size-3.5" aria-hidden /> Profil kaldırma başvurusu
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {similar.length ? (
+          <section className="mt-20 border-t border-hairline pt-10 lg:mt-28" aria-labelledby="benzer">
+            <h2 id="benzer" className="font-display mb-10 text-display-md">{profile.province.name} bölgesinden</h2>
+            <ProfileGrid profiles={similar} />
+          </section>
+        ) : null}
+      </article>
+    </ProfileMediaProvider>
+  );
+}
+
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border-b border-hairline py-3 pr-3 odd:border-r odd:pr-4 even:pl-4">
+      <dt className="eyebrow text-muted-foreground">{label}</dt>
+      <dd className="mt-1">{value}</dd>
     </div>
   );
 }
