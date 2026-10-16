@@ -474,6 +474,15 @@ export function createSupabaseRepository(): Repository {
       ) as Row[];
       return rows.map(toImage);
     },
+    async listAllImages() {
+      return (check(await service().from("profile_images").select("*").order("position")) as Row[]).map(toImage);
+    },
+    async listAllConsents() {
+      return (check(await service().from("profile_consents").select("*")) as Row[]).map(toConsent);
+    },
+    async listAllVerifications() {
+      return (check(await service().from("verification_records").select("*")) as Row[]).map(toVerification);
+    },
     async addImage(input) {
       const r = check(
         await service()
@@ -606,6 +615,16 @@ export function createSupabaseRepository(): Repository {
     },
     async updateReport(id, patch) {
       return toReport(check(await service().from("moderation_reports").update(patch).eq("id", id).select().single()) as Row);
+    },
+    async countRecentReportsForProfile(profileId, sinceIso) {
+      const res = await service().from("moderation_reports").select("id", { count: "exact", head: true }).eq("profile_id", profileId).gte("created_at", sinceIso);
+      if (res.error) throw new Error(res.error.message);
+      return res.count ?? 0;
+    },
+    async countRecentModerationActions(type, sinceIso) {
+      const res = await service().from("moderation_actions").select("id", { count: "exact", head: true }).eq("type", type).gte("created_at", sinceIso);
+      if (res.error) throw new Error(res.error.message);
+      return res.count ?? 0;
     },
     async countRecentReportsByHash(hash, sinceIso) {
       const res = await service()

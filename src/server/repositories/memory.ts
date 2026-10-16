@@ -172,6 +172,15 @@ export function createMemoryRepository(): Repository {
     async listImages(profileId) {
       return clone(store().images.filter((i) => i.profileId === profileId)).sort((a, b) => a.position - b.position);
     },
+    async listAllImages() {
+      return clone(store().images);
+    },
+    async listAllConsents() {
+      return clone(store().consents);
+    },
+    async listAllVerifications() {
+      return clone(store().verifications);
+    },
     async addImage(input) {
       const row = { ...input, id: nextId("img"), createdAt: new Date().toISOString() };
       store().images.push(row);
@@ -252,6 +261,12 @@ export function createMemoryRepository(): Repository {
       const r = must(store().reports.find((x) => x.id === id), "Şikâyet");
       Object.assign(r, patch, { updatedAt: new Date().toISOString() });
       return clone(r);
+    },
+    async countRecentReportsForProfile(profileId, sinceIso) {
+      return store().reports.filter((r) => r.profileId === profileId && r.createdAt >= sinceIso).length;
+    },
+    async countRecentModerationActions(type, sinceIso) {
+      return store().actions.filter((a) => a.type === type && a.createdAt >= sinceIso).length;
     },
     async countRecentReportsByHash(hash, sinceIso) {
       return store().reports.filter((r) => r.reporterHash === hash && r.createdAt >= sinceIso).length;

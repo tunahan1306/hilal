@@ -40,3 +40,16 @@ test.describe("mobil navigasyon", () => {
     }
   });
 });
+
+test("yönetim profil sekmeleri mobilde içerikle çakışmaz", async ({ page }) => {
+  const { login } = await import("./helpers");
+  await login(page);
+  await page.goto("/admin/profiller/prf-0002");
+  const list = page.getByRole("tablist");
+  const listBox = (await list.boundingBox())!;
+  const panelBox = (await page.getByRole("tabpanel").boundingBox())!;
+  expect(listBox.height).toBeLessThanOrEqual(48);
+  expect(panelBox.y).toBeGreaterThanOrEqual(listBox.y + listBox.height);
+  await page.getByRole("tab", { name: "Veri (KVKK)" }).click();
+  await expect(page.getByRole("button", { name: /Verileri dışa aktar/ })).toBeVisible();
+});

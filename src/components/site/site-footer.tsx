@@ -33,8 +33,8 @@ const GROUPS = [
 export function SiteFooter() {
   return (
     <footer className="mt-24 border-t border-border/70 bg-muted/40 pb-20 md:pb-0">
-      <div className="container-page grid gap-10 py-12 md:grid-cols-[1.4fr_repeat(3,1fr)]">
-        <div className="space-y-3">
+      <div className="container-page grid grid-cols-2 gap-x-6 gap-y-10 py-12 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+        <div className="col-span-2 space-y-3 md:col-span-1">
           <Logo />
           <p className="max-w-xs text-sm text-muted-foreground">
             Yalnızca 18 yaş üstü, açık rızası alınmış ve doğrulanmış sosyal profiller. Ücretli hizmet tanıtımına izin verilmez.
@@ -43,10 +43,10 @@ export function SiteFooter() {
         {GROUPS.map((g) => (
           <div key={g.title}>
             <h2 className="mb-3 text-sm font-medium">{g.title}</h2>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <ul className="space-y-0.5 text-sm text-muted-foreground">
               {g.links.map((l) => (
                 <li key={l.href}>
-                  <Link href={l.href} className="rounded-sm transition-colors hover:text-foreground">
+                  <Link href={l.href} className="inline-flex min-h-8 items-center rounded-sm transition-colors hover:text-foreground">
                     {l.label}
                   </Link>
                 </li>

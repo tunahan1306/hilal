@@ -25,7 +25,7 @@ Yönetim paneli: `http://localhost:3000/admin`
 | Şifre | `demo-admin-2026!` |
 | TOTP kodu | `npm run demo:totp` çıktısı |
 
-Bu varsayılanlar yalnızca geliştirme içindir; `DEMO_ADMIN_*` ve `SESSION_SECRET` ile değiştirilebilir. Production'da Supabase Auth + TOTP MFA kullanılır.
+Bu varsayılanlar yalnızca `npm run dev` içindir. Production derlemesinde (`npm run build && npm start`) varsayılan sır kullanılmaz: `SESSION_SECRET`, `IP_HASH_SALT`, `DEMO_ADMIN_PASSWORD`, `DEMO_ADMIN_TOTP_SECRET` tanımlanmalıdır (bkz. `.env.example`). Production'da Supabase Auth + TOTP MFA kullanılır.
 
 ## Supabase ile çalıştırma
 

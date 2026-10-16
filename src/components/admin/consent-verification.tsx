@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { ProfileConsent, VerificationRecord } from "@/domain/types";
 import { ActionButton } from "./action-button";
 import { ActionForm, FieldError } from "./action-form";
+import { FileInput } from "./file-input";
 import { StatusBadge } from "./status-badge";
 
 export const CONSENT_LABELS = { publication: "Yayın yetkilendirmesi", photo_rights: "Fotoğraf kullanım izni", data_processing: "Kişisel veri işleme rızası" } as const;
@@ -59,8 +60,8 @@ export function ConsentPanel({
               <FieldError errors={errors} name="method" />
             </div>
             <div className="grid gap-1.5 sm:col-span-2">
-              <Label htmlFor="c-evidence">Belge (isteğe bağlı, PDF/görsel, özel depolama)</Label>
-              <Input id="c-evidence" name="evidence" type="file" accept="application/pdf,image/*" />
+              <Label htmlFor="c-evidence">Belge (isteğe bağlı, PDF/görsel, en fazla 5 MB, özel depolama)</Label>
+              <FileInput id="c-evidence" name="evidence" maxBytes={5 * 1024 * 1024} accept="application/pdf,image/jpeg,image/png,image/webp" />
             </div>
             <Button type="submit" disabled={pending} className="sm:col-span-2 sm:justify-self-end">Rıza kaydı ekle</Button>
           </>
@@ -119,8 +120,8 @@ export function VerificationPanel({
               <FieldError errors={errors} name="method" />
             </div>
             <div className="grid gap-1.5 sm:col-span-2">
-              <Label htmlFor="v-doc">Belge (isteğe bağlı; saklama süresi sonunda otomatik silinir)</Label>
-              <Input id="v-doc" name="document" type="file" accept="application/pdf,image/*" />
+              <Label htmlFor="v-doc">Belge (isteğe bağlı, en fazla 5 MB; saklama süresi sonunda otomatik silinir)</Label>
+              <FileInput id="v-doc" name="document" maxBytes={5 * 1024 * 1024} accept="application/pdf,image/jpeg,image/png,image/webp" />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="v-note">Not</Label>

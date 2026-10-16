@@ -85,7 +85,7 @@ export function FilterBar({
           <Select value={filters.yasMin ? String(filters.yasMin) : ALL} onValueChange={(v) => update({ yasMin: v === ALL ? undefined : Number(v) })}>
             <SelectTrigger id="f-yasmin" className="w-full"><SelectValue placeholder="18" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>Farketmez</SelectItem>
+              <SelectItem value={ALL}>Fark etmez</SelectItem>
               {AGES.map((a) => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -94,7 +94,7 @@ export function FilterBar({
           <Select value={filters.yasMax ? String(filters.yasMax) : ALL} onValueChange={(v) => update({ yasMax: v === ALL ? undefined : Number(v) })}>
             <SelectTrigger id="f-yasmax" className="w-full"><SelectValue placeholder={String(MAX_AGE_FILTER)} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>Farketmez</SelectItem>
+              <SelectItem value={ALL}>Fark etmez</SelectItem>
               {AGES.slice(1).map((a) => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
             </SelectContent>
           </Select>

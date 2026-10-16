@@ -39,9 +39,11 @@ export async function processUpload(buf: Buffer): Promise<ProcessedImage> {
   }
 }
 
-/** Rıza / doğrulama belgeleri: PDF veya görsel, 10 MB. */
+export const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
+
+/** Rıza / doğrulama belgeleri: PDF veya görsel, 5 MB (Server Action gövde sınırı 6 MB). */
 export function validateDocument(buf: Buffer): "application/pdf" | Detected {
-  if (buf.length === 0 || buf.length > 10 * 1024 * 1024) throw new DomainError("Belge 10 MB sınırını aşıyor veya boş");
+  if (buf.length === 0 || buf.length > MAX_DOCUMENT_BYTES) throw new DomainError("Belge 5 MB sınırını aşıyor veya boş");
   if (buf.subarray(0, 5).toString("ascii") === "%PDF-") return "application/pdf";
   const img = sniffImageType(buf);
   if (img) return img;

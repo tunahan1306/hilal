@@ -1,19 +1,17 @@
 "use client";
 
-import { MotionConfig } from "framer-motion";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
 
+/**
+ * Hareketler yalnızca CSS ile yapılır ve `prefers-reduced-motion` CSS'te
+ * sıfırlanır; istemci paketine kullanılmayan sağlayıcılar eklenmez.
+ */
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      <MotionConfig reducedMotion="user">
-        <TooltipProvider delayDuration={200}>
-          {children}
-          <Toaster position="top-center" richColors closeButton />
-        </TooltipProvider>
-      </MotionConfig>
+      {children}
+      <Toaster position="top-center" richColors closeButton />
     </ThemeProvider>
   );
 }

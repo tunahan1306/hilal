@@ -113,10 +113,20 @@ describe.skipIf(!enabled)("Supabase repository (entegrasyon)", () => {
     await cancelSubscription(admin, sub.id, "test");
     expect((await repo.getPublicProfile(p.slug))!.sponsored).toBe(false);
 
+    // Toplu okumalar (yönetim listesi) ve kötüye kullanım sayaçları
+    expect((await repo.listAllImages()).some((i) => i.profileId === p.id)).toBe(true);
+    expect((await repo.listAllConsents()).filter((c) => c.profileId === p.id)).toHaveLength(2);
+    expect((await repo.listAllVerifications()).filter((v) => v.profileId === p.id)).toHaveLength(2);
+    const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
+    const autoBefore = await repo.countRecentModerationActions("auto_unpublished", hourAgo);
+    expect(await repo.countRecentReportsForProfile(p.id, hourAgo)).toBe(0);
+
     // Kritik şikâyet → otomatik yayından kaldırma
     const { autoUnpublished } = await submitReport({ profileId: p.id, category: "suspected_minor", description: "Entegrasyon testi kritik şikâyet." }, `it-${Date.now()}`);
     expect(autoUnpublished).toBe(true);
     expect(await repo.getPublicProfile(p.slug)).toBeNull();
+    expect(await repo.countRecentReportsForProfile(p.id, hourAgo)).toBe(1);
+    expect(await repo.countRecentModerationActions("auto_unpublished", hourAgo)).toBe(autoBefore + 1);
     await expect(profiles.publishProfile(admin, p.id)).rejects.toBeInstanceOf(PublishBlockedError);
 
     // Denetim kaydı değiştirilemez

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
@@ -10,19 +11,34 @@ import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
 import { provinceLabel } from "@/server/services/profiles";
 
+export const metadata: Metadata = { title: "Profiller" };
+
 export default async function ProfilesPage({ searchParams }: PageProps<"/admin/profiller">) {
   await requireAdmin();
   const repo = getRepository();
   const now = new Date();
-  const [profiles, reports, interests, durum] = await Promise.all([
+  // Toplu okuma: profil sayısından bağımsız sabit sayıda sorgu.
+  const [profiles, reports, interests, allConsents, allVerifications, allImages, durum] = await Promise.all([
     repo.listProfiles(),
     repo.listReports(),
     repo.listInterests(),
+    repo.listAllConsents(),
+    repo.listAllVerifications(),
+    repo.listAllImages(),
     searchParams.then((s) => (typeof s.durum === "string" ? s.durum : undefined)),
   ]);
-  const rows: ProfileRow[] = await Promise.all(
-    profiles.map(async (p) => {
-      const [consents, verifications, images] = await Promise.all([repo.listConsents(p.id), repo.listVerifications(p.id), repo.listImages(p.id)]);
+  const byProfile = <T extends { profileId: string }>(rows: T[]) => {
+    const m = new Map<string, T[]>();
+    for (const r of rows) m.set(r.profileId, [...(m.get(r.profileId) ?? []), r]);
+    return m;
+  };
+  const consentsOf = byProfile(allConsents);
+  const verificationsOf = byProfile(allVerifications);
+  const imagesOf = byProfile(allImages);
+  const rows: ProfileRow[] = profiles.map((p) => {
+      const consents = consentsOf.get(p.id) ?? [];
+      const verifications = verificationsOf.get(p.id) ?? [];
+      const images = imagesOf.get(p.id) ?? [];
       const own = reports.filter((r) => r.profileId === p.id);
       const readiness = evaluatePublishReadiness({
         profile: p, consents, verifications, images, reports: own, now,
@@ -42,14 +58,13 @@ export default async function ProfilesPage({ searchParams }: PageProps<"/admin/p
         updatedAt: p.updatedAt,
         updatedLabel: formatDate(p.updatedAt, { day: "numeric", month: "short", year: "numeric" }),
       };
-    }),
-  );
+    });
   return (
     <>
       <PageHeader
         title="Profiller"
         description="Profiller yalnızca yönetim tarafından, profil sahibinin açık yetkilendirmesiyle oluşturulur."
-        actions={<Button asChild><Link href="/admin/profiller/yeni"><Plus className="size-4" aria-hidden /> Yeni profil</Link></Button>}
+        actions={<Button asChild><Link prefetch={false} href="/admin/profiller/yeni"><Plus className="size-4" aria-hidden /> Yeni profil</Link></Button>}
       />
       <ProfilesTable rows={rows} initialStatus={durum} />
     </>

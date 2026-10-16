@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { PRIVACY_REQUEST_LABELS, PRIVACY_REQUEST_TYPES } from "@/domain/types";
+import { preservingSubmit } from "@/hooks/use-preserving-submit";
 
 export function PrivacyRequestForm({ defaultProfileUrl }: { defaultProfileUrl?: string }) {
   const [state, action, pending] = useActionState<FormState, FormData>(privacyRequestAction, null);
@@ -23,7 +24,7 @@ export function PrivacyRequestForm({ defaultProfileUrl }: { defaultProfileUrl?: 
   }
   const err = (k: string) => state?.errors?.[k]?.[0];
   return (
-    <form action={action} className="grid gap-5 rounded-2xl border border-border/70 bg-card p-5 sm:p-8" noValidate>
+    <form action={action} onSubmit={preservingSubmit(action)} className="grid gap-5 rounded-2xl border border-border/70 bg-card p-5 sm:p-8" noValidate>
       <div className="hidden" aria-hidden>
         <label>Web sitesi<input name="website" tabIndex={-1} autoComplete="off" /></label>
       </div>

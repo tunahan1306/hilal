@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/admin/page-header";
 import { ProfileForm } from "@/components/admin/profile-form";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
 import { createProfileAction } from "../../actions";
+
+export const metadata: Metadata = { title: "Yeni profil" };
 
 export default async function NewProfilePage() {
   await requireAdmin();

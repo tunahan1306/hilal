@@ -60,9 +60,11 @@ test.describe("şehir ve ilçe filtreleri", () => {
 
 test.describe("SEO", () => {
   test("profil sayfası metadata, canonical, OG ve JSON-LD içerir", async ({ page }) => {
+    // Arama motorları sayfayı doğrudan yükler: SEO işaretlemesi tam sayfa yanıtında doğrulanır.
     await page.goto("/kesfet");
-    await page.locator("article a").first().click();
-    await expect(page).toHaveURL(/\/profil\//);
+    const href = (await page.locator("article h3 a").first().getAttribute("href"))!;
+    await page.goto(href, { waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     const url = new URL(page.url());
     await expect(page).toHaveTitle(/ \| Hilal$/);
     expect(await page.locator('link[rel="canonical"]').getAttribute("href")).toContain(url.pathname);
@@ -175,8 +177,8 @@ test.describe("erişilebilirlik", () => {
   }
   test("profil sayfası ciddi a11y ihlali içermez", async ({ page }) => {
     await page.goto("/sehir/bursa");
-    await page.locator("article h3 a").first().click();
-    await expect(page).toHaveURL(/\/profil\//);
+    const href = (await page.locator("article h3 a").first().getAttribute("href"))!;
+    await page.goto(href, { waitUntil: "networkidle" });
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
     expect(results.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);

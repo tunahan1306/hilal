@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { ActionButton } from "@/components/admin/action-button";
 import { InterestForm } from "@/components/admin/simple-forms";
 import { PageHeader } from "@/components/admin/page-header";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
 import { deleteInterestAction, interestAction } from "../actions";
+
+export const metadata: Metadata = { title: "İlgi alanları" };
 
 export default async function InterestsPage() {
   await requireAdmin();

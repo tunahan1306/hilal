@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Users } from "lucide-react";
-import { serializeFilters, type ProfileFilters } from "@/domain/filters";
+import { hasActiveFilters, serializeFilters, type ProfileFilters } from "@/domain/filters";
 import { getProvince, listDistricts, listProvinces } from "@/domain/locations";
 import { Button } from "@/components/ui/button";
 import { getInterests, searchProfiles } from "@/server/queries/public";
@@ -28,6 +28,7 @@ export async function ProfileListing({ filters, mode }: { filters: ProfileFilter
         interests={interests.map(({ slug, name }) => ({ slug, name }))}
         total={result.total}
       />
+      <h2 className="sr-only">Profiller</h2>
       {result.items.length ? (
         <>
           <ProfileGrid profiles={result.items} priorityCount={filters.sayfa === 1 ? 2 : 0} />
@@ -38,16 +39,31 @@ export async function ProfileListing({ filters, mode }: { filters: ProfileFilter
           />
         </>
       ) : (
-        <EmptyState
-          icon={Users}
-          title="Bu kriterlere uygun profil bulunamadı"
-          description="Filtreleri genişletmeyi veya yakındaki bir şehri denemeyi düşünebilirsiniz."
-          action={
-            <Button asChild variant="outline">
-              <Link href={mode.type === "explore" ? "/kesfet" : `/sehir/${mode.il}`}>Filtreleri sıfırla</Link>
-            </Button>
-          }
-        />
+        hasActiveFilters({ ...filters, il: mode.type === "location" ? undefined : filters.il, ilce: mode.type === "location" ? undefined : filters.ilce }) ? (
+          <EmptyState
+            icon={Users}
+            title="Bu kriterlere uygun profil bulunamadı"
+            description="Filtreleri genişletmeyi veya yakındaki bir şehri denemeyi düşünebilirsiniz."
+            action={
+              <Button asChild variant="outline">
+                <Link href={mode.type === "explore" ? "/kesfet" : filters.ilce ? `/sehir/${mode.il}/${filters.ilce}` : `/sehir/${mode.il}`}>Filtreleri sıfırla</Link>
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={Users}
+            title={filters.ilce ? "Bu ilçede henüz yayında profil yok" : "Bu bölgede henüz yayında profil yok"}
+            description="Profiller yalnızca rıza, yaş doğrulaması ve moderasyon tamamlandıktan sonra yayınlanır."
+            action={
+              <Button asChild variant="outline">
+                <Link href={filters.ilce && mode.type === "location" ? `/sehir/${mode.il}` : "/sehirler"}>
+                  {filters.ilce ? "İlin tamamına bak" : "Diğer şehirlere göz at"}
+                </Link>
+              </Button>
+            }
+          />
+        )
       )}
     </div>
   );

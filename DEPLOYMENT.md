@@ -33,7 +33,7 @@ select id, email, 'Ad Soyad', 'owner' from auth.users where email = 'yonetici@or
    | `NEXT_PUBLIC_SITE_URL` | `https://alanadi.com` |
    | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | |
    | `SUPABASE_SERVICE_ROLE_KEY` | yalnızca Production/Preview, asla client |
-   | `IP_HASH_SALT`, `CRON_SECRET` | `openssl rand -hex 32` |
+   | `IP_HASH_SALT`, `CRON_SECRET` | `openssl rand -hex 32` — `IP_HASH_SALT` yoksa sunucu istekleri reddeder |
    | `VERIFICATION_DOC_RETENTION_DAYS` | hukuk incelemesine göre |
    `ALLOW_DEMO_MODE` production'da **tanımlamayın**.
 3. `vercel.json` günlük cron'u (`/api/cron`, 03:00 UTC) tanımlar; Vercel `Authorization: Bearer $CRON_SECRET` gönderir.
@@ -57,4 +57,5 @@ select id, email, 'Ad Soyad', 'owner' from auth.users where email = 'yonetici@or
 Uygulama standart Next.js'tir (`next build && next start`, Node 24). Supabase yerine başka bir Postgres kullanılacaksa:
 - `supabase/migrations` içindeki `auth.*`/`storage.*` bağımlılıkları (admins FK, `is_admin()`, bucket politikaları) yeni kimlik/depolama çözümüne uyarlanmalı,
 - `src/server/repositories/types.ts` arayüzü yeni bir uygulamayla karşılanmalıdır (iş mantığı değişmez).
+Vercel dışında uygulamayı X-Forwarded-For başlığını ezen/ekleyen bir ters vekil arkasında çalıştırın veya `CLIENT_IP_HEADER` tanımlayın; aksi halde IP tabanlı oran sınırları atlatılabilir.
 Çok instance'lı kurulumda Next.js `cacheHandlers` ile paylaşımlı önbellek ve paylaşımlı rate-limit deposu yapılandırılmalıdır.

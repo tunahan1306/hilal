@@ -22,7 +22,7 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
         <nav aria-label="Yönetim menüsü"><AdminNav /></nav>
         <div className="mt-auto space-y-2 px-2 text-xs text-muted-foreground">
           {isDemoMode() ? <p className="rounded-md bg-warning/15 px-2 py-1 text-warning">Demo modu — sentetik veri</p> : null}
-          <Link href="/" className="underline-offset-4 hover:underline">Siteyi görüntüle ↗</Link>
+          <Link prefetch={false} href="/" className="inline-flex min-h-6 items-center underline-offset-4 hover:underline">Siteyi görüntüle ↗</Link>
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">

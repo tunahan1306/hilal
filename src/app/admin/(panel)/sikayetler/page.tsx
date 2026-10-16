@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/admin/page-header";
 import { REPORT_STATUS_LABELS, REPORT_STATUS_TONE, StatusBadge } from "@/components/admin/status-badge";
@@ -6,6 +7,8 @@ import { CRITICAL_REPORT_CATEGORIES, REPORT_CATEGORY_LABELS, type ReportStatus }
 import { formatDate } from "@/lib/site";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
+
+export const metadata: Metadata = { title: "Şikâyetler" };
 
 export default async function ReportsPage() {
   await requireAdmin();
@@ -25,7 +28,7 @@ export default async function ReportsPage() {
           <TableBody>
             {sorted.length ? sorted.map((r) => (
               <TableRow key={r.id} data-testid="report-row">
-                <TableCell><Link href={`/admin/sikayetler/${r.id}`} className="font-medium hover:underline">{nameOf.get(r.profileId) ?? "Silinmiş profil"}</Link></TableCell>
+                <TableCell><Link prefetch={false} href={`/admin/sikayetler/${r.id}`} className="font-medium hover:underline">{nameOf.get(r.profileId) ?? "Silinmiş profil"}</Link></TableCell>
                 <TableCell>
                   {REPORT_CATEGORY_LABELS[r.category]}
                   {CRITICAL_REPORT_CATEGORIES.includes(r.category) ? <StatusBadge tone="danger" className="ml-2">Kritik</StatusBadge> : null}

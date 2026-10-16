@@ -204,7 +204,8 @@ export async function createSubscriptionAction(_p: ActionResult, fd: FormData): 
 export async function subscriptionAction(id: string, op: "renew" | "cancel", value: string): Promise<ActionResult> {
   return run(async (admin) => {
     if (op === "renew") {
-      await subscriptions.renewSubscription(admin, id, Number(value));
+      // "2", "2 ay" gibi girdileri kabul eder; geçersizse servis anlaşılır hata döndürür.
+      await subscriptions.renewSubscription(admin, id, Number.parseInt(value.trim(), 10));
       return "Abonelik yenilendi.";
     }
     await subscriptions.cancelSubscription(admin, id, value || "Yönetici kararı");

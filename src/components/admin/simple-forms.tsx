@@ -27,6 +27,7 @@ export function InterestForm({ action }: { action: Act }) {
 }
 
 export function SeoPageForm({ action, page, path }: { action: Act; page?: SeoPage | null; path?: string }) {
+  const uid = `seo-${(page?.id ?? path ?? "yeni").replace(/[^a-z0-9]/gi, "")}`;
   const idx = page?.indexOverride === null || page?.indexOverride === undefined ? "auto" : page.indexOverride ? "index" : "noindex";
   return (
     <ActionForm action={action} className="grid gap-3">
@@ -34,14 +35,14 @@ export function SeoPageForm({ action, page, path }: { action: Act; page?: SeoPag
         <>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5">
-              <Label htmlFor={`p-${path}`}>Yol</Label>
-              <Input id={`p-${path}`} name="path" defaultValue={page?.path ?? path ?? "/sehir/"} readOnly={Boolean(page)} placeholder="/sehir/istanbul" />
+              <Label htmlFor={`${uid}-path`}>Yol</Label>
+              <Input id={`${uid}-path`} name="path" defaultValue={page?.path ?? path ?? "/sehir/"} readOnly={Boolean(page)} placeholder="/sehir/istanbul" />
               <FieldError errors={errors} name="path" />
             </div>
             <div className="grid gap-1.5">
-              <Label>İndeks durumu</Label>
+              <Label htmlFor={`${uid}-index`}>İndeks durumu</Label>
               <Select name="indexOverride" defaultValue={idx}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectTrigger id={`${uid}-index`} className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="auto">Otomatik (içerik yeterliyse index)</SelectItem>
                   <SelectItem value="index">Her zaman index</SelectItem>
@@ -49,13 +50,13 @@ export function SeoPageForm({ action, page, path }: { action: Act; page?: SeoPag
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-1.5"><Label>Başlık (≤70)</Label><Input name="title" maxLength={70} defaultValue={page?.title ?? ""} /></div>
-            <div className="grid gap-1.5"><Label>Canonical</Label><Input name="canonical" defaultValue={page?.canonical ?? ""} placeholder="/sehir/istanbul" /><FieldError errors={errors} name="canonical" /></div>
+            <div className="grid gap-1.5"><Label htmlFor={`${uid}-title`}>Başlık (≤70)</Label><Input id={`${uid}-title`} name="title" maxLength={70} defaultValue={page?.title ?? ""} /></div>
+            <div className="grid gap-1.5"><Label htmlFor={`${uid}-canonical`}>Canonical</Label><Input id={`${uid}-canonical`} name="canonical" defaultValue={page?.canonical ?? ""} placeholder="/sehir/istanbul" /><FieldError errors={errors} name="canonical" /></div>
           </div>
-          <div className="grid gap-1.5"><Label>Açıklama (≤160)</Label><Textarea name="description" rows={2} maxLength={160} defaultValue={page?.description ?? ""} /></div>
+          <div className="grid gap-1.5"><Label htmlFor={`${uid}-desc`}>Açıklama (≤160)</Label><Textarea id={`${uid}-desc`} name="description" rows={2} maxLength={160} defaultValue={page?.description ?? ""} /></div>
           <div className="grid gap-1.5">
-            <Label>Özgün tanıtım metni</Label>
-            <Textarea name="intro" rows={3} maxLength={2000} defaultValue={page?.intro ?? ""} placeholder="Bu şehre özgü, elle yazılmış içerik. Şablon metin kopyalamayın." />
+            <Label htmlFor={`${uid}-intro`}>Özgün tanıtım metni</Label>
+            <Textarea id={`${uid}-intro`} name="intro" rows={3} maxLength={2000} defaultValue={page?.intro ?? ""} placeholder="Bu şehre özgü, elle yazılmış içerik. Şablon metin kopyalamayın." />
           </div>
           <Button type="submit" disabled={pending} className="justify-self-end">Kaydet</Button>
         </>

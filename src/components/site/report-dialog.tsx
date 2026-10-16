@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { REPORT_CATEGORIES, REPORT_CATEGORY_LABELS } from "@/domain/types";
+import { preservingSubmit } from "@/hooks/use-preserving-submit";
 
 export function ReportDialog({ profileId, nickname }: { profileId: string; nickname: string }) {
   const [state, action, pending] = useActionState<FormState, FormData>(reportProfileAction, null);
@@ -32,7 +33,7 @@ export function ReportDialog({ profileId, nickname }: { profileId: string; nickn
             <p className="text-sm">{state.message}</p>
           </div>
         ) : (
-          <form action={action} className="grid gap-5" noValidate>
+          <form action={action} onSubmit={preservingSubmit(action)} className="grid gap-5" noValidate>
             <input type="hidden" name="profileId" value={profileId} />
             <div className="hidden" aria-hidden>
               <label>Web sitesi<input name="website" tabIndex={-1} autoComplete="off" /></label>

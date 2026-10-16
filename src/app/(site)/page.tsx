@@ -83,17 +83,19 @@ export default async function HomePage() {
               </Button>
             </div>
           </div>
-          <ul className="grid grid-cols-2 gap-3 text-sm" aria-label="Güven ilkeleri">
+          <ul className="grid grid-cols-1 gap-2 text-sm min-[480px]:grid-cols-2 min-[480px]:gap-3" aria-label="Güven ilkeleri">
             {[
               { icon: UserCheck, t: "18+ yaş doğrulaması", d: "Her profil yayın öncesinde doğrulanır." },
               { icon: FileCheck2, t: "Açık yayın rızası", d: "Profil sahibinin yazılı yetkilendirmesi olmadan yayın yok." },
               { icon: BadgeCheck, t: "Kimlik doğrulama rozeti", d: "Rozet yalnızca gerçekten doğrulanmış profillerde." },
               { icon: Flag, t: "Hızlı şikâyet", d: "Kritik bildirimlerde profil anında yayından kalkar." },
             ].map(({ icon: Icon, t, d }) => (
-              <li key={t} className="rounded-2xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)]">
-                <Icon className="mb-3 size-5 text-brand" aria-hidden />
-                <p className="font-medium">{t}</p>
-                <p className="mt-1 text-muted-foreground">{d}</p>
+              <li key={t} className="flex gap-3 rounded-2xl border border-border/70 bg-card p-3.5 shadow-[var(--shadow-card)] min-[480px]:block min-[480px]:p-4">
+                <Icon className="mt-0.5 size-5 shrink-0 text-brand min-[480px]:mb-3 min-[480px]:mt-0" aria-hidden />
+                <div>
+                  <p className="font-medium">{t}</p>
+                  <p className="mt-0.5 text-muted-foreground min-[480px]:mt-1">{d}</p>
+                </div>
               </li>
             ))}
           </ul>
@@ -120,7 +122,7 @@ export default async function HomePage() {
           id="one-cikan-baslik"
           title="Öne çıkan sosyal profiller"
           description="Sponsorlu profiller açıkça etiketlenir."
-          action={<Link href="/kesfet" className="text-sm font-medium text-brand underline-offset-4 hover:underline">Tümünü gör</Link>}
+          action={<Link href="/kesfet" className="inline-flex min-h-6 items-center text-sm font-medium text-brand underline-offset-4 hover:underline">Tümünü gör</Link>}
         />
         {featured.length ? (
           <ProfileGrid profiles={featured} priorityCount={2} />
@@ -134,7 +136,7 @@ export default async function HomePage() {
         <SectionHeading
           id="sehir-baslik"
           title="Popüler şehirler"
-          action={<Link href="/sehirler" className="text-sm font-medium text-brand underline-offset-4 hover:underline">81 ilin tamamı</Link>}
+          action={<Link href="/sehirler" className="inline-flex min-h-6 items-center text-sm font-medium text-brand underline-offset-4 hover:underline">81 ilin tamamı</Link>}
         />
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {popular.map((c) => (
@@ -221,7 +223,7 @@ function SectionHeading({ id, title, description, action }: { id: string; title:
         <h2 id={id} className="text-2xl font-semibold sm:text-[1.75rem]">{title}</h2>
         {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
       </div>
-      {action}
+      {action ? <div className="shrink-0 whitespace-nowrap">{action}</div> : null}
     </div>
   );
 }

@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/admin/page-header";
 import { SettingsForm } from "@/components/admin/simple-forms";
 import { requireAdmin } from "@/server/auth/session";
 import { isDemoMode } from "@/server/env";
 import { getRepository } from "@/server/repositories";
 import { settingsAction } from "../actions";
+
+export const metadata: Metadata = { title: "Ayarlar" };
 
 export default async function SettingsPage() {
   const admin = await requireAdmin();

@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { ActionResult } from "@/app/admin/(panel)/actions";
+import { preservingSubmit } from "@/hooks/use-preserving-submit";
 
 /** Server Action formu: sonucu bildirim olarak gösterir, başarıda sayfayı tazeler. */
 export function ActionForm({
@@ -29,7 +30,7 @@ export function ActionForm({
     } else toast.error(state.message);
   }, [state, router, resetOnSuccess]);
   return (
-    <form ref={ref} action={formAction} className={className} noValidate>
+    <form ref={ref} action={formAction} onSubmit={preservingSubmit(formAction)} className={className} noValidate>
       {children({ pending, errors: state && !state.ok ? state.errors : undefined })}
     </form>
   );

@@ -7,7 +7,9 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      // Yatay kaydırılan tabloya klavyeyle de erişilebilsin (WCAG 2.1.1).
+      tabIndex={0}
+      className="relative w-full overflow-x-auto rounded-[inherit] focus-visible:outline-2 focus-visible:outline-ring"
     >
       <table
         data-slot="table"

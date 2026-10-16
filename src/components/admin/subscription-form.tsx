@@ -28,7 +28,7 @@ export function SubscriptionForm({
     <ActionForm action={action} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6 lg:items-end">
       {({ pending }) => (
         <>
-          <div className="grid gap-1.5 lg:col-span-2">
+          <div className="grid gap-1.5 lg:col-span-3">
             <Label htmlFor="s-profile">Profil</Label>
             <Select name="profileId" defaultValue={defaultProfileId}>
               <SelectTrigger id="s-profile" className="w-full"><SelectValue placeholder="Profil seçin" /></SelectTrigger>
@@ -50,14 +50,14 @@ export function SubscriptionForm({
             <Label htmlFor="s-months">Süre (ay)</Label>
             <Input id="s-months" name="months" type="number" min={1} max={24} defaultValue={1} />
           </div>
-          <Button type="submit" disabled={pending}>Kaydet</Button>
-          <div className="flex flex-wrap gap-4 text-sm sm:col-span-2 lg:col-span-6">
+          <div className="flex flex-wrap items-center gap-4 text-sm sm:col-span-2 lg:col-span-5">
             <Label className="flex items-center gap-2 font-normal"><Checkbox name="autoRenew" /> Otomatik yenileme (kayıt amaçlı)</Label>
             <Label className="flex items-center gap-2 font-normal" aria-disabled={!eligible}>
               <Checkbox name="sponsored" disabled={!eligible} /> Sponsorlu görünürlük {eligible ? "" : "(bu pakette yok)"}
             </Label>
-            <Input name="note" placeholder="Not (isteğe bağlı)" className="h-9 max-w-xs" />
+            <Input name="note" aria-label="Not" placeholder="Not (isteğe bağlı)" className="max-w-xs" />
           </div>
+          <Button type="submit" disabled={pending} className="sm:col-span-2 lg:col-span-1">Kaydet</Button>
         </>
       )}
     </ActionForm>

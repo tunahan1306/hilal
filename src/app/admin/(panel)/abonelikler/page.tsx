@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ActionButton } from "@/components/admin/action-button";
 import { PageHeader } from "@/components/admin/page-header";
@@ -9,6 +10,8 @@ import { formatDate } from "@/lib/site";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
 import { createSubscriptionAction, subscriptionAction } from "../actions";
+
+export const metadata: Metadata = { title: "Abonelikler" };
 
 const TONE = { active: "success", scheduled: "brand", expired: "neutral", cancelled: "danger" } as const;
 
@@ -28,7 +31,7 @@ export default async function SubscriptionsPage({ searchParams }: PageProps<"/ad
       <PageHeader
         title="Abonelikler"
         description="Görünürlük paketleri yalnızca kayıt olarak tutulur. Bu sürümde tahsilat entegrasyonu yoktur; ödeme altyapısı hukuki inceleme ve ödeme kuruluşu onayından sonra eklenecektir."
-        actions={filterSoon || profileFilter ? <Link href="/admin/abonelikler" className="text-sm text-brand hover:underline">Filtreyi kaldır</Link> : <Link href="/admin/abonelikler?filtre=yakinda" className="text-sm text-brand hover:underline">Yakında bitecekler</Link>}
+        actions={filterSoon || profileFilter ? <Link prefetch={false} href="/admin/abonelikler" className="text-sm text-brand hover:underline">Filtreyi kaldır</Link> : <Link prefetch={false} href="/admin/abonelikler?filtre=yakinda" className="text-sm text-brand hover:underline">Yakında bitecekler</Link>}
       />
       <section className="mb-6 rounded-xl border border-border/70 bg-card p-5">
         <h2 className="mb-4 font-semibold">Yeni abonelik kaydı</h2>
@@ -53,7 +56,7 @@ export default async function SubscriptionsPage({ searchParams }: PageProps<"/ad
               const st = effectiveStatus(s, now);
               return (
                 <TableRow key={s.id} data-testid="subscription-row">
-                  <TableCell><Link href={`/admin/profiller/${s.profileId}`} className="font-medium hover:underline">{nameOf.get(s.profileId) ?? "—"}</Link></TableCell>
+                  <TableCell><Link prefetch={false} href={`/admin/profiller/${s.profileId}`} className="font-medium hover:underline">{nameOf.get(s.profileId) ?? "—"}</Link></TableCell>
                   <TableCell>{planOf.get(s.planId)?.name}{s.sponsored ? <StatusBadge tone="brand" className="ml-2">Sponsorlu</StatusBadge> : null}</TableCell>
                   <TableCell className="whitespace-nowrap">{formatDate(s.startsAt, { dateStyle: "medium" })}</TableCell>
                   <TableCell className="whitespace-nowrap">

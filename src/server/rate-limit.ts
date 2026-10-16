@@ -36,10 +36,25 @@ export function resetRateLimits(): void {
   buckets.clear();
 }
 
+/**
+ * İstemci IP'sini güvenilir kaynaktan çözümler.
+ * - `CLIENT_IP_HEADER` tanımlıysa (ör. `cf-connecting-ip`) yalnızca o başlık kullanılır.
+ * - Vercel'de platform `x-real-ip` / `x-forwarded-for` başlıklarını kendisi yazar.
+ * - Kendi sunucunuzda: başlığı ekleyen/ezen bir ters vekil (nginx vb.) arkasında
+ *   çalışılmalıdır; zincirdeki SON değer (vekilin gördüğü adres) kullanılır.
+ *   İstemcinin gönderdiği ilk değer asla tek başına güvenilmez.
+ */
+export function resolveClientIp(get: (name: string) => string | null, env: NodeJS.ProcessEnv = process.env): string {
+  const first = (v: string | null | undefined) => v?.split(",")[0]?.trim() || undefined;
+  if (env.CLIENT_IP_HEADER) return first(get(env.CLIENT_IP_HEADER.toLowerCase())) ?? "unknown";
+  if (env.VERCEL) return first(get("x-real-ip")) ?? first(get("x-forwarded-for")) ?? "unknown";
+  return get("x-forwarded-for")?.split(",").at(-1)?.trim() || "unknown";
+}
+
 /** İstemci IP'sinin tuzlu özeti — ham IP hiçbir yerde saklanmaz. */
 export async function clientFingerprint(): Promise<string> {
   const h = await headers();
-  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";
+  const ip = resolveClientIp((n) => h.get(n));
   const salt = requiredSecret("IP_HASH_SALT", "dev-only-ip-hash-salt-change-me-0000000");
   return createHash("sha256").update(`${salt}:${ip}`).digest("hex").slice(0, 32);
 }

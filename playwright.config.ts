@@ -2,6 +2,14 @@ import { defineConfig, devices } from "@playwright/test";
 
 const PORT = Number(process.env.E2E_PORT ?? 3217);
 
+/** Yalnızca test sunucusu için açık sırlar (production derlemesi varsayılan sırlarla açılmaz). */
+const TEST_SECRETS = {
+  IP_HASH_SALT: "e2e-ip-hash-salt-0123456789abcdef0123456789",
+  SESSION_SECRET: "e2e-session-secret-0123456789abcdef012345678",
+  DEMO_ADMIN_PASSWORD: "demo-admin-2026!",
+  DEMO_ADMIN_TOTP_SECRET: "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP",
+};
+
 export default defineConfig({
   testDir: "tests/e2e",
   fullyParallel: false,
@@ -19,7 +27,7 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 60_000,
     env: process.env.E2E_SUPABASE
-      ? { NEXT_PUBLIC_SITE_URL: `http://localhost:${PORT}` }
-      : { ALLOW_DEMO_MODE: "true", NEXT_PUBLIC_SITE_URL: `http://localhost:${PORT}` },
+      ? { NEXT_PUBLIC_SITE_URL: `http://localhost:${PORT}`, IP_HASH_SALT: TEST_SECRETS.IP_HASH_SALT }
+      : { ALLOW_DEMO_MODE: "true", NEXT_PUBLIC_SITE_URL: `http://localhost:${PORT}`, ...TEST_SECRETS },
   },
 });

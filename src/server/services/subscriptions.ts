@@ -49,6 +49,7 @@ export async function createSubscription(actor: Admin, raw: unknown) {
 }
 
 export async function renewSubscription(actor: Admin, id: string, months: number) {
+  if (!Number.isInteger(months) || months < 1 || months > 24) throw new DomainError("Yenileme süresi 1 ile 24 ay arasında bir tam sayı olmalı");
   const repo = getRepository();
   const sub = await repo.getSubscription(id);
   if (!sub) throw new DomainError("Abonelik bulunamadı");

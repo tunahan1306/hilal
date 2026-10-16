@@ -19,7 +19,7 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
                 {last ? (
                   <span aria-current="page" className="text-foreground">{c.name}</span>
                 ) : (
-                  <Link href={c.href} className="rounded-sm hover:text-foreground">{c.name}</Link>
+                  <Link href={c.href} className="inline-flex min-h-6 items-center rounded-sm hover:text-foreground">{c.name}</Link>
                 )}
                 {!last ? <ChevronRight className="size-3.5" aria-hidden /> : null}
               </li>

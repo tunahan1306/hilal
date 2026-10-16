@@ -2,7 +2,7 @@
 
 Durum anahtarı: ✅ uygulandı **ve** otomatik testle doğrulandı · 🟡 uygulandı, kısmen/elle doğrulandı · ⬜ yapılmadı · ⚖️ hukuki onay bekliyor
 
-Son doğrulama (2026-10-16): typecheck ✅ · ESLint ✅ · Vitest 64/64 ✅ · Supabase entegrasyon 3/3 ✅ · SQL politika testleri ✅ · Playwright 31/31 (demo) + 1/1 (Supabase auth) ✅ · production build ✅
+Son doğrulama (2026-10-16, denetim sonrası): typecheck ✅ · ESLint ✅ · Vitest 75/75 ✅ · Supabase entegrasyon 3/3 ✅ · SQL politika testleri ✅ · Playwright 38/38 (demo, 3 ardışık çalıştırma) + 1/1 (Supabase auth) ✅ · production build ✅ · axe (13 kamu + 13 yönetim sayfası × 3 görünüm): 0 ihlal
 
 ## PHASE 1 — Tasarım ve frontend
 - ✅ Proje kurulumu (Next 16, TS strict, Tailwind 4, shadcn/Radix)
@@ -59,7 +59,25 @@ Son doğrulama (2026-10-16): typecheck ✅ · ESLint ✅ · Vitest 64/64 ✅ · 
 - ⬜ Supabase production projesi — **açık onay gerektirir** (gerçek veri)
 - ⬜ Ödeme entegrasyonu — **hukuki inceleme + ödeme kuruluşu onayı sonrası**
 
+## Denetim (2026-10-16) — düzeltilen ve doğrulanan bulgular
+- 🔴 Production + demo modunda bilinen varsayılan sırla admin oturumu sahtelenebiliyordu → production'da sırlar zorunlu, açılış kontrolü (`instrumentation.ts`)
+- 🟠 X-Forwarded-For ile IP tabanlı oran sınırı atlatılabiliyordu → güvenilir IP çözümleme + profil başına şikâyet tavanı + otomatik kaldırma devre kesici
+- 🟠 6 MB üstü belge yüklemesi hiçbir geri bildirim vermeden başarısız oluyordu → 5 MB sınır + istemci tarafı kontrol
+- 🟠 Doğrulama hatasında form alanları siliniyordu (KVKK, şikâyet, giriş, yönetim formları) → sıfırlama yalnızca başarıda
+- 🟠 Mobil yönetim profil sekmeleri içeriğin üstüne taşıyordu → tek satır, kaydırılabilir
+- 🟡 Yenileme süresine "2 ay" gibi girdiler "Beklenmeyen hata" veriyordu → ayrıştırma + anlaşılır doğrulama mesajı
+- 🟡 Boş il sayfası olmayan filtreleri "sıfırla" öneriyordu → doğru boş durum
+- 🟡 Yönetim sayfaları ve 404'te sayfaya özgü `<title>` yoktu
+- 🟡 a11y: etiketsiz SEO form alanları, kontrast (uyarı/tehlike), klavyeyle kaydırılamayan tablolar, başlık sırası, <24px dokunma hedefleri
+- 🟡 Performans: keşfet/şehir sayfalarında zod istemci paketinden çıkarıldı (370→333 KB gz), kullanılmayan mono font preload'u kaldırıldı (81→44 KB), admin prefetch'leri 9→2 istek/sayfa, admin profil listesinde N+1 sorgu → sabit 6 sorgu
+- Metin: "Farketmez" → "Fark etmez"; mobil ana sayfa/footer yerleşimi; abonelik formunda buton sırası
+
 ## Bilinen sınırlamalar
+- Yönetim işlemleri tüm rota önbelleğini temizlediği için sonraki ilk sayfa görüntülemesi ~0,8 s sürer (ölçüldü); hedefli yol bazlı geçersiz kılma ⬜
+- İstemci tarafı geçişte profil JSON-LD'si nadiren DOM'da gözlenmedi (doğrudan yüklemede her zaman mevcut; kök neden doğrulanamadı)
+- Sunucu logunda Next.js kaynaklı `MaxListenersExceededWarning` (ServerResponse) gözlendi; işlevsel etkisi tespit edilmedi
+- Premium "kişiselleştirme" ve "ilave istatistik" paket özellikleri yalnızca bayrak düzeyinde; profil sahiplerinin hesabı olmadığından ürün kararı gerekli ⬜
+- Yüklenen fotoğrafın alternatif metni sonradan düzenlenemiyor ⬜
 - Demo modu verisi bellek içidir; yeniden başlatmada sıfırlanır ve çok instance'lı ortamda tutarsızdır (yalnızca geliştirme/demo).
 - Kaldırılan profil, nadir durumda ilk istekte `200 + noindex` (soft 404) dönebilir; içerik gösterilmez. İl/ilçe 404'leri gerçek 404'tür.
 - Yönetim işlemleri tüm rota önbelleğini temizler (`revalidatePath("/", "layout")`); yüksek hacimde daha hedefli etiketleme gerekir.

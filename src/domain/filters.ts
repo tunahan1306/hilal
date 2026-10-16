@@ -1,10 +1,11 @@
-import { z } from "zod";
+// İstemci paketine girdiği için (filtre çubuğu) bu modül zod içermez.
 import { MINIMUM_AGE } from "./age";
 
 export const MAX_AGE_FILTER = 99;
 export const PAGE_SIZE = 12;
 
-const slug = z.string().regex(/^[a-z0-9-]{1,80}$/);
+const SLUG = /^[a-z0-9-]{1,80}$/;
+const isSlug = (v: unknown): v is string => typeof v === "string" && SLUG.test(v);
 
 export type ProfileFilters = {
   il?: string;
@@ -31,20 +32,20 @@ function toAge(v: string | undefined): number | undefined {
 
 /** URL query parametrelerini güvenli şekilde ayrıştırır; geçersiz değerler yok sayılır. */
 export function parseFilters(params: RawParams): ProfileFilters {
-  const il = slug.safeParse(first(params.il));
-  const ilce = slug.safeParse(first(params.ilce));
+  const il = first(params.il);
+  const ilce = first(params.ilce);
   const ilgiRaw = params.ilgi;
   const ilgiList = (Array.isArray(ilgiRaw) ? ilgiRaw : ilgiRaw ? ilgiRaw.split(",") : [])
     .map((s) => s.trim())
-    .filter((s) => slug.safeParse(s).success)
+    .filter(isSlug)
     .slice(0, 5);
   let yasMin = toAge(first(params.yasMin));
   let yasMax = toAge(first(params.yasMax));
   if (yasMin !== undefined && yasMax !== undefined && yasMin > yasMax) [yasMin, yasMax] = [yasMax, yasMin];
   const sayfa = Math.min(Math.max(Number.parseInt(first(params.sayfa) ?? "1", 10) || 1, 1), 500);
   return {
-    il: il.success ? il.data : undefined,
-    ilce: il.success && ilce.success ? ilce.data : undefined,
+    il: isSlug(il) ? il : undefined,
+    ilce: isSlug(il) && isSlug(ilce) ? ilce : undefined,
     yasMin,
     yasMax,
     ilgi: [...new Set(ilgiList)],

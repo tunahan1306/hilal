@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/admin/page-header";
 import { ViewsChart } from "@/components/admin/views-chart";
 import { getProvinceByPlate } from "@/domain/locations";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
+
+export const metadata: Metadata = { title: "İstatistikler" };
 
 export default async function StatsPage() {
   await requireAdmin();

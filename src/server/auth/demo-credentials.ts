@@ -13,12 +13,13 @@ export const DEV_DEFAULTS = {
   totpSecret: "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP",
 };
 
+/** Production'da varsayılan (herkesçe bilinen) şifre ve TOTP sırrı asla kullanılmaz. */
 export function demoAdminConfig() {
-  return {
-    email: process.env.DEMO_ADMIN_EMAIL || DEV_DEFAULTS.email,
-    password: process.env.DEMO_ADMIN_PASSWORD || DEV_DEFAULTS.password,
-    totpSecret: process.env.DEMO_ADMIN_TOTP_SECRET || DEV_DEFAULTS.totpSecret,
-  };
+  const prod = process.env.NODE_ENV === "production";
+  const password = process.env.DEMO_ADMIN_PASSWORD || (prod ? null : DEV_DEFAULTS.password);
+  const totpSecret = process.env.DEMO_ADMIN_TOTP_SECRET || (prod ? null : DEV_DEFAULTS.totpSecret);
+  if (!password || !totpSecret) throw new Error("DEMO_ADMIN_PASSWORD ve DEMO_ADMIN_TOTP_SECRET production'da zorunludur");
+  return { email: process.env.DEMO_ADMIN_EMAIL || DEV_DEFAULTS.email, password, totpSecret };
 }
 
 function hash(value: string): Buffer {

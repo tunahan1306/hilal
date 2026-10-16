@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ActionButton } from "@/components/admin/action-button";
 import { PageHeader } from "@/components/admin/page-header";
@@ -7,6 +8,8 @@ import { formatDate } from "@/lib/site";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
 import { privacyStatusAction } from "../actions";
+
+export const metadata: Metadata = { title: "KVKK talepleri" };
 
 const STATUS = { received: "Alındı", in_progress: "İşlemde", completed: "Tamamlandı", rejected: "Reddedildi" } as const;
 const TONE = { received: "warning", in_progress: "brand", completed: "success", rejected: "neutral" } as const;
@@ -36,7 +39,7 @@ export default async function PrivacyRequestsPage() {
                   </div>
                 </div>
                 <p className="mt-3 whitespace-pre-line text-sm">{r.details}</p>
-                {r.profileId ? <Link href={`/admin/profiller/${r.profileId}`} className="mt-2 inline-block text-sm text-brand hover:underline">İlgili profili aç →</Link> : r.profileUrl ? <p className="mt-2 text-sm text-muted-foreground">Bağlantı: {r.profileUrl}</p> : null}
+                {r.profileId ? <Link prefetch={false} href={`/admin/profiller/${r.profileId}`} className="mt-2 inline-block text-sm text-brand hover:underline">İlgili profili aç →</Link> : r.profileUrl ? <p className="mt-2 text-sm text-muted-foreground">Bağlantı: {r.profileUrl}</p> : null}
                 {r.status === "received" || r.status === "in_progress" ? (
                   <div className="mt-4 flex flex-wrap gap-2">
                     {r.status === "received" ? <ActionButton action={privacyStatusAction.bind(null, r.id, "in_progress")} size="sm" variant="outline">İşleme al</ActionButton> : null}

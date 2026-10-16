@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionButton } from "@/components/admin/action-button";
@@ -9,6 +10,8 @@ import { formatDate } from "@/lib/site";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
 import { reportAction } from "../../actions";
+
+export const metadata: Metadata = { title: "Şikâyet ayrıntısı" };
 
 const ACTION_LABELS: Record<string, string> = {
   review_started: "İncelemeye alındı",
@@ -80,7 +83,7 @@ export default async function ReportDetailPage({ params }: PageProps<"/admin/sik
             <h2 className="mb-2 font-semibold">İlgili profil</h2>
             {profile ? (
               <>
-                <Link href={`/admin/profiller/${profile.id}`} className="font-medium hover:underline">{profile.nickname}</Link>
+                <Link prefetch={false} href={`/admin/profiller/${profile.id}`} className="font-medium hover:underline">{profile.nickname}</Link>
                 <p className="text-muted-foreground">Durum: {PROFILE_STATUS_LABELS[profile.status]}</p>
               </>
             ) : <p className="text-muted-foreground">Profil silinmiş.</p>}

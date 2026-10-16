@@ -5,6 +5,7 @@ import { Loader2, LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { preservingSubmit } from "@/hooks/use-preserving-submit";
 import { enrollMfa, loginAction, verifyMfaAction, type LoginState } from "./actions";
 
 export function LoginForm({ step, demo }: { step: "login" | "mfa" | "mfa-kurulum"; demo: boolean }) {
@@ -16,7 +17,7 @@ export function LoginForm({ step, demo }: { step: "login" | "mfa" | "mfa-kurulum
   }, [step]);
 
   return (
-    <form action={action} className="grid gap-4" noValidate>
+    <form action={action} onSubmit={preservingSubmit(action)} className="grid gap-4" noValidate>
       {step === "login" ? (
         <>
           <div className="grid gap-1.5">

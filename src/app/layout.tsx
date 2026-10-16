@@ -5,7 +5,8 @@ import { SITE, siteUrl } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin", "latin-ext"], display: "swap" });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin", "latin-ext"], display: "swap" });
+// Mono yalnızca yönetim panelinde birkaç yerde kullanılır; her sayfada preload edilmez.
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin", "latin-ext"], display: "swap", preload: false });
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),

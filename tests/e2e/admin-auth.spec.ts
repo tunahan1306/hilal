@@ -60,3 +60,12 @@ test("kaba kuvvet denemeleri oran sınırlamasına takılır", async ({ page }) 
     await expect(page.locator("p[role=alert]")).toHaveText(i < 5 ? /hatalı/ : /Çok fazla deneme/);
   }
 });
+
+test("geliştirme varsayılan sırrıyla imzalanmış oturum production'da reddedilir", async ({ page, context, baseURL }) => {
+  const { createHmac } = await import("node:crypto");
+  const body = Buffer.from(JSON.stringify({ sub: "admin-0001", aal: "aal2", exp: Math.floor(Date.now() / 1000) + 3600 })).toString("base64url");
+  const sig = createHmac("sha256", "dev-only-session-secret-change-me-00000000").update(body).digest("base64url");
+  await context.addCookies([{ name: "hilal_admin", value: `${body}.${sig}`, url: baseURL! }]);
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/admin\/giris/);
+});

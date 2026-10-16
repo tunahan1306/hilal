@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import type { ProfileImage } from "@/domain/types";
 import { ActionButton } from "./action-button";
 import { ActionForm } from "./action-form";
+import { FileInput } from "./file-input";
 import { StatusBadge } from "./status-badge";
 
 type BoundImageAction = (input: string) => Promise<ActionResult>;
@@ -31,7 +32,7 @@ export function ImageManager({
           <>
             <div className="grid gap-1.5">
               <Label htmlFor="file">Fotoğraf (JPEG/PNG/WebP, en fazla 5 MB)</Label>
-              <Input id="file" name="file" type="file" accept="image/jpeg,image/png,image/webp" required disabled={images.length >= limit} />
+              <FileInput id="file" name="file" maxBytes={5 * 1024 * 1024} accept="image/jpeg,image/png,image/webp" required disabled={images.length >= limit} />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="alt">Alternatif metin</Label>

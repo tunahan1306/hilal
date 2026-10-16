@@ -8,6 +8,14 @@ import { DomainError, RateLimitedError } from "./errors";
 
 const HOUR = 3_600_000;
 export const REPORTS_PER_HOUR = 5;
+/** Aynı profile saatte kabul edilen en fazla şikâyet (IP'den bağımsız). */
+export const REPORTS_PER_PROFILE_PER_HOUR = 10;
+/**
+ * Site genelinde saatte en fazla otomatik yayından kaldırma. Aşılırsa (olası
+ * toplu sahte şikâyet saldırısı) yeni kritik şikâyetler profili kaldırmaz,
+ * öncelikli inceleme kuyruğuna düşer.
+ */
+export const AUTO_UNPUBLISH_PER_HOUR = 10;
 
 /**
  * Ziyaretçi şikâyeti. Oran sınırlaması iki katmanlıdır: süreç içi sayaç ve
@@ -28,6 +36,10 @@ export async function submitReport(raw: unknown, fingerprint: string): Promise<{
 
   const profile = await repo.getProfile(input.profileId);
   if (!profile || profile.status !== "published") throw new DomainError("Profil bulunamadı", "not_found");
+  const since = new Date(Date.now() - HOUR).toISOString();
+  if ((await repo.countRecentReportsForProfile(profile.id, since)) >= REPORTS_PER_PROFILE_PER_HOUR) {
+    throw new DomainError("Bu profil için çok sayıda bildirim alındı ve inceleme sürüyor. Teşekkür ederiz.", "rate_limited");
+  }
 
   const report = await repo.createReport({
     profileId: profile.id,
@@ -39,7 +51,12 @@ export async function submitReport(raw: unknown, fingerprint: string): Promise<{
   await audit(null, "report.create", "report", report.id, { category: report.category, profileId: profile.id });
 
   let autoUnpublished = false;
-  if (CRITICAL_REPORT_CATEGORIES.includes(report.category)) {
+  const critical = CRITICAL_REPORT_CATEGORIES.includes(report.category);
+  const breakerOpen = critical && (await repo.countRecentModerationActions("auto_unpublished", since)) >= AUTO_UNPUBLISH_PER_HOUR;
+  if (breakerOpen) {
+    await audit(null, "report.auto_unpublish_suppressed", "report", report.id, { category: report.category, profileId: profile.id });
+  }
+  if (critical && !breakerOpen) {
     await repo.updateProfile(profile.id, { status: "unpublished" });
     await repo.addModerationAction({
       reportId: report.id,

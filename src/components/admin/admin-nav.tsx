@@ -28,6 +28,7 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
           <li key={href}>
             <Link
               href={href}
+              prefetch={false}
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cn(

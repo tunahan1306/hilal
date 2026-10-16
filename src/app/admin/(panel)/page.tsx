@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AlertTriangle, CalendarClock, FileClock, Flag, Users } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
@@ -8,6 +9,8 @@ import { REPORT_CATEGORY_LABELS, CRITICAL_REPORT_CATEGORIES } from "@/domain/typ
 import { formatDate, formatNumber } from "@/lib/site";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
+
+export const metadata: Metadata = { title: "Gösterge paneli" };
 
 export default async function DashboardPage() {
   await requireAdmin();
@@ -43,7 +46,7 @@ export default async function DashboardPage() {
       <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {kpis.map((k) => (
           <li key={k.label}>
-            <Link href={k.href} className="block rounded-xl border border-border/70 bg-card p-4 transition-shadow hover:shadow-[var(--shadow-card)]">
+            <Link prefetch={false} href={k.href} className="block rounded-xl border border-border/70 bg-card p-4 transition-shadow hover:shadow-[var(--shadow-card)]">
               <p className="text-xs text-muted-foreground">{k.label}</p>
               <p className={`mt-1 text-2xl font-semibold tabular-nums ${k.warn ? "text-warning" : ""}`}>{formatNumber(k.value)}</p>
             </Link>
@@ -61,7 +64,7 @@ export default async function DashboardPage() {
             <ul className="divide-y divide-border/70 text-sm">
               {openReports.map((r) => (
                 <li key={r.id} className="flex items-center justify-between gap-2 py-2">
-                  <Link href={`/admin/sikayetler/${r.id}`} className="min-w-0 truncate hover:underline">
+                  <Link prefetch={false} href={`/admin/sikayetler/${r.id}`} className="min-w-0 truncate hover:underline">
                     {nameOf.get(r.profileId) ?? "Silinmiş profil"} · {REPORT_CATEGORY_LABELS[r.category]}
                   </Link>
                   {CRITICAL_REPORT_CATEGORIES.includes(r.category) ? <StatusBadge tone="danger"><AlertTriangle className="mr-1 size-3" aria-hidden />Kritik</StatusBadge> : <StatusBadge>{formatDate(r.createdAt, { day: "numeric", month: "short" })}</StatusBadge>}
@@ -79,7 +82,7 @@ export default async function DashboardPage() {
             <ul className="divide-y divide-border/70 text-sm">
               {expiring.map((s) => (
                 <li key={s.id} className="flex justify-between py-2">
-                  <Link href={`/admin/profiller/${s.profileId}`} className="hover:underline">{nameOf.get(s.profileId)}</Link>
+                  <Link prefetch={false} href={`/admin/profiller/${s.profileId}`} className="hover:underline">{nameOf.get(s.profileId)}</Link>
                   <span className="text-muted-foreground">{formatDate(s.endsAt, { day: "numeric", month: "short" })}</span>
                 </li>
               ))}
@@ -92,7 +95,7 @@ export default async function DashboardPage() {
             <ul className="divide-y divide-border/70 text-sm">
               {duePrivacy.map((p) => (
                 <li key={p.id} className="flex justify-between py-2">
-                  <Link href="/admin/talepler" className="hover:underline">{p.requesterName}</Link>
+                  <Link prefetch={false} href="/admin/talepler" className="hover:underline">{p.requesterName}</Link>
                   <span className="text-muted-foreground">Son gün {formatDate(p.dueAt, { day: "numeric", month: "short" })}</span>
                 </li>
               ))}

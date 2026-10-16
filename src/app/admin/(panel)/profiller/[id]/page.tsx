@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CheckCircle2, CircleX, ExternalLink } from "lucide-react";
@@ -29,6 +30,8 @@ import {
   uploadImageAction,
   verificationAction,
 } from "../../actions";
+
+export const metadata: Metadata = { title: "Profil düzenle" };
 
 const MOD_LABEL = { pending: "Bekliyor", approved: "Onaylandı", rejected: "Reddedildi" } as const;
 
@@ -80,7 +83,7 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
           <>
             <StatusBadge tone={PROFILE_STATUS_TONE[s]} className="self-center">{PROFILE_STATUS_LABELS[s]}</StatusBadge>
             {s === "published" ? (
-              <Link href={`/profil/${profile.slug}`} target="_blank" className="inline-flex items-center gap-1 self-center text-sm text-brand hover:underline">
+              <Link prefetch={false} href={`/profil/${profile.slug}`} target="_blank" className="inline-flex items-center gap-1 self-center text-sm text-brand hover:underline">
                 Sitede gör <ExternalLink className="size-3.5" aria-hidden />
               </Link>
             ) : null}
@@ -89,7 +92,7 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
       />
 
       <Tabs defaultValue="yayin" className="gap-4">
-        <TabsList className="h-auto w-full flex-wrap justify-start">
+        <TabsList className="w-full justify-start overflow-x-auto [scrollbar-width:none] group-data-horizontal/tabs:h-10 [&>*]:flex-none [&>*]:px-3">
           <TabsTrigger value="yayin">Yayın</TabsTrigger>
           <TabsTrigger value="genel">Genel bilgiler</TabsTrigger>
           <TabsTrigger value="foto">Fotoğraflar ({images.length})</TabsTrigger>
@@ -186,7 +189,7 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
               </li>
             )) : <li className="p-3 text-muted-foreground">Abonelik geçmişi yok.</li>}
           </ul>
-          <Link href={`/admin/abonelikler?profil=${id}`} className="text-sm text-brand hover:underline">Abonelik yönetimine git →</Link>
+          <Link prefetch={false} href={`/admin/abonelikler?profil=${id}`} className="text-sm text-brand hover:underline">Abonelik yönetimine git →</Link>
           <div className="pt-2"><ViewsChart data={views} label={plan?.advancedStats ? "Görüntülenme (son 30 gün) — Premium istatistik" : "Görüntülenme (son 30 gün)"} /></div>
         </TabsContent>
 
@@ -195,7 +198,7 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
             <h2 className="mb-3 font-semibold">Şikâyetler ve moderasyon</h2>
             <ul className="space-y-2 text-sm">
               {reports.map((r) => (
-                <li key={r.id}><Link href={`/admin/sikayetler/${r.id}`} className="hover:underline">{REPORT_CATEGORY_LABELS[r.category]}</Link> <span className="text-muted-foreground">· {r.status} · {formatDate(r.createdAt)}</span></li>
+                <li key={r.id}><Link prefetch={false} href={`/admin/sikayetler/${r.id}`} className="hover:underline">{REPORT_CATEGORY_LABELS[r.category]}</Link> <span className="text-muted-foreground">· {r.status} · {formatDate(r.createdAt)}</span></li>
               ))}
               {modActions.map((a) => <li key={a.id} className="text-muted-foreground">{a.type} · {formatDate(a.createdAt)}{a.note ? ` · ${a.note}` : ""}</li>)}
               {!reports.length && !modActions.length ? <li className="text-muted-foreground">Kayıt yok.</li> : null}

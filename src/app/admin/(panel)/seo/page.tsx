@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/admin/page-header";
 import { SeoPageForm } from "@/components/admin/simple-forms";
 import { StatusBadge } from "@/components/admin/status-badge";
@@ -6,6 +7,8 @@ import { shouldIndexListing } from "@/domain/seo";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
 import { seoPageAction } from "../actions";
+
+export const metadata: Metadata = { title: "SEO" };
 
 export default async function SeoPage() {
   await requireAdmin();

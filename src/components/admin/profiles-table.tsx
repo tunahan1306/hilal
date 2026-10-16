@@ -55,7 +55,7 @@ const columns = helper.columns([
   helper.accessor("nickname", {
     header: ({ column }) => <SortHeader label="Profil" onClick={() => column.toggleSorting()} />,
     cell: ({ row }) => (
-      <Link href={`/admin/profiller/${row.original.id}`} className="flex items-center gap-1.5 font-medium hover:underline">
+      <Link prefetch={false} href={`/admin/profiller/${row.original.id}`} className="flex items-center gap-1.5 font-medium hover:underline">
         {row.original.nickname}
         {row.original.verified ? <BadgeCheck className="size-3.5 text-brand" aria-label="Kimlik doğrulanmış" /> : null}
       </Link>
@@ -159,7 +159,7 @@ export function ProfilesTable({ rows, initialStatus }: { rows: ProfileRow[]; ini
 
 function SortHeader({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="inline-flex items-center gap-1 rounded-sm hover:text-foreground">
+    <button type="button" onClick={onClick} className="inline-flex min-h-6 items-center gap-1 rounded-sm hover:text-foreground">
       {label} <ArrowUpDown className="size-3" aria-hidden />
     </button>
   );

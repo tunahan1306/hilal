@@ -67,6 +67,10 @@ export interface Repository {
   deleteProfile(id: string): Promise<void>;
 
   listImages(profileId: string): Promise<ProfileImage[]>;
+  /** Toplu okumalar (yönetim listesi için N+1 sorgu önlemi) */
+  listAllImages(): Promise<ProfileImage[]>;
+  listAllConsents(): Promise<ProfileConsent[]>;
+  listAllVerifications(): Promise<VerificationRecord[]>;
   addImage(input: Omit<ProfileImage, "id" | "createdAt">): Promise<ProfileImage>;
   updateImage(id: string, patch: Partial<Pick<ProfileImage, "alt" | "position" | "rightsConfirmed">>): Promise<ProfileImage>;
   deleteImage(id: string): Promise<ProfileImage | null>;
@@ -92,6 +96,8 @@ export interface Repository {
   createReport(input: Omit<ModerationReport, "id" | "createdAt" | "updatedAt" | "status" | "resolution">): Promise<ModerationReport>;
   updateReport(id: string, patch: Partial<Pick<ModerationReport, "status" | "resolution">>): Promise<ModerationReport>;
   countRecentReportsByHash(hash: string, sinceIso: string): Promise<number>;
+  countRecentReportsForProfile(profileId: string, sinceIso: string): Promise<number>;
+  countRecentModerationActions(type: ModerationAction["type"], sinceIso: string): Promise<number>;
   listModerationActions(filter: { reportId?: string; profileId?: string }): Promise<ModerationAction[]>;
   addModerationAction(input: Omit<ModerationAction, "id" | "createdAt">): Promise<ModerationAction>;
 
