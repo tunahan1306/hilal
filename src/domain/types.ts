@@ -305,6 +305,8 @@ export type Admin = {
 
 /** Ziyaretçiye gösterilen, hassas alanlardan arındırılmış profil görünümü. */
 export type PublicProfile = {
+  /** Explicitly fictional public example, never a verified real person. */
+  isExample?: boolean;
   id: string;
   slug: string;
   nickname: string;

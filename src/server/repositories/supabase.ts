@@ -290,6 +290,7 @@ async function hydratePublic(rows: Row[]): Promise<PublicProfile[]> {
       id: r.id as string,
       slug: r.slug as string,
       nickname: r.nickname as string,
+      isExample: Boolean(r.is_example),
       whatsappPhone: (r.whatsapp_phone as string) ?? null,
       age: r.age as number,
       province: {
@@ -372,7 +373,7 @@ export function createSupabaseRepository(): Repository {
         ids = [...counts].filter(([, n]) => n === filters.ilgi.length).map(([id]) => id);
         if (!ids.length) return { items: [], total: 0 };
       }
-      let q = anon().from("profiles_public").select("*", { count: "exact" });
+      let q = anon().from("discovery_profiles").select("*", { count: "exact" });
       if (filters.il) q = q.eq("city_slug", filters.il);
       if (filters.ilce) q = q.eq("district_slug", filters.ilce);
       if (filters.yasMin !== undefined) q = q.gte("age", filters.yasMin);
@@ -389,7 +390,7 @@ export function createSupabaseRepository(): Repository {
     },
 
     async getPublicProfile(slug) {
-      const rows = check(await anon().from("profiles_public").select("*").eq("slug", slug).limit(1)) as Row[];
+      const rows = check(await anon().from("discovery_profiles").select("*").eq("slug", slug).limit(1)) as Row[];
       const [p] = await hydratePublic(rows);
       return p ?? null;
     },
@@ -397,7 +398,7 @@ export function createSupabaseRepository(): Repository {
     async listFeaturedProfiles(limit) {
       const rows = check(
         await anon()
-          .from("profiles_public")
+          .from("discovery_profiles")
           .select("*")
           .order("sponsored", { ascending: false })
           .order("published_at", { ascending: false })
@@ -418,7 +419,7 @@ export function createSupabaseRepository(): Repository {
       // Aggregate compact location columns in bounded keyset batches, never the full profile table at once.
       let after: string | undefined;
       while (true) {
-        let q = anon().from("profiles_public").select("id, city_plate, district_slug").order("id").limit(500);
+        let q = anon().from("discovery_profiles").select("id, city_plate, district_slug").order("id").limit(500);
         if (after) q = q.gt("id", after);
         const rows = check(await q) as Row[];
         for (const r of rows) {
@@ -432,7 +433,7 @@ export function createSupabaseRepository(): Repository {
     },
 
     async listPublicProfileSlugs() {
-      const rows = check(await anon().from("profiles_public").select("slug, updated_at")) as Row[];
+      const rows = check(await anon().from("discovery_profiles").select("slug, updated_at").eq("is_example", false).eq("noindex", false)) as Row[];
       return rows.map((r) => ({ slug: r.slug as string, updatedAt: r.updated_at as string }));
     },
 

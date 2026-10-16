@@ -38,7 +38,13 @@ export function ProfileCard({
             priority={priority}
             className="object-cover object-[50%_30%] transition-transform duration-700 ease-[var(--ease-out-soft)] group-hover:scale-[1.025] motion-reduce:transform-none"
           />
+        ) : profile.isExample ? (
+          <div className="flex h-full flex-col items-center justify-center gap-4 text-muted-foreground">
+            <span className="font-display text-7xl text-brand" aria-hidden>{profile.nickname.charAt(0)}</span>
+            <span className="eyebrow">Kurgusal örnek</span>
+          </div>
         ) : null}
+        {profile.isExample ? <span className="absolute left-2 top-2 bg-background/95 px-2 py-1 text-xs text-foreground">Örnek profil</span> : null}
         {feature && profile.images.length > 1 ? (
           <span className="absolute bottom-2 right-2 rounded-xs bg-background/95 px-1.5 py-0.5 text-[0.6875rem] tabular-nums text-foreground backdrop-blur-sm">
             {profile.images.length} fotoğraf

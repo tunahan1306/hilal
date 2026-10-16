@@ -55,6 +55,33 @@ describe.skipIf(!enabled)("Supabase repository (entegrasyon)", () => {
     noindex: false,
   };
 
+  it("kurgusal örnek görünürken gerçek taslak ve yayın koşulları gizli kalır", async () => {
+    const repo = getRepository();
+    const profile = await profiles.createProfile(admin, { ...input, nickname: "Kurgu (Örnek)", interestIds: [] });
+    created.push(profile.id);
+    const stored = await service!.from("profiles").select("city_id,district_id").eq("id", profile.id).single();
+    if (stored.error) throw stored.error;
+    const slug = `kurgu-kadin-it-${profile.id}`;
+    const insert = await service!.from("example_profiles").insert({ id: profile.id, slug, nickname: "Kurgu (Örnek)", birth_date: input.birthDate, ...stored.data, bio: "KURGUSAL ÖRNEK — Gerçek bir kişiyi temsil etmez." });
+    if (insert.error) throw insert.error;
+    const example = await repo.getPublicProfile(slug);
+    expect(example?.isExample).toBe(true);
+    expect(example?.verified).toBe(false);
+    expect(example?.sponsored).toBe(false);
+    expect(example?.whatsappPhone).toBeNull();
+    expect(example?.images).toEqual([]);
+    expect(example?.seo.noindex).toBe(true);
+    expect(await repo.getPublicProfile(profile.slug)).toBeNull();
+    const realPublic = await anon!.from("profiles_public").select("id").eq("id", profile.id);
+    expect(realPublic.data).toEqual([]);
+    expect((await anon!.from("example_profiles").select("*")).error).toBeTruthy();
+    await expect(profiles.publishProfile(admin, profile.id)).rejects.toBeInstanceOf(PublishBlockedError);
+    expect((await repo.listPublicProfileSlugs()).some(p => p.slug === slug)).toBe(false);
+    const hide = await service!.from("example_profiles").update({ visible: false }).eq("id", profile.id);
+    if (hide.error) throw hide.error;
+    expect(await repo.getPublicProfile(slug)).toBeNull();
+  });
+
   it("tam yaşam döngüsü: oluştur → engel → koşullar → yayın → kamu görünümü → şikâyet → silme", async () => {
     const repo = getRepository();
     const interests = await repo.listInterests();

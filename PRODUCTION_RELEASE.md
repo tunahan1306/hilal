@@ -78,3 +78,11 @@ Vercel projesi: hilal (`prj_twEinRQ0zTn6xkIQyevdPXJfMyCI`). Supabase: hilal (`yq
 - `supabase/migrations/20261020000001_immutable_audit_actor.sql`
 - `tests/e2e/database-discovery.spec.ts`
 - `tests/unit/location-directory.test.ts`
+
+## Güncelleme — 10 görünür kurgusal profil
+
+Kullanıcının açık isteğiyle 8 İstanbul, 1 Ankara ve 1 İzmir örneği ana profil listelerine eklendi. `example_profiles` yalnızca seçilmiş kurgusal içeriklerin halka açık kopyalarını tutar; özel taslak tablosu açılmadı. `discovery_profiles` gerçek yayın görünümü ile bu örnekleri birleştirir. Gerçek kişi yayınlama, rıza, yaş ve medya kuralları değişmedi.
+
+Kart ve detaylarda örnek etiketi bulunur; fotoğraf yerine baş harf kullanılır. Örneklerde kimlik/yaş doğrulaması iddiası, sponsor rozeti veya telefon yoktur. Detaylar noindex'tir; sitemap'e ve doğrulanmış kişi filtresine girmez. Gerçek kişi JSON-LD'si ve görüntülenme sayacı örneklerde çalışmaz. Örnek görünürlüğü `example_profiles.visible=false` ile kapatılabilir; kaynak taslak silindiğinde kopya da silinir. Taslağın sonraki düzenlemeleri kendiliğinden halka açılmaz.
+
+Kontroller: typecheck/lint/84 birim testi başarılı; gerçek Supabase entegrasyonu 4 başarılı; yerel Playwright konum/yaş 2 başarılı ve örnek liste/detay kontrolü 1 başarılı. Webpack üretim derlemesi başarılı. İlk örnek E2E denemesinde akışın gizli HTML kopyası seçiciyi çoğalttı; erişilebilir article seçicisiyle düzeltildi. Yeni şema: `20261021000001_public_examples.sql`.
