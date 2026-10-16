@@ -20,7 +20,7 @@ export function ProfileCard({ profile, priority = false, className }: { profile:
             src={image.url}
             alt={image.alt || `${profile.nickname} profil fotoğrafı`}
             fill
-            sizes="(min-width: 1024px) 270px, (min-width: 640px) 45vw, 92vw"
+            sizes="(min-width: 1024px) 270px, 48vw"
             className="object-cover transition-transform duration-500 ease-[var(--ease-out-soft)] group-hover:scale-[1.03] motion-reduce:transform-none"
             priority={priority}
             unoptimized={image.url.endsWith(".svg")}
@@ -32,9 +32,9 @@ export function ProfileCard({ profile, priority = false, className }: { profile:
           </span>
         ) : null}
       </div>
-      <div className="flex flex-1 flex-col gap-2 p-4">
+      <div className="flex flex-1 flex-col gap-1.5 p-3 sm:gap-2 sm:p-4">
         <div className="flex items-baseline justify-between gap-2">
-          <h3 className="flex min-w-0 items-center gap-1.5 text-base font-semibold">
+          <h3 className="flex min-w-0 items-center gap-1.5 text-[0.95rem] font-semibold sm:text-base">
             <Link href={`/profil/${profile.slug}`} className="truncate after:absolute after:inset-0 focus-visible:outline-none">
               {profile.nickname}
             </Link>
@@ -44,15 +44,15 @@ export function ProfileCard({ profile, priority = false, className }: { profile:
           </h3>
           <span className="shrink-0 text-sm tabular-nums text-muted-foreground">{profile.age}</span>
         </div>
-        <p className="flex items-center gap-1 text-sm text-muted-foreground">
+        <p className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
           <MapPin className="size-3.5 shrink-0" aria-hidden />
           <span className="truncate">{location}</span>
         </p>
-        <p className="line-clamp-2 text-sm leading-relaxed text-foreground/85">{profile.bio}</p>
+        <p className="line-clamp-2 text-sm leading-relaxed text-foreground/85 max-sm:hidden">{profile.bio}</p>
         {profile.interests.length ? (
           <ul className="mt-auto flex flex-wrap gap-1.5 pt-1" aria-label="İlgi alanları">
             {profile.interests.slice(0, 3).map((i) => (
-              <li key={i.slug} className="rounded-full bg-secondary px-2.5 py-0.5 text-xs text-secondary-foreground">
+              <li key={i.slug} className="rounded-full max-sm:[&:nth-child(n+3)]:hidden bg-secondary px-2.5 py-0.5 text-xs text-secondary-foreground">
                 {i.name}
               </li>
             ))}

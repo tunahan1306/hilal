@@ -6,7 +6,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:db": "./scripts/test-db.sh",
+    "demo:totp": "node scripts/demo-totp.mjs",
+    "data:locations": "python3 -I scripts/build-locations.py",
+    "data:seed-sql": "node scripts/build-seed-sql.mjs",
+    "data:demo-images": "node scripts/generate-demo-images.mjs",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

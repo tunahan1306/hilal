@@ -18,7 +18,7 @@ const csp = [
   "form-action 'self'",
   "base-uri 'self'",
   "object-src 'none'",
-  "upgrade-insecure-requests",
+  ...(process.env.NEXT_PUBLIC_SITE_URL?.startsWith("https://") ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
 const securityHeaders = [
