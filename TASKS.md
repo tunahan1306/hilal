@@ -46,7 +46,7 @@ Son doğrulama (2026-10-16): typecheck ✅ · ESLint ✅ · Vitest 64/64 ✅ · 
 - ✅ İçerik politikası taraması — unit
 - 🟡 Rate limiting: süreç içi + DB (şikâyet); dağıtık limit ⬜ (Vercel WAF önerilir)
 - 🟡 CSP `'unsafe-inline'` içeriyor (PPR kısıtı)
-- ⬜ Bağımsız sızma testi, `npm audit` incelemesi (scaffold 5 yüksek uyarı bildirdi; incelenmedi)
+- ⬜ Bağımsız sızma testi. `npm audit --omit=dev`: 0 bulgu; geliştirme bağımlılıklarında (shadcn CLI zinciri) yüksek uyarılar var, çalışma zamanına girmiyor
 - ⚖️ [LEGAL_REVIEW_CHECKLIST.md](LEGAL_REVIEW_CHECKLIST.md) — tüm maddeler
 - ⚖️ KVKK aydınlatma metni, kullanım koşulları, rıza metinleri (sitedekiler taslak)
 - ⬜ Otomatik görsel moderasyonu (çıplaklık/yaş tahmini) — değerlendirilmeli
