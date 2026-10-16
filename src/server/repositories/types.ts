@@ -9,7 +9,7 @@ import type {
   PrivacyRequest,
   Profile,
   ProfileConsent,
-  ProfileImage,
+  ProfileMedia,
   PublicProfile,
   SeoPage,
   SiteSettings,
@@ -66,17 +66,15 @@ export interface Repository {
   updateProfile(id: string, patch: ProfilePatch): Promise<Profile>;
   deleteProfile(id: string): Promise<void>;
 
-  listImages(profileId: string): Promise<ProfileImage[]>;
-  /** Toplu okumalar (yönetim listesi için N+1 sorgu önlemi) */
-  listAllImages(): Promise<ProfileImage[]>;
+  listMedia(profileId: string): Promise<ProfileMedia[]>;
+  /** Toplu okumalar (yönetim listesi ve medya kütüphanesi için N+1 sorgu önlemi) */
+  listAllMedia(filter?: { moderation?: ProfileMedia["moderation"]; kind?: ProfileMedia["kind"] }): Promise<ProfileMedia[]>;
   listAllConsents(): Promise<ProfileConsent[]>;
   listAllVerifications(): Promise<VerificationRecord[]>;
-  addImage(input: Omit<ProfileImage, "id" | "createdAt">): Promise<ProfileImage>;
-  updateImage(id: string, patch: Partial<Pick<ProfileImage, "alt" | "position" | "rightsConfirmed">>): Promise<ProfileImage>;
-  deleteImage(id: string): Promise<ProfileImage | null>;
-  /** Dosyayı depolamaya yazar, kalıcı yol ve URL döndürür. */
-  storeImageFile(path: string, data: Buffer, contentType: string): Promise<{ url: string }>;
-  removeImageFile(path: string): Promise<void>;
+  getMedia(id: string): Promise<ProfileMedia | null>;
+  addMedia(input: Omit<ProfileMedia, "id" | "createdAt">): Promise<ProfileMedia>;
+  updateMedia(id: string, patch: Partial<Omit<ProfileMedia, "id" | "profileId" | "createdAt">>): Promise<ProfileMedia>;
+  deleteMedia(id: string): Promise<ProfileMedia | null>;
   storePrivateDocument(path: string, data: Buffer, contentType: string): Promise<void>;
   removePrivateDocument(path: string): Promise<void>;
 

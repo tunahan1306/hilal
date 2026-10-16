@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import sharp from "sharp";
 import { DomainError } from "./errors";
 
@@ -16,6 +17,7 @@ export function sniffImageType(buf: Buffer): Detected | null {
 }
 
 export type ProcessedImage = { data: Buffer; width: number; height: number; contentType: "image/webp" };
+export type ProcessedImageSet = { full: ProcessedImage; thumb: ProcessedImage; sha256: string; dhash: string };
 
 /**
  * Yüklenen görseli doğrular ve yeniden kodlar:
@@ -48,4 +50,45 @@ export function validateDocument(buf: Buffer): "application/pdf" | Detected {
   const img = sniffImageType(buf);
   if (img) return img;
   throw new DomainError("Belge PDF, JPEG, PNG veya WebP olmalı");
+}
+
+const FULL_MAX = 2400;
+const THUMB_MAX = 480;
+
+/**
+ * Galeri görseli işleme: tam boy (≤2400px) + küçük önizleme (≤480px), ikisi de
+ * metadata'sız WebP. Aynı dosya tespiti için SHA-256, benzer görsel tespiti
+ * için 64 bit dHash üretir.
+ */
+export async function processGalleryImage(buf: Buffer, maxBytes: number): Promise<ProcessedImageSet> {
+  if (buf.length === 0) throw new DomainError("Dosya boş");
+  if (buf.length > maxBytes) throw new DomainError(`Dosya ${Math.round(maxBytes / 1024 / 1024)} MB sınırını aşıyor`);
+  if (!sniffImageType(buf)) throw new DomainError("Yalnızca JPEG, PNG veya WebP yüklenebilir");
+  try {
+    const base = sharp(buf, { limitInputPixels: 80_000_000, failOn: "error" }).rotate();
+    const [full, thumb, dhash] = await Promise.all([
+      base.clone().resize({ width: FULL_MAX, height: FULL_MAX, fit: "inside", withoutEnlargement: true }).webp({ quality: 84 }).toBuffer({ resolveWithObject: true }),
+      base.clone().resize({ width: THUMB_MAX, height: THUMB_MAX, fit: "inside", withoutEnlargement: true }).webp({ quality: 76 }).toBuffer({ resolveWithObject: true }),
+      computeDHash(buf),
+    ]);
+    return {
+      full: { data: full.data, width: full.info.width, height: full.info.height, contentType: "image/webp" },
+      thumb: { data: thumb.data, width: thumb.info.width, height: thumb.info.height, contentType: "image/webp" },
+      sha256: createHash("sha256").update(buf).digest("hex"),
+      dhash,
+    };
+  } catch (e) {
+    if (e instanceof DomainError) throw e;
+    throw new DomainError("Görsel işlenemedi; dosya bozuk olabilir");
+  }
+}
+
+/** 64 bit fark özeti (dHash): 9x8 gri ölçek, her satırda komşu piksel karşılaştırması. */
+export async function computeDHash(buf: Buffer): Promise<string> {
+  const { data } = await sharp(buf).rotate().greyscale().resize(9, 8, { fit: "fill" }).raw().toBuffer({ resolveWithObject: true });
+  let bits = "";
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) bits += data[y * 9 + x] < data[y * 9 + x + 1] ? "1" : "0";
+  let hex = "";
+  for (let i = 0; i < 64; i += 4) hex += Number.parseInt(bits.slice(i, i + 4), 2).toString(16);
+  return hex;
 }

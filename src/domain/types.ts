@@ -6,19 +6,62 @@ export type ModerationStatus = (typeof MODERATION_STATUSES)[number];
 
 export type Interest = { id: string; slug: string; name: string; description: string | null };
 
-export type ProfileImage = {
+export const MEDIA_KINDS = ["image", "video"] as const;
+export type MediaKind = (typeof MEDIA_KINDS)[number];
+/** İşleme hattı durumu: yükleniyor → işleniyor → hazır | başarısız */
+export const MEDIA_STATUSES = ["uploading", "processing", "ready", "failed"] as const;
+export type MediaStatus = (typeof MEDIA_STATUSES)[number];
+/** Yayın onayı (moderasyon). Yalnızca "approved" medya kamuya teslim edilir. */
+export const MEDIA_MODERATION = ["pending", "approved", "rejected"] as const;
+export type MediaModeration = (typeof MEDIA_MODERATION)[number];
+/** Sahiplik / kullanım hakkı kaynağı */
+export const MEDIA_OWNERSHIP_SOURCES = ["owner", "photographer_licensed", "other_licensed"] as const;
+export type MediaOwnershipSource = (typeof MEDIA_OWNERSHIP_SOURCES)[number];
+export const MEDIA_OWNERSHIP_LABELS: Record<MediaOwnershipSource, string> = {
+  owner: "Profil sahibine ait",
+  photographer_licensed: "Fotoğrafçı lisansıyla",
+  other_licensed: "Diğer — yazılı izinle",
+};
+
+export type ProfileMedia = {
   id: string;
   profileId: string;
+  kind: MediaKind;
+  status: MediaStatus;
+  /** Özel depodaki işlenmiş dosya (görsel: ≤2400px WebP, video: orijinal konteyner) */
   storagePath: string;
-  url: string;
-  alt: string;
+  /** Özel depodaki küçük önizleme (görsel) veya poster (video) */
+  thumbPath: string | null;
+  /** Yalnızca onaylandıktan sonra dolu: herkese açık depodaki adres */
+  publicUrl: string | null;
+  publicPosterUrl: string | null;
+  publicPaths: string[];
+  mimeType: string;
+  bytes: number;
   width: number;
   height: number;
+  durationSeconds: number | null;
+  alt: string;
   position: number;
-  /** Kullanım hakkı (telif / kişilik hakkı) doğrulandı mı */
+  isCover: boolean;
+  /** Sahiplik ve kullanım hakkı kaydı */
   rightsConfirmed: boolean;
+  ownershipSource: MediaOwnershipSource | null;
+  ownershipNote: string | null;
+  rightsConfirmedBy: string | null;
+  rightsConfirmedAt: string | null;
+  /** Yayın onayı kaydı */
+  moderation: MediaModeration;
+  moderatedBy: string | null;
+  moderatedAt: string | null;
+  sha256: string | null;
+  dhash: string | null;
+  failureReason: string | null;
   createdAt: string;
 };
+
+/** Geriye dönük ad (eski kod yolları) */
+export type ProfileImage = ProfileMedia;
 
 export type Profile = {
   id: string;
@@ -28,7 +71,10 @@ export type Profile = {
   birthDate: string;
   provincePlate: number;
   districtSlug: string | null;
+  /** Düz metin özeti (kartlar, meta açıklama, içerik taraması); zengin metinden türetilir */
   bio: string;
+  /** Zengin biyografi (doğrulanmış JSON belge, HTML yok) */
+  bioDoc: import("./rich-text").RichDoc | null;
   interestIds: string[];
   status: ProfileStatus;
   moderationStatus: ModerationStatus;
@@ -160,7 +206,8 @@ export type MembershipPlan = {
   code: PlanCode;
   name: string;
   description: string;
-  maxPhotos: number;
+  /** Profil başına medya depolama kotası (MB). Adet sınırı yoktur. */
+  storageQuotaMb: number;
   sponsoredEligible: boolean;
   advancedStats: boolean;
   customization: boolean;
@@ -263,10 +310,11 @@ export type PublicProfile = {
   province: { plate: number; name: string; slug: string };
   district: { name: string; slug: string } | null;
   bio: string;
+  bioDoc: import("./rich-text").RichDoc | null;
   interests: Pick<Interest, "slug" | "name">[];
   verified: boolean;
   sponsored: boolean;
-  images: Pick<ProfileImage, "url" | "alt" | "width" | "height">[];
+  images: { url: string; alt: string; width: number; height: number }[];
   videos?: PublicVideo[];
   publishedAt: string;
   updatedAt: string;

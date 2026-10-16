@@ -5,6 +5,7 @@ import { getRepository } from "../repositories";
 import { rateLimit } from "../rate-limit";
 import { audit } from "./audit";
 import { DomainError, RateLimitedError } from "./errors";
+import { syncPublicMedia } from "./media";
 
 const HOUR = 3_600_000;
 export const REPORTS_PER_HOUR = 5;
@@ -66,6 +67,7 @@ export async function submitReport(raw: unknown, fingerprint: string): Promise<{
       actorId: null,
     });
     await audit(null, "profile.auto_unpublished", "profile", profile.id, { reportId: report.id, category: report.category });
+    await syncPublicMedia(profile.id);
     autoUnpublished = true;
   }
   return { report, autoUnpublished };
@@ -105,6 +107,7 @@ export async function resolveReport(actor: Admin, id: string, decision: "remove"
     if (profile) await repo.updateProfile(profile.id, { moderationStatus: "rejected", moderationNote: note, moderatedBy: actor.id, moderatedAt: new Date().toISOString() });
     await repo.updateReport(id, { status: "resolved", resolution: note });
     await act(actor, report, "content_removed", note);
+    if (profile) await syncPublicMedia(profile.id);
   } else {
     await repo.updateReport(id, { status: "rejected", resolution: note });
     await act(actor, report, "report_rejected", note);

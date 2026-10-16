@@ -1,11 +1,20 @@
 import { isAdult } from "./age";
 import { hasBlockingFindings, scanProfileContent, type PolicyFinding } from "./content-policy";
+import { linksOf } from "./rich-text";
+
+function hostOf(href: string): string {
+  try {
+    return new URL(href).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+}
 import {
   CRITICAL_REPORT_CATEGORIES,
   type ModerationReport,
   type Profile,
   type ProfileConsent,
-  type ProfileImage,
+  type ProfileMedia,
   type ProfileStatus,
   type VerificationRecord,
 } from "./types";
@@ -15,8 +24,7 @@ export type PublishCheckId =
   | "adult"
   | "publication_consent"
   | "photo_rights_consent"
-  | "images_present"
-  | "images_rights_confirmed"
+  | "approved_cover"
   | "moderation_approved"
   | "content_policy"
   | "no_critical_reports"
@@ -34,10 +42,12 @@ export type PublishContext = {
   profile: Profile;
   consents: ProfileConsent[];
   verifications: VerificationRecord[];
-  images: ProfileImage[];
+  media: ProfileMedia[];
   reports: ModerationReport[];
   interestNames: string[];
   now: Date;
+  /** Biyografide yayınlanabilecek harici bağlantı alan adları (varsayılan: hiçbiri) */
+  linkAllowlist?: string[];
 };
 
 export function activeConsent(consents: ProfileConsent[], type: ProfileConsent["type"]): ProfileConsent | undefined {
@@ -59,12 +69,17 @@ export function hasOpenCriticalReport(reports: ModerationReport[]): boolean {
  * tarafındaki yayın engelini besler: tek doğruluk kaynağıdır.
  */
 export function evaluatePublishReadiness(ctx: PublishContext): PublishReadiness {
-  const { profile, consents, verifications, images, reports, now } = ctx;
+  const { profile, consents, verifications, media, reports, now } = ctx;
+  const allow = new Set((ctx.linkAllowlist ?? []).map((h) => h.toLowerCase()));
+  const links = profile.bioDoc ? linksOf(profile.bioDoc) : [];
+  // Site içi ve izin listesindeki bağlantılar taramaya girmez; diğer tüm harici bağlantılar "Harici bağlantı" bulgusu üretir.
+  const flaggedLinks = links.filter((h) => !h.startsWith("/") && !allow.has(hostOf(h)));
   const findings = scanProfileContent({
     nickname: profile.nickname,
     bio: profile.bio,
-    extra: [...images.map((i) => i.alt), ...ctx.interestNames],
+    extra: [...media.map((i) => i.alt), ...ctx.interestNames, ...flaggedLinks],
   });
+  const approvedImages = media.filter((m) => m.kind === "image" && m.status === "ready" && m.rightsConfirmed && m.moderation === "approved");
 
   const checks: PublishCheck[] = [
     {
@@ -88,17 +103,14 @@ export function evaluatePublishReadiness(ctx: PublishContext): PublishReadiness 
       passed: Boolean(activeConsent(consents, "photo_rights")),
     },
     {
-      id: "images_present",
-      label: "En az bir fotoğraf yüklendi",
-      passed: images.length > 0,
-    },
-    {
-      id: "images_rights_confirmed",
-      label: "Tüm fotoğrafların kullanım hakkı doğrulandı",
-      passed: images.length > 0 && images.every((i) => i.rightsConfirmed),
-      detail: images.filter((i) => !i.rightsConfirmed).length
-        ? `${images.filter((i) => !i.rightsConfirmed).length} fotoğraf doğrulanmadı`
-        : undefined,
+      id: "approved_cover",
+      label: "En az bir fotoğrafın kullanım hakkı kayıtlı ve yayını onaylı",
+      passed: approvedImages.length > 0,
+      detail: media.length && !approvedImages.length
+        ? `${media.filter((m) => m.moderation === "pending").length} medya onay bekliyor`
+        : media.some((m) => m.moderation === "pending")
+          ? `${media.filter((m) => m.moderation === "pending").length} medya onay bekliyor (yayında görünmez)`
+          : undefined,
     },
     {
       id: "moderation_approved",

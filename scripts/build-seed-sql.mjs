@@ -26,10 +26,10 @@ const interests = [
 lines.push("insert into interests (slug, name) values");
 lines.push(interests.map(([s, n]) => `(${q(s)}, ${q(n)})`).join(",\n") + "\non conflict (slug) do nothing;");
 
-lines.push(`insert into membership_plans (code, name, description, max_photos, sponsored_eligible, advanced_stats, customization) values
-('basic', 'Basic', 'Standart profil görünürlüğü ve temel profil özellikleri.', 3, false, false, false),
-('plus', 'Plus', 'Geliştirilmiş profil sunumu, ek fotoğraf kapasitesi ve sponsorlu görünürlük seçeneği.', 6, true, false, false),
-('premium', 'Premium', 'Gelişmiş profil kişiselleştirme, sponsorlu alanlar ve ilave istatistikler.', 10, true, true, true)
+lines.push(`insert into membership_plans (code, name, description, storage_quota_mb, sponsored_eligible, advanced_stats, customization) values
+('basic', 'Basic', 'Standart profil görünürlüğü ve temel profil özellikleri; fotoğraf galerisi.', 300, false, false, false),
+('plus', 'Plus', 'Geliştirilmiş profil sunumu, genişletilmiş medya alanı (video dahil) ve sponsorlu görünürlük seçeneği.', 1500, true, false, false),
+('premium', 'Premium', 'Gelişmiş profil kişiselleştirme, sponsorlu alanlar ve ilave istatistikler.', 5000, true, true, true)
 on conflict (code) do nothing;`);
 lines.push("commit;");
 await writeFile(new URL("../supabase/seed.sql", import.meta.url), lines.join("\n") + "\n");

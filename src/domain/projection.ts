@@ -1,12 +1,13 @@
 import { ageOn } from "./age";
 import { getProvinceByPlate, listDistricts } from "./locations";
+import { isPubliclyDeliverable, orderMedia } from "./media";
 import { isVerified } from "./publishing";
 import { isSponsoredNow } from "./subscriptions";
 import type {
   Interest,
   MembershipPlan,
   Profile,
-  ProfileImage,
+  ProfileMedia,
   PublicProfile,
   Subscription,
   VerificationRecord,
@@ -18,7 +19,7 @@ import type {
  */
 export function toPublicProfile(args: {
   profile: Profile;
-  images: ProfileImage[];
+  media: ProfileMedia[];
   interests: Interest[];
   verifications: VerificationRecord[];
   subscription?: Subscription;
@@ -31,7 +32,7 @@ export function toPublicProfile(args: {
   const district = profile.districtSlug
     ? listDistricts(province.plate).find((d) => d.slug === profile.districtSlug) ?? null
     : null;
-  const maxPhotos = args.plan?.maxPhotos ?? 3;
+  const deliverable = orderMedia(args.media.filter(isPubliclyDeliverable));
   return {
     id: profile.id,
     slug: profile.slug,
@@ -45,11 +46,11 @@ export function toPublicProfile(args: {
       .map((i) => ({ slug: i.slug, name: i.name })),
     verified: isVerified(args.verifications, "identity"),
     sponsored: isSponsoredNow(args.subscription, args.plan, now),
-    images: args.images
-      .filter((i) => i.rightsConfirmed)
-      .sort((a, b) => a.position - b.position)
-      .slice(0, maxPhotos)
-      .map((i) => ({ url: i.url, alt: i.alt, width: i.width, height: i.height })),
+    bioDoc: profile.bioDoc,
+    images: deliverable.filter((m) => m.kind === "image").map((m) => ({ url: m.publicUrl!, alt: m.alt, width: m.width, height: m.height })),
+    videos: deliverable
+      .filter((m) => m.kind === "video")
+      .map((m) => ({ url: m.publicUrl!, posterUrl: m.publicPosterUrl, alt: m.alt, width: m.width, height: m.height, durationSeconds: m.durationSeconds, mimeType: m.mimeType })),
     publishedAt: profile.publishedAt,
     updatedAt: profile.updatedAt,
     seo: { title: profile.seoTitle, description: profile.seoDescription, noindex: profile.noindex },

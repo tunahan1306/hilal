@@ -11,7 +11,8 @@ import type { Admin, ConsentType, Profile, ProfileStatus, VerificationStatus, Ve
 import { getRepository } from "../repositories";
 import { audit } from "./audit";
 import { DomainError, PublishBlockedError } from "./errors";
-import { processUpload, validateDocument } from "./images";
+import { validateDocument } from "./images";
+import { purgeProfileMedia, syncPublicMedia } from "./media";
 
 const DAY = 86_400_000;
 
@@ -42,15 +43,16 @@ async function mustGetProfile(id: string): Promise<Profile> {
 export async function loadPublishContext(profileId: string, now = new Date()) {
   const repo = getRepository();
   const profile = await mustGetProfile(profileId);
-  const [consents, verifications, images, reports, interests] = await Promise.all([
+  const [consents, verifications, media, reports, interests] = await Promise.all([
     repo.listConsents(profileId),
     repo.listVerifications(profileId),
-    repo.listImages(profileId),
+    repo.listMedia(profileId),
     repo.listReports({ profileId }),
     repo.listInterests(),
   ]);
   const interestNames = interests.filter((i) => profile.interestIds.includes(i.id)).map((i) => i.name);
-  return { profile, consents, verifications, images, reports, interestNames, now };
+  const linkAllowlist = (process.env.BIO_LINK_ALLOWLIST ?? "").split(",").map((h) => h.trim()).filter(Boolean);
+  return { profile, consents, verifications, media, reports, interestNames, now, linkAllowlist };
 }
 
 export async function createProfile(actor: Admin, input: ProfileInput): Promise<Profile> {
@@ -64,6 +66,7 @@ export async function createProfile(actor: Admin, input: ProfileInput): Promise<
     provincePlate: input.provincePlate,
     districtSlug: input.districtSlug,
     bio: input.bio,
+    bioDoc: input.bioDoc,
     interestIds: input.interestIds,
     status: "draft",
     moderationStatus: "pending",
@@ -89,6 +92,7 @@ export async function updateProfile(actor: Admin, id: string, input: ProfileInpu
   const contentChanged =
     current.nickname !== input.nickname ||
     current.bio !== input.bio ||
+    JSON.stringify(current.bioDoc) !== JSON.stringify(input.bioDoc) ||
     current.interestIds.slice().sort().join() !== input.interestIds.slice().sort().join();
   const requeue = contentChanged && (current.moderationStatus === "approved" || current.status === "published");
   const profile = await getRepository().updateProfile(id, {
@@ -97,6 +101,7 @@ export async function updateProfile(actor: Admin, id: string, input: ProfileInpu
     provincePlate: input.provincePlate,
     districtSlug: input.districtSlug,
     bio: input.bio,
+    bioDoc: input.bioDoc,
     interestIds: input.interestIds,
     seoTitle: input.seoTitle,
     seoDescription: input.seoDescription,
@@ -106,6 +111,7 @@ export async function updateProfile(actor: Admin, id: string, input: ProfileInpu
       : {}),
   });
   await audit(actor, "profile.update", "profile", id, { requeued: requeue });
+  if (requeue) await syncPublicMedia(id);
   return { profile, requeued: requeue };
 }
 
@@ -116,6 +122,8 @@ async function transition(actor: Admin, id: string, to: ProfileStatus, extra: Pa
   }
   const profile = await getRepository().updateProfile(id, { status: to, ...extra });
   await audit(actor, `profile.${to}`, "profile", id, { from: current.status, ...meta });
+  // Yalnızca yayındaki profillerin onaylı medyası herkese açık depoda bulunur
+  await syncPublicMedia(id);
   return profile;
 }
 
@@ -140,6 +148,7 @@ export async function setModeration(actor: Admin, id: string, decision: "approve
     ...(decision === "rejected" && current.status === "published" ? { status: "unpublished" as const } : {}),
   });
   await audit(actor, `profile.moderation.${decision}`, "profile", id, { note });
+  await syncPublicMedia(id);
   return profile;
 }
 
@@ -170,87 +179,15 @@ export async function restoreToDraft(actor: Admin, id: string) {
 export async function deleteProfilePermanently(actor: Admin, id: string, reason: string) {
   const repo = getRepository();
   const profile = await mustGetProfile(id);
-  const [images, consents, verifications] = await Promise.all([
-    repo.listImages(id),
-    repo.listConsents(id),
-    repo.listVerifications(id),
-  ]);
+  const [consents, verifications] = await Promise.all([repo.listConsents(id), repo.listVerifications(id)]);
+  await purgeProfileMedia(id);
   await Promise.all([
-    ...images.filter((i) => !i.storagePath.startsWith("demo/")).map((i) => repo.removeImageFile(i.storagePath)),
     ...consents.filter((c) => c.evidencePath).map((c) => repo.removePrivateDocument(c.evidencePath!)),
     ...verifications.filter((v) => v.documentPath).map((v) => repo.removePrivateDocument(v.documentPath!)),
   ]);
   await repo.deleteProfile(id);
   // Denetim kaydında kişisel veri tutulmaz; yalnızca kimlik ve gerekçe.
   await audit(actor, "profile.delete", "profile", id, { reason, slug: profile.slug });
-}
-
-// ---------------------------------------------------------------------------
-// Görseller
-// ---------------------------------------------------------------------------
-async function photoLimit(profileId: string, now = new Date()): Promise<number> {
-  const repo = getRepository();
-  const [subs, plans] = await Promise.all([repo.listSubscriptions({ profileId }), repo.listPlans()]);
-  const active = subs.find((s) => effectiveStatus(s, now) === "active");
-  const plan = plans.find((p) => p.id === active?.planId) ?? plans.find((p) => p.code === "basic");
-  return plan?.maxPhotos ?? 3;
-}
-
-export async function uploadProfileImage(actor: Admin, profileId: string, file: Buffer, alt: string) {
-  const repo = getRepository();
-  await mustGetProfile(profileId);
-  const existing = await repo.listImages(profileId);
-  const limit = await photoLimit(profileId);
-  if (existing.length >= limit) throw new DomainError(`Bu profilin paketi en fazla ${limit} fotoğrafa izin veriyor`);
-  const processed = await processUpload(file);
-  const path = `${profileId}/${crypto.randomUUID()}.webp`;
-  const { url } = await repo.storeImageFile(path, processed.data, processed.contentType);
-  const image = await repo.addImage({
-    profileId,
-    storagePath: path,
-    url,
-    alt: alt.slice(0, 160),
-    width: processed.width,
-    height: processed.height,
-    position: existing.length,
-    // Yeni yüklenen her görselin kullanım hakkı ayrıca doğrulanmalıdır.
-    rightsConfirmed: false,
-  });
-  await audit(actor, "image.upload", "profile", profileId, { imageId: image.id });
-  return image;
-}
-
-export async function confirmImageRights(actor: Admin, profileId: string, imageId: string, confirmed: boolean) {
-  const repo = getRepository();
-  const images = await repo.listImages(profileId);
-  if (!images.some((i) => i.id === imageId)) throw new DomainError("Görsel bu profile ait değil");
-  if (confirmed && !activeConsent(await repo.listConsents(profileId), "photo_rights")) {
-    throw new DomainError("Önce fotoğraf kullanım izni kaydedilmeli");
-  }
-  await repo.updateImage(imageId, { rightsConfirmed: confirmed });
-  await audit(actor, confirmed ? "image.rights_confirmed" : "image.rights_revoked", "profile", profileId, { imageId });
-}
-
-export async function deleteProfileImage(actor: Admin, profileId: string, imageId: string) {
-  const repo = getRepository();
-  const images = await repo.listImages(profileId);
-  if (!images.some((i) => i.id === imageId)) throw new DomainError("Görsel bu profile ait değil");
-  const removed = await repo.deleteImage(imageId);
-  if (removed && !removed.storagePath.startsWith("demo/")) await repo.removeImageFile(removed.storagePath);
-  const rest = images.filter((i) => i.id !== imageId);
-  await Promise.all(rest.map((img, idx) => (img.position !== idx ? repo.updateImage(img.id, { position: idx }) : null)));
-  await audit(actor, "image.delete", "profile", profileId, { imageId });
-}
-
-export async function moveProfileImage(actor: Admin, profileId: string, imageId: string, direction: -1 | 1) {
-  const repo = getRepository();
-  const images = await repo.listImages(profileId);
-  const idx = images.findIndex((i) => i.id === imageId);
-  const target = idx + direction;
-  if (idx < 0 || target < 0 || target >= images.length) return;
-  await repo.updateImage(images[idx].id, { position: target });
-  await repo.updateImage(images[target].id, { position: idx });
-  await audit(actor, "image.reorder", "profile", profileId, { imageId, direction });
 }
 
 // ---------------------------------------------------------------------------
@@ -291,9 +228,13 @@ export async function revokeConsent(actor: Admin, profileId: string, consentId: 
     await audit(actor, "profile.auto_unpublished", "profile", profileId, { reason: `consent_revoked:${consent.type}` });
   }
   if (consent.type === "photo_rights") {
-    const images = await repo.listImages(profileId);
-    await Promise.all(images.map((i) => repo.updateImage(i.id, { rightsConfirmed: false })));
+    // Medya kullanım izni geri alındı: tüm medyanın hak ve yayın onayı düşer
+    const media = await repo.listMedia(profileId);
+    await Promise.all(
+      media.map((m) => repo.updateMedia(m.id, { rightsConfirmed: false, ownershipSource: null, rightsConfirmedBy: null, rightsConfirmedAt: null, moderation: "pending", moderatedBy: null, moderatedAt: null })),
+    );
   }
+  await syncPublicMedia(profileId);
   await audit(actor, "consent.revoke", "profile", profileId, { type: consent.type, consentId });
   return revoked;
 }
@@ -349,8 +290,8 @@ export async function purgeExpiredVerificationDocuments(now = new Date()): Promi
 export async function exportProfileData(actor: Admin, profileId: string) {
   const repo = getRepository();
   const profile = await mustGetProfile(profileId);
-  const [images, consents, verifications, subscriptions, reports] = await Promise.all([
-    repo.listImages(profileId),
+  const [media, consents, verifications, subscriptions, reports] = await Promise.all([
+    repo.listMedia(profileId),
     repo.listConsents(profileId),
     repo.listVerifications(profileId),
     repo.listSubscriptions({ profileId }),
@@ -360,7 +301,7 @@ export async function exportProfileData(actor: Admin, profileId: string) {
   return {
     exportedAt: new Date().toISOString(),
     profile,
-    images: images.map(({ url, alt, createdAt }) => ({ url, alt, createdAt })),
+    media: media.map(({ kind, alt, mimeType, bytes, createdAt, ownershipSource, rightsConfirmedAt, moderation }) => ({ kind, alt, mimeType, bytes, createdAt, ownershipSource, rightsConfirmedAt, moderation })),
     consents: consents.map(({ type, grantedAt, revokedAt, method }) => ({ type, grantedAt, revokedAt, method })),
     verifications: verifications.map(({ type, status, checkedAt, method }) => ({ type, status, checkedAt, method })),
     subscriptions,

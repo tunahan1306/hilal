@@ -1077,9 +1077,9 @@ insert into interests (slug, name) values
 ('dil-degisimi', 'Dil değişimi'),
 ('kosu', 'Koşu')
 on conflict (slug) do nothing;
-insert into membership_plans (code, name, description, max_photos, sponsored_eligible, advanced_stats, customization) values
-('basic', 'Basic', 'Standart profil görünürlüğü ve temel profil özellikleri.', 3, false, false, false),
-('plus', 'Plus', 'Geliştirilmiş profil sunumu, ek fotoğraf kapasitesi ve sponsorlu görünürlük seçeneği.', 6, true, false, false),
-('premium', 'Premium', 'Gelişmiş profil kişiselleştirme, sponsorlu alanlar ve ilave istatistikler.', 10, true, true, true)
+insert into membership_plans (code, name, description, storage_quota_mb, sponsored_eligible, advanced_stats, customization) values
+('basic', 'Basic', 'Standart profil görünürlüğü ve temel profil özellikleri; fotoğraf galerisi.', 300, false, false, false),
+('plus', 'Plus', 'Geliştirilmiş profil sunumu, genişletilmiş medya alanı (video dahil) ve sponsorlu görünürlük seçeneği.', 1500, true, false, false),
+('premium', 'Premium', 'Gelişmiş profil kişiselleştirme, sponsorlu alanlar ve ilave istatistikler.', 5000, true, true, true)
 on conflict (code) do nothing;
 commit;

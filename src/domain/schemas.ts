@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isAdult } from "./age";
+import { docFromPlainText, parseRichDoc } from "./rich-text";
 import {
   CONSENT_TYPES,
   PRIVACY_REQUEST_TYPES,
@@ -32,13 +33,36 @@ export const profileInputSchema = z.object({
     .regex(/^[a-z0-9-]*$/)
     .optional()
     .transform((v) => (v ? v : null)),
-  bio: trimmed(20, 600, "Biyografi").refine(noHtml, "HTML karakterleri kullanılamaz"),
+  /** Zengin biyografi (Tiptap JSON). Verilmezse düz `bio` metninden üretilir. */
+  bioDoc: z.unknown().optional(),
+  bio: z.string().trim().max(20_000).optional(),
   interestIds: z.array(z.string().min(1)).max(8, "En fazla 8 ilgi alanı seçilebilir").default([]),
   seoTitle: z.string().trim().max(70).optional().transform((v) => v || null),
   seoDescription: z.string().trim().max(160).optional().transform((v) => v || null),
   noindex: z.boolean().default(false),
+}).transform((v, ctx) => {
+  // Biyografi: HTML yok; katı JSON şeması + yapısal sınırlar (bkz. domain/rich-text.ts)
+  const parsed = v.bioDoc != null && v.bioDoc !== "" ? parseRichDoc(v.bioDoc) : null;
+  if (parsed && !parsed.ok) {
+    ctx.addIssue({ code: "custom", path: ["bio"], message: parsed.error });
+    return z.NEVER;
+  }
+  const doc = parsed?.ok ? parsed.doc : docFromPlainText(v.bio ?? "");
+  const plain = parsed?.ok ? parsed.plainText : (v.bio ?? "").trim();
+  if (plain.length < 20) {
+    ctx.addIssue({ code: "custom", path: ["bio"], message: "Biyografi en az 20 karakter olmalı" });
+    return z.NEVER;
+  }
+  if (/[<>]/.test(plain) && !parsed) {
+    ctx.addIssue({ code: "custom", path: ["bio"], message: "HTML karakterleri kullanılamaz" });
+    return z.NEVER;
+  }
+  const { bioDoc: _drop, ...rest } = v;
+  void _drop;
+  return { ...rest, bio: plain, bioDoc: doc };
 });
-export type ProfileInput = z.infer<typeof profileInputSchema>;
+export type ProfileInput = z.output<typeof profileInputSchema>;
+export type ProfileFormInput = z.input<typeof profileInputSchema>;
 
 export const reportInputSchema = z.object({
   profileId: z.string().min(1),

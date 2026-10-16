@@ -1,5 +1,6 @@
 import "server-only";
 import { DEFAULT_PLANS } from "@/domain/subscriptions";
+import { docFromPlainText, docToPlainText, type RichDoc } from "@/domain/rich-text";
 import { slugifyTr } from "@/domain/text";
 import type {
   Admin,
@@ -8,7 +9,7 @@ import type {
   ModerationReport,
   Profile,
   ProfileConsent,
-  ProfileImage,
+  ProfileMedia,
   SeoPage,
   Subscription,
   VerificationRecord,
@@ -77,6 +78,51 @@ const PEOPLE: SeedPerson[] = [
   ["Arşiv Örnek", 35, "konak", 1990, "Profil sahibinin talebiyle arşivlenmiş örnek profil.", [5]],
 ];
 
+/** Uzun biçimli zengin biyografi örnekleri (sentetik). */
+const LONG_BIOS: Record<string, RichDoc> = {
+  Deniz: {
+    type: "doc",
+    content: [
+      { type: "paragraph", content: [{ type: "text", text: "Moda sahilinde akşam yürüyüşlerini ve küçük plak dükkânlarını seviyorum. Hafta sonu kitap kulübüne katılacak yeni arkadaşlar arıyorum." }] },
+      { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Bir hafta sonum" }] },
+      { type: "paragraph", content: [
+        { type: "text", text: "Cumartesi sabahları " },
+        { type: "text", text: "Kadıköy çarşısında", marks: [{ type: "italic" }] },
+        { type: "text", text: " kahvaltıyla başlıyor; öğleden sonra sahafları dolaşıp akşam küçük bir caz kulübünde bitiyor. Pazar günleri kitap kulübümüz Moda'daki bir kafede buluşuyor." },
+      ] },
+      { type: "heading", attrs: { level: 3 }, content: [{ type: "text", text: "Son okuduklarım" }] },
+      { type: "bulletList", content: [
+        { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Sait Faik'in öyküleri — adaları ve balıkçıları yeniden keşfettim." }] }] },
+        { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Bir şehir tarihi kitabı: İstanbul'un semt semt değişimi." }] }] },
+        { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Caz tarihi üzerine bir deneme seçkisi." }] }] },
+      ] },
+      { type: "blockquote", content: [{ type: "paragraph", content: [{ type: "text", text: "Bir şehri tanımanın en iyi yolu, onu birlikte yürüyebileceğin insanları tanımak." }] }] },
+      { type: "paragraph", content: [{ type: "text", text: "Kulübe katılmak isteyen herkes için kural basit: her ay bir kitap, her buluşmada bir öneri. Okuma hızı ya da tür fark etmez; önemli olan sohbet." }] },
+    ],
+  },
+  Ozan: {
+    type: "doc",
+    content: [
+      { type: "paragraph", content: [{ type: "text", text: "Yazılım geliştiriciyim; hafta sonları kamp ve doğa yürüyüşüne kaçıyorum. Yeni rotalar önerebilecek arkadaşlar arıyorum." }] },
+      { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Favori rotalar" }] },
+      { type: "orderedList", attrs: { start: 1 }, content: [
+        { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Belgrad Ormanı sabah turu — 12 km, kolay." }] }] },
+        { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Kaz Dağları iki günlük kamp — orta zorlukta." }] }] },
+        { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Likya Yolu'nun Faralya–Kabak bölümü." }] }] },
+      ] },
+      { type: "paragraph", content: [
+        { type: "text", text: "Ekipman konusunda " },
+        { type: "text", text: "minimalist", marks: [{ type: "bold" }] },
+        { type: "text", text: " olmayı seviyorum: hafif çadır, tek tencere, iyi bir kitap. Rota planlamayı ve harita okumayı öğretmekten keyif alırım." },
+      ] },
+      { type: "horizontalRule" },
+      { type: "paragraph", content: [{ type: "text", text: "Kamp kurallarımız için topluluk sayfasına göz atabilirsiniz: " }, { type: "text", text: "topluluk kuralları", marks: [{ type: "link", attrs: { href: "/guvenlik" } }] }, { type: "text", text: "." }] },
+    ],
+  },
+};
+
+const VIDEO_FOR: Record<string, number> = { Deniz: 1, Ozan: 2, Ada: 3, Mert: 1 };
+
 let seed = 42;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const id = (prefix: string, n: number) => `${prefix}-${String(n).padStart(4, "0")}`;
@@ -86,7 +132,7 @@ export type DemoStore = {
   adminSecrets: Map<string, { passwordHash: string; totpSecret: string | null }>;
   interests: Interest[];
   profiles: Profile[];
-  images: ProfileImage[];
+  media: ProfileMedia[];
   consents: ProfileConsent[];
   verifications: VerificationRecord[];
   reports: ModerationReport[];
@@ -98,7 +144,6 @@ export type DemoStore = {
   seo: SeoPage[];
   settings: import("@/domain/types").SiteSettings;
   views: Map<string, number>;
-  files: Map<string, { data: Buffer; contentType: string }>;
   privateFiles: Map<string, { data: Buffer; contentType: string }>;
   counter: number;
 };
@@ -118,7 +163,7 @@ export function createDemoStore(now: Date): DemoStore {
   const plans: MembershipPlan[] = DEFAULT_PLANS.map((p, i) => ({ ...p, id: id("plan", i + 1) }));
 
   const profiles: Profile[] = [];
-  const images: ProfileImage[] = [];
+  const media: ProfileMedia[] = [];
   const consents: ProfileConsent[] = [];
   const verifications: VerificationRecord[] = [];
   const subscriptions: Subscription[] = [];
@@ -142,7 +187,8 @@ export function createDemoStore(now: Date): DemoStore {
       birthDate: `${birthYear}-${String(1 + (n % 12)).padStart(2, "0")}-${String(1 + (n % 27)).padStart(2, "0")}`,
       provincePlate: plate,
       districtSlug: district,
-      bio,
+      bio: LONG_BIOS[nickname] ? docToPlainText(LONG_BIOS[nickname]) : bio,
+      bioDoc: LONG_BIOS[nickname] ?? docFromPlainText(bio),
       interestIds: interestIdx.map((k) => interests[k].id),
       status,
       moderationStatus: status === "published" || status === "archived" ? "approved" : "pending",
@@ -159,24 +205,67 @@ export function createDemoStore(now: Date): DemoStore {
       updatedAt: iso(-30 + (i % 20)),
     });
 
-    // Galeri: kapakta soyut portre, ardından portre ve sahne karışımı (3–8 görsel)
-    const imageCount = 3 + Math.floor(rnd() * 6);
+    // Galeri: kapakta soyut portre, ardından portre ve sahne karışımı (3–10 görsel)
+    const approved = status !== "in_review" && status !== "draft";
+    const imageCount = 3 + Math.floor(rnd() * 8);
+    const mediaBase = (k: number) => ({
+      profileId: pid,
+      status: "ready" as const,
+      thumbPath: null,
+      publicPaths: [],
+      bytes: 180_000 + k * 1000,
+      durationSeconds: null,
+      position: k,
+      isCover: k === 0,
+      rightsConfirmed: approved,
+      ownershipSource: approved ? ("owner" as const) : null,
+      ownershipNote: approved ? "Profil sahibinin kendi çekimi (demo)" : null,
+      rightsConfirmedBy: approved ? adminId : null,
+      rightsConfirmedAt: approved ? created : null,
+      moderation: approved ? ("approved" as const) : ("pending" as const),
+      moderatedBy: approved ? adminId : null,
+      moderatedAt: approved ? created : null,
+      sha256: null,
+      dhash: null,
+      failureReason: null,
+      createdAt: created,
+    });
     for (let k = 0; k < imageCount; k++) {
       const portrait = k === 0 || k % 3 === 0;
-      const file = portrait ? `portrait-${((n * 7 + k) % 30) + 1}.webp` : `scene-${((n * 5 + k) % 24) + 1}.webp`;
       const sceneIndex = ((n * 5 + k) % 24) + 1;
+      const file = portrait ? `portrait-${((n * 7 + k) % 30) + 1}.webp` : `scene-${sceneIndex}.webp`;
       const landscape = !portrait && sceneIndex % 3 !== 0;
-      images.push({
-        id: id("img", images.length + 1),
-        profileId: pid,
+      media.push({
+        ...mediaBase(k),
+        id: id("img", media.length + 1),
+        kind: "image",
         storagePath: `demo/${file}`,
-        url: `/demo/${file}`,
+        // Demo dosyaları zaten statik olarak sunulur; yalnızca yayındaki profillerde kamu adresi atanır
+        publicUrl: status === "published" ? `/demo/${file}` : null,
+        publicPosterUrl: null,
+        mimeType: "image/webp",
         alt: portrait ? `${nickname} için sentetik, soyut portre görseli` : `${nickname} profilinde sentetik manzara görseli`,
         width: portrait ? 1200 : landscape ? 1600 : 1200,
         height: portrait ? 1500 : landscape ? 1200 : 1600,
-        position: k,
-        rightsConfirmed: status !== "in_review",
-        createdAt: created,
+      });
+    }
+    const v = VIDEO_FOR[nickname];
+    if (v) {
+      media.push({
+        ...mediaBase(imageCount),
+        isCover: false,
+        id: id("vid", media.length + 1),
+        kind: "video",
+        storagePath: `demo/video-${v}.webm`,
+        thumbPath: `demo/video-${v}-poster.webp`,
+        publicUrl: status === "published" ? `/demo/video-${v}.webm` : null,
+        publicPosterUrl: status === "published" ? `/demo/video-${v}-poster.webp` : null,
+        mimeType: "video/webm",
+        bytes: 600_000,
+        durationSeconds: 6,
+        alt: `${nickname} profilinde sentetik, soyut kısa video`,
+        width: 720,
+        height: 900,
       });
     }
 
@@ -311,7 +400,7 @@ export function createDemoStore(now: Date): DemoStore {
     adminSecrets: new Map(),
     interests,
     profiles,
-    images,
+    media,
     consents,
     verifications,
     reports,
@@ -328,7 +417,6 @@ export function createDemoStore(now: Date): DemoStore {
       reportsEnabled: true,
     },
     views: seedViews(profiles, now),
-    files: new Map(),
     privateFiles: new Map(),
     counter: 10_000,
   };

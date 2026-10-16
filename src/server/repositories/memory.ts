@@ -41,7 +41,7 @@ function project(p: Profile, now: Date): PublicProfile | null {
   const sub = subs.sort((a, b) => b.endsAt.localeCompare(a.endsAt))[0];
   return toPublicProfile({
     profile: p,
-    images: s.images.filter((i) => i.profileId === p.id),
+    media: s.media.filter((i) => i.profileId === p.id),
     interests: s.interests,
     verifications: s.verifications.filter((v) => v.profileId === p.id),
     subscription: sub,
@@ -162,18 +162,20 @@ export function createMemoryRepository(): Repository {
     async deleteProfile(id) {
       const s = store();
       s.profiles = s.profiles.filter((p) => p.id !== id);
-      s.images = s.images.filter((i) => i.profileId !== id);
+      s.media = s.media.filter((i) => i.profileId !== id);
       s.consents = s.consents.filter((c) => c.profileId !== id);
       s.verifications = s.verifications.filter((v) => v.profileId !== id);
       s.subscriptions = s.subscriptions.filter((x) => x.profileId !== id);
       for (const k of [...s.views.keys()]) if (k.startsWith(`${id}|`)) s.views.delete(k);
     },
 
-    async listImages(profileId) {
-      return clone(store().images.filter((i) => i.profileId === profileId)).sort((a, b) => a.position - b.position);
+    async listMedia(profileId) {
+      return clone(store().media.filter((m) => m.profileId === profileId)).sort((a, b) => a.position - b.position);
     },
-    async listAllImages() {
-      return clone(store().images);
+    async listAllMedia(filter) {
+      return clone(store().media.filter((m) => (!filter?.moderation || m.moderation === filter.moderation) && (!filter?.kind || m.kind === filter.kind))).sort(
+        (a, b) => b.createdAt.localeCompare(a.createdAt),
+      );
     },
     async listAllConsents() {
       return clone(store().consents);
@@ -181,28 +183,24 @@ export function createMemoryRepository(): Repository {
     async listAllVerifications() {
       return clone(store().verifications);
     },
-    async addImage(input) {
-      const row = { ...input, id: nextId("img"), createdAt: new Date().toISOString() };
-      store().images.push(row);
+    async getMedia(id) {
+      return clone(store().media.find((m) => m.id === id) ?? null);
+    },
+    async addMedia(input) {
+      const row = { ...input, id: nextId("med"), createdAt: new Date().toISOString() };
+      store().media.push(row);
       return clone(row);
     },
-    async updateImage(id, patch) {
-      const img = must(store().images.find((i) => i.id === id), "Görsel");
-      Object.assign(img, patch);
-      return clone(img);
+    async updateMedia(id, patch) {
+      const m = must(store().media.find((x) => x.id === id), "Medya");
+      Object.assign(m, patch);
+      return clone(m);
     },
-    async deleteImage(id) {
+    async deleteMedia(id) {
       const s = store();
-      const img = s.images.find((i) => i.id === id) ?? null;
-      s.images = s.images.filter((i) => i.id !== id);
-      return clone(img);
-    },
-    async storeImageFile(path, data, contentType) {
-      store().files.set(path, { data, contentType });
-      return { url: `/media/${path}` };
-    },
-    async removeImageFile(path) {
-      store().files.delete(path);
+      const m = s.media.find((x) => x.id === id) ?? null;
+      s.media = s.media.filter((x) => x.id !== id);
+      return clone(m);
     },
     async storePrivateDocument(path, data, contentType) {
       store().privateFiles.set(path, { data, contentType });
@@ -397,8 +395,4 @@ export function createMemoryRepository(): Repository {
   };
 }
 
-/** Testler için: dosya sunumu (demo modunda yüklenen görseller). */
-export function readDemoFile(path: string) {
-  return store().files.get(path) ?? null;
-}
 
