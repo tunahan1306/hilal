@@ -4,11 +4,13 @@ import { CityPicker } from "@/components/site/city-picker";
 import { EmptyState } from "@/components/site/empty-state";
 import { JsonLd } from "@/components/site/json-ld";
 import { ProfileGrid } from "@/components/site/profile-grid";
-import { getProvince, listProvinces, POPULAR_PROVINCE_SLUGS } from "@/domain/locations";
+import { POPULAR_PROVINCE_SLUGS } from "@/domain/location-directory";
+import { getLocationDirectory } from "@/server/queries/locations";
 import { SITE, siteUrl } from "@/lib/site";
 import { getFeaturedProfiles, getLocationCounts, profileCountFor } from "@/server/queries/public";
 
 export default async function HomePage() {
+  const { getProvince, listProvinces } = await getLocationDirectory();
   const [featured, counts] = await Promise.all([getFeaturedProfiles(8), getLocationCounts()]);
   const cities = listProvinces().map((p) => ({ slug: p.slug, name: p.name, plate: p.plate, count: profileCountFor(counts, p.plate) }));
   const popular = POPULAR_PROVINCE_SLUGS.map((slug) => getProvince(slug)!);

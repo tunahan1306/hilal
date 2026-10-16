@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { AGE_COOKIE, AGE_COOKIE_VALUE } from "@/domain/age-confirmation";
-import { getDistrict, getProvince } from "@/domain/locations";
+import { validLocation } from "@/server/location-path";
 
 /**
  * Yalnızca iyimser kontrol: yönetim sayfalarına oturum çerezi olmadan gelen
@@ -15,7 +15,8 @@ export async function proxy(request: NextRequest) {
   // Geçersiz il/ilçe slug'ları için gerçek 404 (akış başlamadan önce).
   if (pathname.startsWith("/sehir/")) {
     const [, , il, ilce, ...rest] = pathname.split("/");
-    const valid = rest.length === 0 && getProvince(il ?? "") && (!ilce || getDistrict(il!, ilce));
+    const valid = rest.length === 0 ? await validLocation(il ?? "", ilce) : false;
+    if (valid === null) return new NextResponse("Konum bilgileri şu anda yüklenemiyor.", { status: 503, headers: { "Cache-Control": "no-store", "X-Robots-Tag": "noindex" } });
     if (!valid) {
       // rewrite() durum kodunu korumadığından statik 404 sayfası 404 koduyla döndürülür.
       const page = await fetch(new URL("/bulunamadi", request.url), { headers: { accept: "text/html" } });

@@ -35,8 +35,11 @@ describe.skipIf(!enabled)("Supabase repository (entegrasyon)", () => {
   });
 
   afterAll(async () => {
-    for (const id of created) await getRepository().deleteProfile(id).catch(() => {});
-    if (admin) await service!.auth.admin.deleteUser(admin.id);
+    for (const id of created) await profiles.deleteProfilePermanently(admin, id, "entegrasyon temizliği").catch(() => {});
+    if (admin) {
+      const result = await service!.auth.admin.deleteUser(admin.id);
+      if (result.error) throw result.error;
+    }
   });
 
   const input = {

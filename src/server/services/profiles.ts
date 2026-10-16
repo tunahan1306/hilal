@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { normalizeWhatsAppPhone } from "@/domain/whatsapp";
 import { isAdult } from "@/domain/age";
 import { scanProfileContent } from "@/domain/content-policy";
-import { getProvinceByPlate, listDistricts } from "@/domain/locations";
+import { getLocationDirectory } from "../queries/locations";
 import { activeConsent, canTransition, evaluatePublishReadiness, PROFILE_STATUS_LABELS } from "@/domain/publishing";
 import type { ProfileInput } from "@/domain/schemas";
 import { slugifyTr } from "@/domain/text";
@@ -21,7 +21,8 @@ function verificationRetentionDays(): number {
   return Number.isFinite(n) && n > 0 ? n : 30;
 }
 
-function assertLocation(input: Pick<ProfileInput, "provincePlate" | "districtSlug">) {
+async function assertLocation(input: Pick<ProfileInput, "provincePlate" | "districtSlug">) {
+  const { getProvinceByPlate, listDistricts } = await getLocationDirectory();
   const province = getProvinceByPlate(input.provincePlate);
   if (!province) throw new DomainError("Geçersiz il");
   if (input.districtSlug && !listDistricts(province.plate).some((d) => d.slug === input.districtSlug)) {
@@ -66,7 +67,7 @@ function whatsAppFields(input: ProfileInput, current?: Profile) {
 }
 
 export async function createProfile(actor: Admin, input: ProfileInput): Promise<Profile> {
-  assertLocation(input);
+  await assertLocation(input);
   await assertInterests(input.interestIds);
   const slug = `${slugifyTr(input.nickname) || "profil"}-${randomBytes(3).toString("hex")}`;
   const profile = await getRepository().createProfile({
@@ -96,7 +97,7 @@ export async function createProfile(actor: Admin, input: ProfileInput): Promise<
  * düşer ve yayından kalkar: onaylanmamış içerik hiçbir zaman yayında kalmaz.
  */
 export async function updateProfile(actor: Admin, id: string, input: ProfileInput): Promise<{ profile: Profile; requeued: boolean }> {
-  assertLocation(input);
+  await assertLocation(input);
   await assertInterests(input.interestIds);
   const current = await mustGetProfile(id);
   if (current.status === "archived") throw new DomainError("Arşivlenmiş profil düzenlenemez; önce taslağa alın");
@@ -324,7 +325,8 @@ export async function exportProfileData(actor: Admin, profileId: string) {
   };
 }
 
-export function provinceLabel(p: Pick<Profile, "provincePlate" | "districtSlug">): string {
+export async function provinceLabel(p: Pick<Profile, "provincePlate" | "districtSlug">): Promise<string> {
+  const { getProvinceByPlate, listDistricts } = await getLocationDirectory();
   const province = getProvinceByPlate(p.provincePlate);
   if (!province) return "—";
   const district = p.districtSlug ? listDistricts(province.plate).find((d) => d.slug === p.districtSlug) : undefined;

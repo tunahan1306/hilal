@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/admin/page-header";
 import { SeoPageForm } from "@/components/admin/simple-forms";
 import { StatusBadge } from "@/components/admin/status-badge";
-import { getProvince, getProvinceByPlate } from "@/domain/locations";
+import { getLocationDirectory } from "@/server/queries/locations";
 import { shouldIndexListing } from "@/domain/seo";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
@@ -12,6 +12,7 @@ export const metadata: Metadata = { title: "SEO" };
 
 export default async function SeoPage() {
   await requireAdmin();
+  const { getProvince, getProvinceByPlate } = await getLocationDirectory();
   const repo = getRepository();
   const [pages, counts] = await Promise.all([repo.listSeoPages(), repo.countPublishedByLocation()]);
   const countFor = (path: string) => {

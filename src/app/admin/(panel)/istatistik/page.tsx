@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/admin/page-header";
 import { ViewsChart } from "@/components/admin/views-chart";
-import { getProvinceByPlate } from "@/domain/locations";
+import { getLocationDirectory } from "@/server/queries/locations";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
 
@@ -9,6 +9,7 @@ export const metadata: Metadata = { title: "İstatistikler" };
 
 export default async function StatsPage() {
   await requireAdmin();
+  const { getProvinceByPlate } = await getLocationDirectory();
   const repo = getRepository();
   const [views30, counts] = await Promise.all([repo.getDailyViews(30), repo.countPublishedByLocation()]);
   const cities = counts.filter((c) => c.districtSlug === null).sort((a, b) => b.count - a.count).slice(0, 10);

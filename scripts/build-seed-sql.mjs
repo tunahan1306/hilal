@@ -6,10 +6,10 @@ const data = JSON.parse(await readFile(new URL("../src/data/locations.json", imp
 const q = (s) => `'${String(s).replace(/'/g, "''")}'`;
 const lines = ["-- Otomatik üretildi: node scripts/build-seed-sql.mjs", "begin;"];
 
-lines.push("insert into cities (plate, name, slug, region, is_metropolitan, population, lat, lng) values");
+lines.push("insert into cities (plate, name, slug, region, is_metropolitan, is_coastal, population, lat, lng) values");
 lines.push(
   data.provinces
-    .map((p) => `(${p.plate}, ${q(p.name)}, ${q(p.slug)}, ${q(p.region)}, ${p.metropolitan}, ${p.population}, ${p.lat}, ${p.lng})`)
+    .map((p) => `(${p.plate}, ${q(p.name)}, ${q(p.slug)}, ${q(p.region)}, ${p.metropolitan}, ${p.coastal}, ${p.population}, ${p.lat}, ${p.lng})`)
     .join(",\n") + "\non conflict (plate) do nothing;",
 );
 lines.push("insert into districts (city_id, name, slug, population)");

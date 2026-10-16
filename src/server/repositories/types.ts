@@ -1,3 +1,4 @@
+import type { LocationData } from "@/domain/location-directory";
 import type { ProfileFilters } from "@/domain/filters";
 import type {
   Admin,
@@ -45,6 +46,7 @@ export type DailyViews = { day: string; views: number };
  */
 export interface Repository {
   readonly kind: "supabase" | "memory";
+  getLocations(): Promise<LocationData>;
 
   // Kamuya açık okuma (yalnızca yayındaki profiller)
   searchPublicProfiles(filters: ProfileFilters, opts: { limit: number; offset: number; cursor?: { publishedAt: string; id: string } }): Promise<SearchResult>;

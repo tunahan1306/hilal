@@ -76,7 +76,8 @@ export async function getLocationSummary(il: string, ilce?: string) {
   cacheLife("hours");
   cacheTag(TAGS.public);
   const counts = await getLocationCounts();
-  const { getProvince, listDistricts } = await import("@/domain/locations");
+  const { getLocationDirectory } = await import("./locations");
+  const { getProvince, listDistricts } = await getLocationDirectory();
   const province = getProvince(il);
   const total = province ? profileCountFor(counts, province.plate, ilce ?? null) : 0;
   return { total, districts: province ? listDistricts(province.plate).map((d) => ({ slug: d.slug, name: d.name, count: profileCountFor(counts, province.plate, d.slug) })).filter((d) => d.count > 0) : [] };

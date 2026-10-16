@@ -1,3 +1,4 @@
+import { getLocations } from "@/server/queries/locations";
 import { previewUrls } from "@/server/services/media";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -38,6 +39,7 @@ const MOD_LABEL = { pending: "Bekliyor", approved: "Onaylandı", rejected: "Redd
 
 export default async function ProfileDetailPage({ params }: PageProps<"/admin/profiller/[id]">) {
   await requireAdmin();
+  const locations = await getLocations();
   const { id } = await params;
   const repo = getRepository();
   if (!(await repo.getProfile(id))) notFound();
@@ -81,7 +83,7 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
     <>
       <PageHeader
         title={profile.nickname}
-        description={`${provinceLabel(profile)} · /profil/${profile.slug}`}
+        description={`${await provinceLabel(profile)} · /profil/${profile.slug}`}
         actions={
           <>
             <StatusBadge tone={PROFILE_STATUS_TONE[s]} className="self-center">{PROFILE_STATUS_LABELS[s]}</StatusBadge>
@@ -155,7 +157,7 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
 
         <TabsContent value="genel" className="rounded-lg border border-hairline p-5">
           {s === "archived" ? <p className="mb-4 text-sm text-muted-foreground">Arşivlenmiş profil düzenlenemez; önce taslağa alın.</p> : null}
-          <ProfileForm
+          <ProfileForm locations={locations}
             action={updateProfileAction.bind(null, id)}
             interests={interests}
             submitLabel="Kaydet"

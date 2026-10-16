@@ -59,3 +59,16 @@ Uygulama standart Next.js'tir (`next build && next start`, Node 24). Supabase ye
 - `src/server/repositories/types.ts` arayüzü yeni bir uygulamayla karşılanmalıdır (iş mantığı değişmez).
 Vercel dışında uygulamayı X-Forwarded-For başlığını ezen/ekleyen bir ters vekil arkasında çalıştırın veya `CLIENT_IP_HEADER` tanımlayın; aksi halde IP tabanlı oran sınırları atlatılabilir.
 Çok instance'lı kurulumda Next.js `cacheHandlers` ile paylaşımlı önbellek ve paylaşımlı rate-limit deposu yapılandırılmalıdır.
+
+## Etkin Hilal ortamı
+
+- Vercel: `hilal` / `hilal-snowy.vercel.app`, Next.js, Node 24, Webpack build.
+- Supabase: `hilal` / `yqlnjxnxwbbkxrtawxcx`, Frankfurt.
+- Konum kataloğu ve paketler `supabase/seed.sql` ile veritabanına yüklenir; canlı ortamda sentetik profil yüklenmez.
+- Vercel production, Supabase değişkenleri eksikse demo moduna geçmez; başlangıcı reddeder.
+- Konum sayfaları, seçimler, sitemap ve yönetim formları veritabanındaki konum kataloğunu kullanır. Katalog bir saat önbelleklenir.
+- Auth: `[auth].enable_signup=false`; email sağlayıcısı açık kalmalıdır (`[auth.email].enable_signup=true`). İkinci ayarı kapatmak mevcut yöneticilerin e-posta girişini de kapatır.
+- Denetim kayıtları değişmezdir; silinen yönetici hesaplarının tarihsel UUID'si denetim kaydında korunur.
+- Yerel `.env.deploy.local` dağıtım sırlarını içerir; Git ve Vercel kaynak yüklemelerinden hariç tutulur. Veritabanı şifresi uygulama ortamına yüklenmez.
+- Gerçek Supabase tarayıcı kontrolleri: `E2E_SUPABASE=1` ve gerekli Supabase ortam değişkenleriyle `npx playwright test tests/e2e/database-discovery.spec.ts tests/e2e/supabase-auth.spec.ts --project=desktop`.
+- Canlı tarayıcı kontrolleri için `E2E_BASE_URL=https://hilal-snowy.vercel.app` eklenebilir; yerel sunucu açılmaz.

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Users } from "lucide-react";
 import { hasActiveFilters, type ProfileFilters } from "@/domain/filters";
-import { getProvince, listDistricts, listProvinces } from "@/domain/locations";
+import { getLocationDirectory } from "@/server/queries/locations";
 import { Button } from "@/components/ui/button";
 import { discoverProfiles } from "@/server/queries/public";
 import { EmptyState } from "./empty-state";
@@ -11,6 +11,7 @@ import { ProfileGridSkeleton } from "./profile-grid";
 
 /** Keşfet, il ve ilçe sayfalarının ortak listeleme bölümü. */
 export async function ProfileListing({ filters, mode }: { filters: ProfileFilters; mode: FilterMode }) {
+  const { getProvince, listDistricts, listProvinces } = await getLocationDirectory();
   filters = { ...filters, ilgi: [], sayfa: 1 };
   const result = await discoverProfiles(filters);
   const province = filters.il ? getProvince(filters.il) : undefined;

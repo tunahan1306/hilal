@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
-import { listProvinces } from "@/domain/locations";
+import { getLocationDirectory } from "@/server/queries/locations";
 import { getLocationCounts, profileCountFor } from "@/server/queries/public";
 
 export const metadata: Metadata = {
@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CitiesPage() {
+  const { listProvinces } = await getLocationDirectory();
   const counts = await getLocationCounts();
   const byRegion = new Map<string, ReturnType<typeof listProvinces>>();
   for (const p of listProvinces()) byRegion.set(p.region, [...(byRegion.get(p.region) ?? []), p]);

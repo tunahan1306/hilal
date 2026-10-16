@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { LocationPage, LocationPageSkeleton } from "@/components/site/location-page";
-import { getDistrict, getProvince, getProvinceByPlate } from "@/domain/locations";
+import { getLocationDirectory } from "@/server/queries/locations";
 import { getLocationCounts } from "@/server/queries/public";
 import { locationMetadata } from "@/server/queries/location-seo";
 
 /** Yalnızca profil bulunan ilçeler önceden üretilir; diğerleri ilk ziyarette render edilir. */
 export async function generateStaticParams() {
+  const { getProvinceByPlate } = await getLocationDirectory();
   const counts = await getLocationCounts();
   const params = counts
     .filter((c) => c.districtSlug)
@@ -16,6 +17,7 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params, searchParams }: PageProps<"/sehir/[il]/[ilce]">): Promise<Metadata> {
+  const { getProvince, getDistrict } = await getLocationDirectory();
   const { il, ilce } = await params;
   const province = getProvince(il);
   const district = getDistrict(il, ilce);
@@ -32,6 +34,7 @@ export default function DistrictPage({ params, searchParams }: PageProps<"/sehir
 }
 
 async function DistrictContent({ params, searchParams }: PageProps<"/sehir/[il]/[ilce]">) {
+  const { getProvince, getDistrict } = await getLocationDirectory();
   const { il, ilce } = await params;
   const province = getProvince(il);
   const district = getDistrict(il, ilce);

@@ -1,6 +1,5 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { getProvinceByPlate } from "@/domain/locations";
 import { effectiveStatus, isExpiringSoon } from "@/domain/subscriptions";
 import type {
   Admin,
@@ -295,7 +294,7 @@ async function hydratePublic(rows: Row[]): Promise<PublicProfile[]> {
       age: r.age as number,
       province: {
         plate: r.city_plate as number,
-        name: (r.city_name as string) ?? getProvinceByPlate(r.city_plate as number)?.name ?? "",
+        name: (r.city_name as string) ?? "",
         slug: r.city_slug as string,
       },
       district: r.district_slug ? { name: r.district_name as string, slug: r.district_slug as string } : null,
@@ -349,6 +348,18 @@ async function setInterests(profileId: string, interestIds: string[]): Promise<v
 export function createSupabaseRepository(): Repository {
   return {
     kind: "supabase",
+    async getLocations() {
+      const cities = check(await anon().from("cities").select("*").order("plate")) as Row[];
+      const plates = new Map(cities.map((r) => [r.id, Number(r.plate)]));
+      const districts: import("@/domain/locations").District[] = [];
+      for (let from = 0; ; from += 500) {
+        const batch = check(await anon().from("districts").select("city_id,name,slug,population").order("id").range(from, from + 499)) as Row[];
+        districts.push(...batch.map((r) => ({ plate: plates.get(r.city_id)!, name: String(r.name), slug: String(r.slug), population: Number(r.population ?? 0) })));
+        if (batch.length < 500) break;
+      }
+      return { provinces: cities.map((r) => ({ plate: Number(r.plate), name: String(r.name), slug: String(r.slug), region: String(r.region), metropolitan: Boolean(r.is_metropolitan), coastal: Boolean(r.is_coastal), population: Number(r.population ?? 0), lat: Number(r.lat ?? 0), lng: Number(r.lng ?? 0) })), districts };
+    },
+
 
     async searchPublicProfiles(filters, { limit, offset, cursor }) {
       let ids: string[] | null = null;

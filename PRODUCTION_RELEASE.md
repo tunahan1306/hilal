@@ -1,0 +1,80 @@
+# Hilal üretim yayını — 16 Ekim 2026
+
+Canlı adres: https://hilal-snowy.vercel.app
+
+Vercel projesi: hilal (`prj_twEinRQ0zTn6xkIQyevdPXJfMyCI`). Supabase: hilal (`yqlnjxnxwbbkxrtawxcx`, eu-central-1). GitHub bağlantısı: tunahan1306/hilal, main.
+
+## Sonuç
+
+- 5 migration uygulandı; 81 il, 973 ilçe ve 3 paket veritabanında.
+- Yayında demo profil yok. Test sonrası profil, yönetici ve storage nesnesi sayıları sıfır.
+- Konum kataloğu, filtreler, sitemap ve yönetim konum formları Supabase'den okunur. Üretimde bellek deposuna sessiz dönüş yasak.
+- Genel kullanıcı kaydı kapalı, e-posta giriş sağlayıcısı ve TOTP açık.
+- Yönetici silme, değişmez denetim kaydındaki tarihsel actor UUID'sini korur; RLS ve değişmezlik tetikleyicisi değişmedi.
+- Uygulama sırları Vercel ortamında; veritabanı parolası uygulamaya yüklenmedi.
+
+## Doğrulamalar
+
+- `npm run typecheck`, `npm run lint`: başarılı.
+- `npm test`: 84 başarılı.
+- Gerçek Supabase entegrasyonu: 3 başarılı (yayın, rıza, moderasyon, anonim erişim, storage ve hesap temizliği).
+- Gerçek Supabase yerel Playwright: 3 başarılı.
+- Canlı Vercel Playwright: 3 başarılı (360/390/768/1440 px, yatay taşma, Ataşehir canonical, yanlış il/ilçe 404/400, yaş kabulü/yenileme/gezinme, zorunlu TOTP ve AAL2).
+- Canlı yaş reddi, klavye ve Axe erişilebilirlik testi: 1 başarılı.
+- Gerçek Supabase ile yerel Webpack üretim derlemesi ve Vercel üretim derlemesi: başarılı.
+- `npm audit --omit=dev`: 0 açık. Geliştirme araçlarında braces zincirinden kaynaklı 9 high uyarısı var; önerilen zorunlu sürüm düşürmeleri uygulanmadı.
+- İlk Vercel denemesinde yeni testte eksik NODE_ENV tipi derlemeyi durdurdu; düzeltildi ve sonraki dağıtım başarılı.
+- İlk gerçek Auth kontrolünde email sağlayıcısı kapalıydı; global signup kapalı tutularak sağlayıcı açıldı ve MFA testleri geçti.
+- İlk canlı testte localhost alan adına ait test çerezi ve ekran geçişi beklemesi düzeltildi. Paralel test çalıştırmalarının çıktı dizini çakışması ayrı dizinle giderildi. Son canlı testler başarılı.
+
+## Sınırlar
+
+- Kalıcı yönetici hesabı için sahibinin e-posta adresi gerekli; geçici test hesapları silindi.
+- Gerçek profil henüz eklenmediği için canlı profil ekran görüntüsü yok; önceki tasarım QA'sındaki sentetik profil görüntüsü ayrı tutulur.
+- Yeni üretim ekran görüntüleri `artifacts/production/` altında.
+- Bu çalışmada tam demo E2E paketi tekrar çalıştırılmadı; önceki tasarım QA'sı 42 başarılı / 1 atlanmıştı. Güncel gerçek Supabase ve canlı kontroller yukarıda.
+
+## Değiştirilen dosyalar
+
+- `DEPLOYMENT.md`
+- `playwright.config.ts`
+- `scripts/build-seed-sql.mjs`
+- `src/app/(site)/page.tsx`
+- `src/app/(site)/sehir/[il]/[ilce]/page.tsx`
+- `src/app/(site)/sehir/[il]/page.tsx`
+- `src/app/(site)/sehirler/page.tsx`
+- `src/app/admin/(panel)/istatistik/page.tsx`
+- `src/app/admin/(panel)/layout.tsx`
+- `src/app/admin/(panel)/profiller/[id]/page.tsx`
+- `src/app/admin/(panel)/profiller/page.tsx`
+- `src/app/admin/(panel)/profiller/yeni/page.tsx`
+- `src/app/admin/(panel)/seo/page.tsx`
+- `src/app/api/discovery/route.ts`
+- `src/app/sitemap.ts`
+- `src/components/admin/profile-form.tsx`
+- `src/components/site/location-page.tsx`
+- `src/components/site/profile-listing.tsx`
+- `src/proxy.ts`
+- `src/server/env.ts`
+- `src/server/queries/public.ts`
+- `src/server/repositories/memory.ts`
+- `src/server/repositories/supabase.ts`
+- `src/server/repositories/types.ts`
+- `src/server/services/profiles.ts`
+- `supabase/seed.sql`
+- `test-results/.last-run.json`
+- `tests/e2e/supabase-auth.spec.ts`
+- `tests/integration/supabase.test.ts`
+- `vercel.json`
+- `vitest.integration.mts`
+- `.vercelignore`
+- `artifacts/production/age-gate.png`
+- `artifacts/production/district.png`
+- `artifacts/production/homepage.png`
+- `src/domain/location-directory.ts`
+- `src/server/location-path.ts`
+- `src/server/queries/locations.ts`
+- `supabase/migrations/20261019000001_location_catalog.sql`
+- `supabase/migrations/20261020000001_immutable_audit_actor.sql`
+- `tests/e2e/database-discovery.spec.ts`
+- `tests/unit/location-directory.test.ts`

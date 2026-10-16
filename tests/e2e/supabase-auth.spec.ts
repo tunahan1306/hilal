@@ -20,10 +20,13 @@ test("Supabase: zorunlu TOTP kurulumu ve AAL2 ile giriş", async ({ page }) => {
     await page.getByLabel("Şifre").fill(password);
     await page.getByRole("button", { name: "Giriş yap" }).click();
     await expect(page).toHaveURL(/adim=mfa-kurulum/);
+    await expect(page.locator("p.font-mono")).toBeVisible();
 
     // AAL1 oturumla panel erişilemez
     await page.goto("/admin");
     await expect(page).toHaveURL(/\/admin\/giris\?adim=mfa/);
+    await expect(page.getByRole("button", { name: "Doğrula" })).toBeVisible();
+    await page.waitForLoadState("load");
 
     await page.goto("/admin/giris?adim=mfa-kurulum");
     const secretText = page.locator("p.font-mono");

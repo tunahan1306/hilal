@@ -18,6 +18,7 @@ export function isDemoMode(): boolean {
  * yanlış yapılandırılmış bir canlı ortam sessizce sahte verilerle açılmaz.
  */
 export function assertDemoAllowed(): void {
+  if (isDemoMode() && process.env.VERCEL_ENV === "production") throw new Error("Vercel production için Supabase zorunludur; demo modu kapalıdır.");
   if (isDemoMode() && process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_MODE !== "true") {
     throw new Error(
       "Supabase yapılandırması eksik. Production'da demo modu için ALLOW_DEMO_MODE=true ayarlanmalı.",
@@ -45,6 +46,7 @@ export function productionConfigErrors(env: NodeJS.ProcessEnv = process.env): st
   const long = (k: string, min = 32) => (env[k]?.length ?? 0) >= min;
   const supabase = Boolean(env.NEXT_PUBLIC_SUPABASE_URL && env.NEXT_PUBLIC_SUPABASE_ANON_KEY && env.SUPABASE_SERVICE_ROLE_KEY);
   if (!long("IP_HASH_SALT")) errors.push("IP_HASH_SALT (≥32 karakter)");
+  if (env.VERCEL_ENV === "production" && !supabase) errors.push("Vercel production için Supabase zorunlu (demo yasak)");
   if (!supabase) {
     if (env.ALLOW_DEMO_MODE !== "true") errors.push("Supabase değişkenleri veya ALLOW_DEMO_MODE=true");
     else {

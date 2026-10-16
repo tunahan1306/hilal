@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { AGE_COOKIE, AGE_COOKIE_VALUE } from "@/domain/age-confirmation";
 import { decodeCursor } from "@/domain/discovery-cursor";
 import { parseFilters } from "@/domain/filters";
-import { getProvince, getDistrict } from "@/domain/locations";
+import { getLocationDirectory } from "@/server/queries/locations";
 import { discoverProfiles } from "@/server/queries/public";
 export async function GET(request: NextRequest) {
   const headers = { "Cache-Control": "private, no-store" };
   if (request.cookies.get(AGE_COOKIE)?.value !== AGE_COOKIE_VALUE) return NextResponse.json({ error: "Yaş onayı gerekli." }, { status: 403, headers });
+  const { getProvince, getDistrict } = await getLocationDirectory();
   const params = request.nextUrl.searchParams;
   if (params.has("il") && !getProvince(params.get("il")!)) return NextResponse.json({ error: "Geçersiz konum." }, { status: 400, headers });
   const filters = parseFilters(Object.fromEntries(params));

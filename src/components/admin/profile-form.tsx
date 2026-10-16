@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { scanProfileContent } from "@/domain/content-policy";
-import { listDistricts, listProvinces } from "@/domain/locations";
+import { createLocationDirectory, type LocationData } from "@/domain/location-directory";
 import { profileInputSchema } from "@/domain/schemas";
 import type { Interest } from "@/domain/types";
 
@@ -26,18 +26,21 @@ const NONE = "__none__";
 
 export function ProfileForm({
   action,
+  locations,
   interests,
   defaults,
   submitLabel,
 }: {
   action: (prev: ActionResult, fd: FormData) => Promise<ActionResult>;
+  locations: LocationData;
   interests: Interest[];
   defaults?: Partial<FormIn>;
   submitLabel: string;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const provinces = useMemo(() => listProvinces(), []);
+  const { listProvinces, listDistricts } = useMemo(() => createLocationDirectory(locations), [locations]);
+  const provinces = useMemo(() => listProvinces(), [listProvinces]);
   const form = useForm<FormIn, unknown, FormOut>({
     resolver: zodResolver(profileInputSchema),
     defaultValues: { nickname: "", birthDate: "", provincePlate: 0, districtSlug: "", bio: "", interestIds: [], seoTitle: "", seoDescription: "", noindex: false, ...defaults },
@@ -45,7 +48,7 @@ export function ProfileForm({
   });
   const { register, control, handleSubmit, setValue, formState } = form;
   const plate = Number(useWatch({ control, name: "provincePlate" }));
-  const districts = useMemo(() => (plate ? listDistricts(plate) : []), [plate]);
+  const districts = useMemo(() => (plate ? listDistricts(plate) : []), [plate, listDistricts]);
   const nickname = useWatch({ control, name: "nickname" });
   const bio = useWatch({ control, name: "bio" });
   const findings = useMemo(() => scanProfileContent({ nickname: nickname ?? "", bio: bio ?? "" }), [nickname, bio]);

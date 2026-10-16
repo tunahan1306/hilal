@@ -35,7 +35,7 @@ export default async function ProfilesPage({ searchParams }: PageProps<"/admin/p
   const consentsOf = byProfile(allConsents);
   const verificationsOf = byProfile(allVerifications);
   const imagesOf = byProfile(allImages);
-  const rows: ProfileRow[] = profiles.map((p) => {
+  const rows: ProfileRow[] = await Promise.all(profiles.map(async (p) => {
       const consents = consentsOf.get(p.id) ?? [];
       const verifications = verificationsOf.get(p.id) ?? [];
       const images = imagesOf.get(p.id) ?? [];
@@ -48,7 +48,7 @@ export default async function ProfilesPage({ searchParams }: PageProps<"/admin/p
         id: p.id,
         nickname: p.nickname,
         slug: p.slug,
-        location: provinceLabel(p),
+        location: await provinceLabel(p),
         age: ageOn(p.birthDate, now),
         status: p.status,
         moderation: p.moderationStatus,
@@ -58,7 +58,7 @@ export default async function ProfilesPage({ searchParams }: PageProps<"/admin/p
         updatedAt: p.updatedAt,
         updatedLabel: formatDate(p.updatedAt, { day: "numeric", month: "short", year: "numeric" }),
       };
-    });
+    }));
   return (
     <>
       <PageHeader

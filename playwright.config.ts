@@ -16,12 +16,12 @@ export default defineConfig({
   workers: 1, // Demo modu tek süreçte bellek içi veri kullanır.
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"]],
-  use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure", locale: "tr-TR", storageState: { cookies: [{ name: "hilal_adult", value: "declared-v1", domain: "localhost", path: "/", expires: -1, httpOnly: true, secure: false, sameSite: "Lax" }], origins: [] } },
+  use: { baseURL: process.env.E2E_BASE_URL ?? `http://localhost:${PORT}`, trace: "retain-on-failure", locale: "tr-TR", storageState: { cookies: [{ name: "hilal_adult", value: "declared-v1", domain: process.env.E2E_BASE_URL ? new URL(process.env.E2E_BASE_URL).hostname : "localhost", path: "/", expires: -1, httpOnly: true, secure: false, sameSite: "Lax" }], origins: [] } },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] }, testIgnore: /mobile\.spec/ },
     { name: "mobile", use: { ...devices["Pixel 7"] }, testMatch: /mobile\.spec/ },
   ],
-  webServer: {
+  webServer: process.env.E2E_BASE_URL ? undefined : {
     command: `npx next start -p ${PORT}`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: false,

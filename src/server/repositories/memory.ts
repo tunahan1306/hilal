@@ -1,6 +1,6 @@
 import "server-only";
 import type { ProfileFilters } from "@/domain/filters";
-import { getProvince } from "@/domain/locations";
+import { getProvince, listProvinces, listDistricts } from "@/domain/locations";
 import { toPublicProfile } from "@/domain/projection";
 import { effectiveStatus, isExpiringSoon } from "@/domain/subscriptions";
 import type { Profile, PublicProfile } from "@/domain/types";
@@ -65,6 +65,7 @@ function sortListing(a: PublicProfile, b: PublicProfile): number {
 export function createMemoryRepository(): Repository {
   return {
     kind: "memory",
+    async getLocations() { const provinces = listProvinces(); return { provinces, districts: provinces.flatMap((p) => listDistricts(p.plate)) }; },
 
     async searchPublicProfiles(filters: ProfileFilters, { limit, offset, cursor }) {
       const now = new Date();

@@ -77,7 +77,7 @@ async function NavWithBadges() {
 async function Palette() {
   await requireAdmin();
   const profiles = await getRepository().listProfiles();
-  return <CommandPalette profiles={profiles.map((p) => ({ id: p.id, name: p.nickname, meta: provinceLabel(p) }))} />;
+  return <CommandPalette profiles={await Promise.all(profiles.map(async (p) => ({ id: p.id, name: p.nickname, meta: await provinceLabel(p) })))} />;
 }
 
 async function AdminIdentity() {

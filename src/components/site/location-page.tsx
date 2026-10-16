@@ -1,7 +1,8 @@
+import { getLocationDirectory } from "@/server/queries/locations";
 import Link from "next/link";
 import { Suspense } from "react";
 import { parseFilters } from "@/domain/filters";
-import { listDistricts, type District, type Province } from "@/domain/locations";
+import type { District, Province } from "@/domain/locations";
 import { formatNumber } from "@/lib/site";
 import { getLocationSummary, getSeoPage } from "@/server/queries/public";
 import { Breadcrumbs, type Crumb } from "./breadcrumbs";
@@ -19,6 +20,7 @@ export async function LocationPage({
   district?: District;
   searchParams: SearchParams;
 }) {
+  const { listDistricts } = await getLocationDirectory();
   const path = district ? `/sehir/${province.slug}/${district.slug}` : `/sehir/${province.slug}`;
   const [summary, seo] = await Promise.all([getLocationSummary(province.slug, district?.slug), getSeoPage(path)]);
   const place = district ? `${district.name}, ${province.name}` : province.name;

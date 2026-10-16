@@ -1,3 +1,4 @@
+import { getLocations } from "@/server/queries/locations";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/admin/page-header";
 import { ProfileForm } from "@/components/admin/profile-form";
@@ -9,6 +10,7 @@ export const metadata: Metadata = { title: "Yeni profil" };
 
 export default async function NewProfilePage() {
   await requireAdmin();
+  const locations = await getLocations();
   const interests = await getRepository().listInterests();
   return (
     <>
@@ -17,7 +19,7 @@ export default async function NewProfilePage() {
         description="Profil taslak olarak oluşturulur. Yayın için rıza, yaş doğrulaması, fotoğraf hakları ve moderasyon tamamlanmalıdır."
       />
       <div className="rounded-lg border border-hairline p-5 sm:p-6">
-        <ProfileForm action={createProfileAction} interests={interests} submitLabel="Taslak oluştur" />
+        <ProfileForm locations={locations} action={createProfileAction} interests={interests} submitLabel="Taslak oluştur" />
       </div>
     </>
   );
