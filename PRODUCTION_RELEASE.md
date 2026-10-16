@@ -86,3 +86,9 @@ Kullanıcının açık isteğiyle 8 İstanbul, 1 Ankara ve 1 İzmir örneği ana
 Kart ve detaylarda örnek etiketi bulunur; fotoğraf yerine baş harf kullanılır. Örneklerde kimlik/yaş doğrulaması iddiası, sponsor rozeti veya telefon yoktur. Detaylar noindex'tir; sitemap'e ve doğrulanmış kişi filtresine girmez. Gerçek kişi JSON-LD'si ve görüntülenme sayacı örneklerde çalışmaz. Örnek görünürlüğü `example_profiles.visible=false` ile kapatılabilir; kaynak taslak silindiğinde kopya da silinir. Taslağın sonraki düzenlemeleri kendiliğinden halka açılmaz.
 
 Kontroller: typecheck/lint/84 birim testi başarılı; gerçek Supabase entegrasyonu 4 başarılı; yerel Playwright konum/yaş 2 başarılı ve örnek liste/detay kontrolü 1 başarılı. Webpack üretim derlemesi başarılı. İlk örnek E2E denemesinde akışın gizli HTML kopyası seçiciyi çoğalttı; erişilebilir article seçicisiyle düzeltildi. Yeni şema: `20261021000001_public_examples.sql`.
+
+## Güncelleme — doğrudan veritabanı okumaları
+
+Kullanıcının isteğiyle profil listeleri, detayları ve konum profil sayıları için saatlik önbellek kaldırıldı. Sorgular request-time `connection()` sonrasında Supabase'den `no-store` ile okunur. Uzun süreli profil verisi prerender edilmez; SEO için sunucudan akışla render korunur. Referans konum kataloğu ve sitemap kendi önbelleklerini korur. Yayına uygun veritabanı kayıtlarının görünmesi için kod değişikliği veya deploy gerekmez; yeni sayfa isteği/yenileme güncel veriyi getirir. Açık sekmede kendiliğinden güncelleme için realtime aboneliği eklenmedi.
+
+Kontroller: typecheck, lint, 84 birim testi ve Webpack üretim derlemesi başarılı. 4 yerel Playwright testi başarılı; bunlardan biri örnek görünürlüğünü doğrudan Supabase'de kapatıp açarak her iki değişikliğin de bir sonraki sayfa yenilemesinde yansıdığını doğrular. Kayıt test sonunda tekrar görünür durumuna getirildi. Gerçek kişi yayın koşulları aynıdır.

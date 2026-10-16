@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { getLocationDirectory } from "@/server/queries/locations";
 import { shouldIndexListing } from "@/domain/seo";
 import { siteUrl } from "@/lib/site";
-import { getLocationCounts, getPublicProfileSlugs } from "@/server/queries/public";
+import { getPublicProfileSlugs } from "@/server/queries/public";
 import { getRepository } from "@/server/repositories";
 
 /**
@@ -13,7 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   "use cache";
   const { getProvinceByPlate, listProvinces } = await getLocationDirectory();
   const base = siteUrl();
-  const [counts, slugs, seoPages] = await Promise.all([getLocationCounts(), getPublicProfileSlugs(), getRepository().listSeoPages()]);
+  const [counts, slugs, seoPages] = await Promise.all([getRepository().countPublishedByLocation(), getPublicProfileSlugs(), getRepository().listSeoPages()]);
   const seoByPath = new Map(seoPages.map((s) => [s.path, s]));
   const indexable = (path: string, count: number) => {
     const seo = seoByPath.get(path);

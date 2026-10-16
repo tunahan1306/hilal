@@ -8,7 +8,9 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
     <>
       <SiteHeader />
       <main id="icerik" className="flex-1">
-        {children}
+        <Suspense fallback={<div className="container-page py-12" role="status">Profiller yükleniyor…</div>}>
+          {children}
+        </Suspense>
       </main>
       <SiteFooter />
       <Suspense fallback={null}>

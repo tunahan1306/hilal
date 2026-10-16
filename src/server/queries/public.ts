@@ -1,41 +1,34 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
+import { connection } from "next/server";
 import type { ProfileFilters } from "@/domain/filters";
 import { PAGE_SIZE } from "@/domain/filters";
 import { TAGS } from "../cache";
 import { getRepository } from "../repositories";
 
 /**
- * Kamuya açık, önbelleğe alınmış okumalar. Yönetim işlemleri `invalidatePublic()`
- * ile bu etiketleri anında geçersiz kılar.
+ * Profile reads run at request time so direct database changes need no deploy.
+ * Reference data and SEO keep their separately tagged caches.
  */
 
 export async function getFeaturedProfiles(limit = 8) {
-  "use cache";
-  cacheLife("hours");
-  cacheTag(TAGS.public);
+  await connection();
   return getRepository().listFeaturedProfiles(limit);
 }
 
 export async function searchProfiles(filters: ProfileFilters) {
-  "use cache";
-  cacheLife("hours");
-  cacheTag(TAGS.public);
+  await connection();
   const offset = (filters.sayfa - 1) * PAGE_SIZE;
   return getRepository().searchPublicProfiles(filters, { limit: PAGE_SIZE, offset });
 }
 
 export async function getPublicProfile(slug: string) {
-  "use cache";
-  cacheLife("hours");
-  cacheTag(TAGS.public);
+  await connection();
   return getRepository().getPublicProfile(slug);
 }
 
 export async function getLocationCounts() {
-  "use cache";
-  cacheLife("hours");
-  cacheTag(TAGS.public);
+  await connection();
   return getRepository().countPublishedByLocation();
 }
 
@@ -72,9 +65,7 @@ export function profileCountFor(counts: Awaited<ReturnType<typeof getLocationCou
 
 /** İl/ilçe sayfası için veri odaklı özet (özgün içerik üretimi için). */
 export async function getLocationSummary(il: string, ilce?: string) {
-  "use cache";
-  cacheLife("hours");
-  cacheTag(TAGS.public);
+  await connection();
   const counts = await getLocationCounts();
   const { getLocationDirectory } = await import("./locations");
   const { getProvince, listDistricts } = await getLocationDirectory();
@@ -86,9 +77,7 @@ export async function getLocationSummary(il: string, ilce?: string) {
 
 /** Bounded keyset read; no offset drift during progressive discovery. */
 export async function discoverProfiles(filters: ProfileFilters, cursor?: import("@/domain/discovery-cursor").DiscoveryCursor) {
-  "use cache";
-  cacheLife("minutes");
-  cacheTag(TAGS.public);
+  await connection();
   const { encodeCursor } = await import("@/domain/discovery-cursor");
   const result = await getRepository().searchPublicProfiles({ ...filters, ilgi: [], sayfa: 1 }, { limit: PAGE_SIZE + 1, offset: 0, cursor });
   const items = result.items.slice(0, PAGE_SIZE);

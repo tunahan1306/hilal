@@ -26,3 +26,23 @@ test("examples appear in standard discovery and remain clearly fictional", async
   }
   await page.screenshot({ path: "artifacts/production/example-profile.png", fullPage: true });
 });
+
+test("direct database visibility changes appear on the next request", async ({ page }) => {
+  test.skip(Boolean(process.env.E2E_BASE_URL), "Mutation check runs only against the local server");
+  const { createClient } = await import("@supabase/supabase-js");
+  const service = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+  const slug = "kurgu-kadin-elif-20261016";
+  await page.goto("/sehir/izmir/karsiyaka");
+  await expect(page.getByRole("link", { name: "Elif (Örnek)" })).toBeVisible();
+  try {
+    const hidden = await service.from("example_profiles").update({ visible: false }).eq("slug", slug);
+    if (hidden.error) throw hidden.error;
+    await page.reload();
+    await expect(page.getByRole("link", { name: "Elif (Örnek)" })).toHaveCount(0);
+  } finally {
+    const restored = await service.from("example_profiles").update({ visible: true }).eq("slug", slug);
+    if (restored.error) throw restored.error;
+  }
+  await page.reload();
+  await expect(page.getByRole("link", { name: "Elif (Örnek)" })).toBeVisible();
+});

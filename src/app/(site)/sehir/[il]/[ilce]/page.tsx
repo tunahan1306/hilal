@@ -3,13 +3,13 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { LocationPage, LocationPageSkeleton } from "@/components/site/location-page";
 import { getLocationDirectory } from "@/server/queries/locations";
-import { getLocationCounts } from "@/server/queries/public";
+import { getRepository } from "@/server/repositories";
 import { locationMetadata } from "@/server/queries/location-seo";
 
 /** Yalnızca profil bulunan ilçeler önceden üretilir; diğerleri ilk ziyarette render edilir. */
 export async function generateStaticParams() {
   const { getProvinceByPlate } = await getLocationDirectory();
-  const counts = await getLocationCounts();
+  const counts = await getRepository().countPublishedByLocation();
   const params = counts
     .filter((c) => c.districtSlug)
     .map((c) => ({ il: getProvinceByPlate(c.plate)!.slug, ilce: c.districtSlug! }));
