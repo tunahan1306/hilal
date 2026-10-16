@@ -57,6 +57,8 @@ export function ProfileForm({
     fd.set("provincePlate", String(values.provincePlate));
     fd.set("districtSlug", values.districtSlug ?? "");
     fd.set("bio", values.bio);
+    fd.set("whatsappPhone", values.whatsappPhone ?? "");
+    fd.set("whatsappConsent", values.whatsappConsent ? "true" : "false");
     for (const id of values.interestIds) fd.append("interestIds", id);
     fd.set("seoTitle", values.seoTitle ?? "");
     fd.set("seoDescription", values.seoDescription ?? "");
@@ -115,6 +117,20 @@ export function ProfileForm({
           />
         </Field>
       </div>
+
+      <fieldset className="grid gap-3 rounded-md border border-hairline p-4">
+        <legend className="px-2 text-sm font-medium">WhatsApp iletişimi (isteğe bağlı)</legend>
+        <Field label="WhatsApp telefon numarası" id="whatsappPhone" error={err("whatsappPhone")} hint="Örnek: +90 5XX XXX XX XX. İzin yoksa numara kamuya gösterilmez.">
+          <Input id="whatsappPhone" type="tel" autoComplete="off" maxLength={40} {...register("whatsappPhone", { onChange: () => setValue("whatsappConsent", false) })} aria-invalid={Boolean(err("whatsappPhone"))} />
+        </Field>
+        <Controller control={control} name="whatsappConsent" render={({ field }) => (
+          <div className="flex items-start gap-3">
+            <Checkbox id="whatsappConsent" checked={field.value ?? false} onCheckedChange={(value) => field.onChange(value === true)} />
+            <Label htmlFor="whatsappConsent" className="text-sm font-normal leading-relaxed">Profil sahibinin bu numaranın WhatsApp iletişimi için paylaşılmasına açık yazılı iznini aldım.</Label>
+          </div>
+        )} />
+        <p className="text-xs text-muted-foreground">Numara veya izin değişikliği, yayındaki profili yeniden moderasyona alır. Ücretli hizmet tanıtımı ve yönlendirme yasaktır.</p>
+      </fieldset>
 
       <Field label="Biyografi" id="bio" error={err("bio")} hint="20–600 karakter. İletişim bilgisi, fiyat veya ücretli hizmet çağrışımı içeremez.">
         <Textarea id="bio" rows={5} {...register("bio")} aria-invalid={Boolean(err("bio"))} />

@@ -75,6 +75,8 @@ export type Profile = {
   bio: string;
   /** Zengin biyografi (doğrulanmış JSON belge, HTML yok) */
   bioDoc: import("./rich-text").RichDoc | null;
+  whatsappPhone?: string | null;
+  whatsappConsentAt?: string | null;
   interestIds: string[];
   status: ProfileStatus;
   moderationStatus: ModerationStatus;
@@ -312,6 +314,8 @@ export type PublicProfile = {
   bio: string;
   bioDoc: import("./rich-text").RichDoc | null;
   interests: Pick<Interest, "slug" | "name">[];
+  /** Exposed only with the owner’s explicit publication permission. */
+  whatsappPhone?: string | null;
   verified: boolean;
   sponsored: boolean;
   images: { url: string; alt: string; width: number; height: number }[];

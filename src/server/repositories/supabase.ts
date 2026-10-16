@@ -111,6 +111,8 @@ async function toProfile(r: Row, interestIds: string[]): Promise<Profile> {
     id: r.id as string,
     slug: r.slug as string,
     nickname: r.nickname as string,
+    whatsappPhone: (r.whatsapp_phone as string) ?? null,
+    whatsappConsentAt: (r.whatsapp_consent_at as string) ?? null,
     birthDate: r.birth_date as string,
     provincePlate: loc.plateByCityId.get(r.city_id as string) ?? 0,
     districtSlug: r.district_id ? (loc.districtSlugById.get(r.district_id as string) ?? null) : null,
@@ -137,7 +139,7 @@ async function profileColumns(p: Partial<Profile>): Promise<Row> {
   const loc = await locations();
   const row: Row = {};
   const map: [keyof Profile, string][] = [
-    ["slug", "slug"], ["nickname", "nickname"], ["birthDate", "birth_date"], ["bio", "bio"], ["status", "status"],
+    ["whatsappPhone", "whatsapp_phone"], ["whatsappConsentAt", "whatsapp_consent_at"], ["slug", "slug"], ["nickname", "nickname"], ["birthDate", "birth_date"], ["bio", "bio"], ["status", "status"],
     ["moderationStatus", "moderation_status"], ["moderationNote", "moderation_note"], ["moderatedBy", "moderated_by"],
     ["moderatedAt", "moderated_at"], ["publishedAt", "published_at"], ["archivedAt", "archived_at"],
     ["bioDoc", "bio_doc"], ["seoTitle", "seo_title"], ["seoDescription", "seo_description"], ["noindex", "noindex"], ["createdBy", "created_by"],
@@ -289,6 +291,7 @@ async function hydratePublic(rows: Row[]): Promise<PublicProfile[]> {
       id: r.id as string,
       slug: r.slug as string,
       nickname: r.nickname as string,
+      whatsappPhone: (r.whatsapp_phone as string) ?? null,
       age: r.age as number,
       province: {
         plate: r.city_plate as number,

@@ -1,9 +1,10 @@
+import { whatsAppHref } from "@/domain/whatsapp";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { Expand, Flag, ShieldCheck, UserX } from "lucide-react";
+import { Expand, Flag, MessageCircle, ShieldCheck, UserX } from "lucide-react";
 import { AgeBadge } from "@/components/site/age-badge";
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
 import { JsonLd } from "@/components/site/json-ld";
@@ -78,6 +79,7 @@ async function ProfileContent({ params }: Pick<PageProps<"/profil/[slug]">, "par
   const profile = await getPublicProfile((await params).slug);
   if (!profile) notFound();
   const place = profile.district ? `${profile.district.name}, ${profile.province.name}` : profile.province.name;
+  const whatsapp = whatsAppHref(profile.whatsappPhone);
   const media = mediaOf(profile);
   const cover = profile.images[0];
   const imageCount = profile.images.length;
@@ -151,6 +153,7 @@ async function ProfileContent({ params }: Pick<PageProps<"/profil/[slug]">, "par
                     Galeriyi aç <span className="tabular-nums opacity-70">{media.length}</span>
                   </OpenMediaButton>
                 ) : null}
+                {whatsapp ? <a href={whatsapp} target="_blank" rel="noopener noreferrer nofollow" aria-label={`${profile.nickname} ile WhatsApp üzerinden iletişim kur (yeni sekme)`} className="inline-flex min-h-11 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"><MessageCircle className="size-4" aria-hidden /> WhatsApp ile iletişim</a> : null}
                 <ReportDialog profileId={profile.id} nickname={profile.nickname} />
               </div>
             </div>
@@ -185,7 +188,7 @@ async function ProfileContent({ params }: Pick<PageProps<"/profil/[slug]">, "par
             <div>
               <h3 className="font-medium">İletişim</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Kişisel iletişim bilgileri gizlilik ve güvenlik nedeniyle paylaşılmaz; profillerde telefon, e-posta veya sosyal medya hesabı yer alamaz.
+                WhatsApp butonu yalnızca profil sahibinin açık paylaşım izni varsa görünür. Diğer kişisel iletişim bilgileri yayınlanmaz.
               </p>
             </div>
             <div>

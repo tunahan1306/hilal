@@ -70,3 +70,9 @@ npm run dev
 Varsayılan koyu tema, 2/3/4 sütunlu fotoğraf kartları, konum filtresi ve cursor tabanlı “Daha fazla göster” akışı. Kamuya açık hobi filtreleri kaldırılmıştır; yönetim ve tarihsel veriler korunur. İlk ziyarette sunucu tarafında 18+ beyanı istenir (30 günlük HttpOnly / SameSite=Lax çerez). Bu beyan belgeyle yaş doğrulaması değildir.
 
 Uygulama planı, medya uyumluluk düzeltmeleri ve SEO/depolama sınırları: [IMPLEMENTATION.md](IMPLEMENTATION.md). Canonical konum yolları `/sehir/istanbul/atasehir` biçiminde korunur.
+
+## İzinli WhatsApp butonu
+
+Profil düzenleme ekranındaki **WhatsApp telefon numarası** alanı ve açık yazılı paylaşım izni seçimiyle etkinleşir. Numara veya izin değişirse profil yeniden moderasyona alınır; buton yalnızca tekrar onaylanıp yayınlandıktan sonra görünür. Numara değişikliği izin seçimini sıfırlar. Biyografideki iletişim bilgisi yasağı ve ücretli hizmet/yönlendirme engelleri korunur.
+
+Supabase için `20261018000001_profile_whatsapp.sql` migration'ı uygulama güncellemesiyle birlikte uygulanmalıdır. Bu çalışma sırasında migration çalıştırılmamıştır. Yeni alanlar mevcut profillerde boş ve izinsiz başlar; demo modunda SQL gerekmez.

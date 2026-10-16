@@ -14,6 +14,12 @@ test("profil oluşturma → yayın engeli → ön koşullar → yayın → arşi
   await pick(page, "İlçe", "Karşıyaka");
   await page.getByLabel("Biyografi").fill("Uçurtma festivalleri ve sahil bisikleti seven sentetik bir test profili.");
   await page.getByText("Bisiklet", { exact: true }).click();
+  await page.getByLabel("WhatsApp telefon numarası").fill("+90 532 000 00 00");
+  const contactConsent = page.getByRole("checkbox", { name: /açık yazılı iznini aldım/ });
+  await contactConsent.check();
+  await page.getByLabel("WhatsApp telefon numarası").fill("05320000000");
+  await expect(contactConsent).not.toBeChecked();
+  await contactConsent.check();
   await page.getByRole("button", { name: "Taslak oluştur" }).click();
   await expect(page).toHaveURL(/\/admin\/profiller\/[^/]+\?yeni=1/);
   await expect(page.getByRole("heading", { name: "E2E Deneme" })).toBeVisible();
@@ -61,6 +67,10 @@ test("profil oluşturma → yayın engeli → ön koşullar → yayın → arşi
   expect(res?.status()).toBe(200);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("E2E Deneme");
   await expect(page.getByText("Karşıyaka, İzmir").first()).toBeVisible();
+  const whatsapp = page.getByRole("link", { name: /ile WhatsApp üzerinden iletişim kur/ });
+  await expect(whatsapp).toHaveAttribute("href", "https://wa.me/905320000000");
+  await expect(whatsapp).toHaveAttribute("rel", "noopener noreferrer nofollow");
+  await expect(whatsapp).toHaveAttribute("target", "_blank");
 
   // Arşiv → kamuya kapalı
   await page.goBack();

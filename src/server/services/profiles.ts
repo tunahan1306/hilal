@@ -1,5 +1,6 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
+import { normalizeWhatsAppPhone } from "@/domain/whatsapp";
 import { isAdult } from "@/domain/age";
 import { scanProfileContent } from "@/domain/content-policy";
 import { getProvinceByPlate, listDistricts } from "@/domain/locations";
@@ -54,12 +55,23 @@ export async function loadPublishContext(profileId: string, now = new Date()) {
   return { profile, consents, verifications, media, reports, interestNames, now, linkAllowlist };
 }
 
+function whatsAppFields(input: ProfileInput, current?: Profile) {
+  const phone = input.whatsappPhone?.trim() ? normalizeWhatsAppPhone(input.whatsappPhone) : null;
+  if (input.whatsappPhone?.trim() && !phone) throw new DomainError("Geçerli bir Türkiye cep telefonu numarası girin");
+  if (input.whatsappConsent && !phone) throw new DomainError("Paylaşım izni için geçerli numara gerekli");
+  const consentAt = input.whatsappConsent && phone
+    ? (current?.whatsappPhone === phone && current.whatsappConsentAt ? current.whatsappConsentAt : new Date().toISOString())
+    : null;
+  return { whatsappPhone: phone, whatsappConsentAt: consentAt };
+}
+
 export async function createProfile(actor: Admin, input: ProfileInput): Promise<Profile> {
   assertLocation(input);
   await assertInterests(input.interestIds);
   const slug = `${slugifyTr(input.nickname) || "profil"}-${randomBytes(3).toString("hex")}`;
   const profile = await getRepository().createProfile({
     slug,
+    ...whatsAppFields(input),
     nickname: input.nickname,
     birthDate: input.birthDate,
     provincePlate: input.provincePlate,
@@ -88,13 +100,17 @@ export async function updateProfile(actor: Admin, id: string, input: ProfileInpu
   await assertInterests(input.interestIds);
   const current = await mustGetProfile(id);
   if (current.status === "archived") throw new DomainError("Arşivlenmiş profil düzenlenemez; önce taslağa alın");
+  const contact = whatsAppFields(input, current);
+  const contactChanged = (current.whatsappPhone ?? null) !== contact.whatsappPhone || (current.whatsappConsentAt ?? null) !== contact.whatsappConsentAt;
   const contentChanged =
+    contactChanged ||
     current.nickname !== input.nickname ||
     current.bio !== input.bio ||
     JSON.stringify(current.bioDoc) !== JSON.stringify(input.bioDoc) ||
     current.interestIds.slice().sort().join() !== input.interestIds.slice().sort().join();
   const requeue = contentChanged && (current.moderationStatus === "approved" || current.status === "published");
   const profile = await getRepository().updateProfile(id, {
+    ...contact,
     nickname: input.nickname,
     birthDate: input.birthDate,
     provincePlate: input.provincePlate,
@@ -109,7 +125,7 @@ export async function updateProfile(actor: Admin, id: string, input: ProfileInpu
       ? { moderationStatus: "pending" as const, status: current.status === "published" ? ("in_review" as const) : current.status }
       : {}),
   });
-  await audit(actor, "profile.update", "profile", id, { requeued: requeue });
+  await audit(actor, "profile.update", "profile", id, { requeued: requeue, contactChanged, whatsappPublicationAllowed: Boolean(contact.whatsappConsentAt) });
   if (requeue) await syncPublicMedia(id);
   return { profile, requeued: requeue };
 }

@@ -15,7 +15,7 @@ export default function KvkkPage() {
       <p>[Şirket unvanı, MERSİS no, adres ve VERBİS kayıt bilgileri hukuk incelemesi sonrasında eklenecektir.]</p>
       <h2>İşlenen kişisel veriler</h2>
       <ul>
-        <li><strong>Profil sahipleri:</strong> takma ad, doğum tarihi (yalnızca yaş doğrulaması için; kamuya yaş olarak yansır), il/ilçe, biyografi, ilgi alanları, fotoğraflar, rıza ve doğrulama kayıtları.</li>
+        <li><strong>Profil sahipleri:</strong> takma ad, doğum tarihi (yalnızca yaş doğrulaması için; kamuya yaş olarak yansır), il/ilçe, biyografi, isteğe bağlı WhatsApp numarası ve paylaşım izni tarihi, ilgi alanları, fotoğraflar, rıza ve doğrulama kayıtları.</li>
         <li><strong>Ziyaretçiler:</strong> şikâyet ve başvuru formlarında paylaşılan bilgiler; kötüye kullanımı önlemek için IP adresinin geri döndürülemez özeti (ham IP saklanmaz).</li>
         <li><strong>Yöneticiler:</strong> e-posta, oturum ve işlem kayıtları.</li>
       </ul>

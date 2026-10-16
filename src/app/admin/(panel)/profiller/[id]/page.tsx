@@ -160,6 +160,8 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
             interests={interests}
             submitLabel="Kaydet"
             defaults={{
+              whatsappPhone: profile.whatsappPhone ?? "",
+              whatsappConsent: Boolean(profile.whatsappConsentAt),
               nickname: profile.nickname,
               birthDate: profile.birthDate,
               provincePlate: profile.provincePlate,

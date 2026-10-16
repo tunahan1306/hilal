@@ -34,13 +34,13 @@ export default function SafetyPage() {
       <ul>
         <li>Ücretli cinsel hizmet tanıtımı, fuhşa aracılık, müşteri yönlendirme veya bunları çağrıştıran ifadeler.</li>
         <li>Fiyat, ücret, &quot;rezervasyon&quot; veya benzeri ticari teklif içeren içerikler.</li>
-        <li>Telefon, e-posta, mesajlaşma uygulaması veya sosyal medya gibi kişisel iletişim bilgileri.</li>
+        <li>Biyografi içinde telefon, e-posta veya sosyal medya gibi iletişim bilgileri. WhatsApp butonu yalnızca ayrı numara alanı ve profil sahibinin açık paylaşım izniyle gösterilir.</li>
         <li>Başkasına ait fotoğraf kullanımı ve kimlik taklidi.</li>
         <li>Taciz, tehdit, nefret söylemi ve ayrımcılık.</li>
       </ul>
       <h2>Bu kurallar nasıl uygulanır?</h2>
       <p>
-        Her profil yayından önce otomatik içerik taramasından ve insan moderasyonundan geçer. Yasaklı ifadeler veya iletişim bilgisi içeren profiller
+        Her profil yayından önce otomatik içerik taramasından ve insan moderasyonundan geçer. Yasaklı ifadeler veya biyografisinde iletişim bilgisi içeren profiller
         yayınlanamaz. Yayındaki bir profilin içeriği değiştiğinde profil yeniden incelemeye alınır.
       </p>
       <h2>Şikâyet kategorileri</h2>

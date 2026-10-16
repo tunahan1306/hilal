@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeWhatsAppPhone } from "./whatsapp";
 import { isAdult } from "./age";
 import { docFromPlainText, parseRichDoc } from "./rich-text";
 import {
@@ -35,12 +36,18 @@ export const profileInputSchema = z.object({
     .transform((v) => (v ? v : null)),
   /** Zengin biyografi (Tiptap JSON). Verilmezse düz `bio` metninden üretilir. */
   bioDoc: z.unknown().optional(),
+  whatsappPhone: z.string().max(40).refine((v) => !v.trim() || Boolean(normalizeWhatsAppPhone(v)), "Geçerli bir Türkiye cep telefonu numarası girin").optional(),
+  whatsappConsent: z.boolean().optional(),
   bio: z.string().trim().max(20_000).optional(),
   interestIds: z.array(z.string().min(1)).max(8, "En fazla 8 ilgi alanı seçilebilir").default([]),
   seoTitle: z.string().trim().max(70).optional().transform((v) => v || null),
   seoDescription: z.string().trim().max(160).optional().transform((v) => v || null),
   noindex: z.boolean().default(false),
 }).transform((v, ctx) => {
+  if (v.whatsappConsent && !normalizeWhatsAppPhone(v.whatsappPhone ?? "")) {
+    ctx.addIssue({ code: "custom", path: ["whatsappPhone"], message: "Paylaşım izni için geçerli numara gerekli" });
+    return z.NEVER;
+  }
   // Biyografi: HTML yok; katı JSON şeması + yapısal sınırlar (bkz. domain/rich-text.ts)
   const parsed = v.bioDoc != null && v.bioDoc !== "" ? parseRichDoc(v.bioDoc) : null;
   if (parsed && !parsed.ok) {

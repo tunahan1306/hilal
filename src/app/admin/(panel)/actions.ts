@@ -52,6 +52,8 @@ function profilePayload(fd: FormData) {
     provincePlate: str(fd, "provincePlate"),
     districtSlug: str(fd, "districtSlug") || undefined,
     bio: str(fd, "bio"),
+    whatsappPhone: str(fd, "whatsappPhone"),
+    whatsappConsent: fd.get("whatsappConsent") === "true",
     interestIds: fd.getAll("interestIds").map(String),
     seoTitle: str(fd, "seoTitle") || undefined,
     seoDescription: str(fd, "seoDescription") || undefined,

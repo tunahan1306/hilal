@@ -42,7 +42,7 @@ export default async function HomePage() {
       </ul>
     </section>
     <section className="container-page mt-5 border-t border-hairline py-8" aria-labelledby="guvenlik-baslik">
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-4"><h2 id="guvenlik-baslik" className="flex items-center gap-2 text-sm font-medium"><ShieldCheck className="size-5 text-brand" aria-hidden /> Rıza, mahremiyet, güven.</h2><p className="max-w-2xl text-sm text-muted-foreground">Yayın öncesi yaş ve rıza kontrolü yapılır. Kişisel iletişim bilgileri paylaşılmaz. Ücretli cinsel hizmet tanıtımı ve yönlendirme yasaktır.</p><Link href="/guvenlik" className="inline-flex min-h-11 items-center text-sm text-brand">Güvenlik ilkeleri →</Link></div>
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-4"><h2 id="guvenlik-baslik" className="flex items-center gap-2 text-sm font-medium"><ShieldCheck className="size-5 text-brand" aria-hidden /> Rıza, mahremiyet, güven.</h2><p className="max-w-2xl text-sm text-muted-foreground">Yayın öncesi yaş ve rıza kontrolü yapılır. Yalnızca sahibinin paylaşım izni verdiği WhatsApp iletişimi gösterilir. Ücretli cinsel hizmet tanıtımı ve yönlendirme yasaktır.</p><Link href="/guvenlik" className="inline-flex min-h-11 items-center text-sm text-brand">Güvenlik ilkeleri →</Link></div>
     </section>
   </>;
 }

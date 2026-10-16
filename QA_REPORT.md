@@ -119,3 +119,36 @@ Screenshots were regenerated from the passing final premium suite and visually r
 - `tests/unit/discovery.test.ts`
 - `tests/unit/rules.test.ts`
 - `tests/unit/services.test.ts`
+
+## WhatsApp follow-up — current main
+
+Added an optional Turkish mobile-number field and explicit written-sharing-permission checkbox to profile administration. The public view/projection omits the number without permission. Authorized, published profiles show an accessible `https://wa.me/` button; numbers are normalized on the server and arbitrary URLs are rejected. Editing the number resets the UI permission choice; changing number/permission requeues published profiles for moderation. A database trigger also prevents carrying permission unchanged to a different number. Existing text/contact scanning and paid-service restrictions remain.
+
+Validation: typecheck and lint pass; 82/82 unit tests pass; Webpack production build passes; Playwright 42 passed / 1 Supabase-only test skipped (35.1s). The publish lifecycle test now verifies number entry, permission reset/reconfirmation, moderation, the exact WhatsApp URL and safe new-tab attributes. Unit tests cover invalid numbers/URLs, private numbers without permission and immediate unpublishing on permission withdrawal.
+
+Migration `supabase/migrations/20261018000001_profile_whatsapp.sql` is prepared but **not executed**. It must be applied to Supabase before deploying the application update; live SQL integration was not run. Demo mode works without SQL. Existing profiles start with no number or permission.
+
+Follow-up modified/added files:
+
+- `QA_REPORT.md`
+- `README.md`
+- `SECURITY.md`
+- `artifacts/premium-discovery/district.png`
+- `artifacts/premium-discovery/homepage.png`
+- `artifacts/premium-discovery/profile.png`
+- `src/app/(site)/guvenlik/page.tsx`
+- `src/app/(site)/kvkk/page.tsx`
+- `src/app/(site)/page.tsx`
+- `src/app/(site)/profil/[slug]/page.tsx`
+- `src/app/admin/(panel)/actions.ts`
+- `src/app/admin/(panel)/profiller/[id]/page.tsx`
+- `src/components/admin/profile-form.tsx`
+- `src/domain/projection.ts`
+- `src/domain/schemas.ts`
+- `src/domain/types.ts`
+- `src/domain/whatsapp.ts`
+- `src/server/repositories/supabase.ts`
+- `src/server/services/profiles.ts`
+- `supabase/migrations/20261018000001_profile_whatsapp.sql`
+- `tests/e2e/profile-lifecycle.spec.ts`
+- `tests/unit/whatsapp.test.ts`

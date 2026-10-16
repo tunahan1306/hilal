@@ -7,7 +7,7 @@ Amaç: platformun ücretli cinsel hizmet tanıtımı, fuhşa aracılık veya mü
 | Önlem | Uygulama |
 | --- | --- |
 | Profilleri yalnızca yönetim oluşturur | Ziyaretçi kaydı / profil oluşturma yoktur |
-| Kişisel iletişim bilgisi yayınlanmaz | Telefon, e-posta, URL, mesajlaşma uygulaması tespitinde yayın engellenir; profilde iletişim alanı yoktur; ziyaretçiler arası mesajlaşma/iletişim aktarma özelliği **bilinçli olarak yoktur** |
+| İzinli WhatsApp dışında iletişim bilgisi yayınlanmaz | Biyografi/metinlerde telefon, e-posta, URL ve mesajlaşma bilgisi taraması korunur. Ayrı WhatsApp alanı yalnızca profil sahibinin açık yazılı paylaşım izni kaydedildiğinde kamuya açılır; numara/izin değişikliği yeniden moderasyon gerektirir. Ücretli hizmet veya müşteri yönlendirme yasaktır. |
 | Yasaklı hizmet taraması | `content-policy.ts`: ücretli hizmet çağrışımı, fiyat, reşit olmayana işaret eden ifadeler → yayını engeller |
 | Yayın ön koşulları | 18+ ve yaş doğrulaması, açık yayın rızası, fotoğraf kullanım izni ve hak doğrulaması, moderasyon onayı, içerik politikası, açık kritik şikâyet yokluğu — uygulama **ve** veritabanı tetikleyicisinde |
 | Değişiklikte yeniden moderasyon | Yayındaki profilin metni/ilgi alanları değişirse profil yayından kalkar, moderasyona döner; yeni fotoğraflar hak doğrulanana kadar görünmez |
@@ -63,3 +63,7 @@ Reşit olmayan kişiye ait içerik şüphesinde: profil otomatik kaldırılır �
 Mevcut Supabase public bucket adresleri depolama kaynağında hâlâ herkese açıktır. Uygulama yaş kapısı, daha önce bilinen bu adresler için kaynak düzeyinde erişim kontrolü değildir. Bunun değiştirilmesi ayrı bir özel medya teslim mimarisi gerektirir.
 
 Görseller, çerezi taşıyan tarayıcı isteğini denetleyen `/api/image` üzerinden responsive WebP olarak sunulur. Kaynaklar yapılandırılmış Supabase public-storage origin'i ve yerel demo/kamu medyasıyla sınırlıdır; yönlendirmeler izlenmez, gövde boyutu ve çözünürlük sınırlıdır. Kaldırılmış medyanın dönüştürülmüş kopyası sunulmadan önce kaynağın hâlâ mevcut olduğu kontrol edilir. Özel yönetim önizlemeleri bu uç noktadan geçmez ve AAL2 oturumu gerektirir.
+
+## İzinli WhatsApp iletişimi
+
+Yönetim telefon numarasını ve açık yazılı paylaşım iznini kaydeder. Numara değiştiğinde arayüz eski izin seçimini sıfırlar. Sunucu Türkiye cep numarasını normalize/doğrular; kamu projeksiyonu ve SQL view izin tarihi yoksa numarayı döndürmez. İzin geri alındığında profil yeniden moderasyona alınır ve kamu önbelleği mevcut action akışıyla geçersizleşir. Link sabit `https://wa.me/` origin’iyle üretilir; keyfi URL kabul edilmez. Eski profiller varsayılan olarak numarasız/izinsizdir. Migration dosyası hazırlanmıştır; canlı veritabanında çalıştırılmamıştır.

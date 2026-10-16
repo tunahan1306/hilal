@@ -44,6 +44,7 @@ export function toPublicProfile(args: {
     interests: args.interests
       .filter((i) => profile.interestIds.includes(i.id))
       .map((i) => ({ slug: i.slug, name: i.name })),
+    whatsappPhone: profile.whatsappConsentAt ? profile.whatsappPhone ?? null : null,
     verified: isVerified(args.verifications, "identity"),
     sponsored: isSponsoredNow(args.subscription, args.plan, now),
     bioDoc: profile.bioDoc,
