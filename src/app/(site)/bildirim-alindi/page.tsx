@@ -1,20 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CrescentMark } from "@/components/site/logo";
 
 export const metadata: Metadata = { title: "Bildiriminiz alındı", robots: { index: false, follow: false } };
 
 export default function ReportReceivedPage() {
   return (
-    <div className="container-page flex flex-col items-center py-24 text-center" role="status">
-      <CheckCircle2 className="mb-4 size-12 text-success" aria-hidden />
-      <h1 className="text-2xl font-semibold">Bildiriminiz alındı</h1>
-      <p className="mt-2 max-w-md text-muted-foreground">
+    <div className="container-page py-24" role="status">
+      <p className="eyebrow flex items-center gap-2 text-muted-foreground"><CrescentMark className="size-4" /> Moderasyon</p>
+      <h1 className="font-display mt-5 text-display-lg">Bildiriminiz alındı</h1>
+      <p className="mt-4 max-w-md text-lede text-muted-foreground">
         Bildirdiğiniz profil, moderasyon incelemesi tamamlanana kadar yayından kaldırıldı. Teşekkür ederiz.
       </p>
-      <p className="mt-2 max-w-md text-sm text-muted-foreground">Acil bir tehlike söz konusuysa lütfen 112&apos;yi arayın.</p>
-      <Button asChild className="mt-6"><Link href="/kesfet">Keşfetmeye devam et</Link></Button>
+      <p className="mt-3 max-w-md text-sm text-muted-foreground">Acil bir tehlike söz konusuysa lütfen 112&apos;yi arayın.</p>
+      <Link href="/kesfet" className="mt-8 inline-flex h-11 items-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground">Keşfetmeye devam et</Link>
     </div>
   );
 }

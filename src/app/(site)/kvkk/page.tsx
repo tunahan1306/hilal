@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function KvkkPage() {
   return (
-    <ProsePage title="KVKK aydınlatma metni" path="/kvkk" notice={<LegalDraftNotice />}>
+    <ProsePage eyebrow="Yasal" title="KVKK aydınlatma metni" path="/kvkk" notice={<LegalDraftNotice />}>
       <h2>Veri sorumlusu</h2>
       <p>[Şirket unvanı, MERSİS no, adres ve VERBİS kayıt bilgileri hukuk incelemesi sonrasında eklenecektir.]</p>
       <h2>İşlenen kişisel veriler</h2>

@@ -16,7 +16,7 @@ export default async function NewProfilePage() {
         title="Yeni profil"
         description="Profil taslak olarak oluşturulur. Yayın için rıza, yaş doğrulaması, fotoğraf hakları ve moderasyon tamamlanmalıdır."
       />
-      <div className="rounded-xl border border-border/70 bg-card p-5 sm:p-6">
+      <div className="rounded-lg border border-hairline p-5 sm:p-6">
         <ProfileForm action={createProfileAction} interests={interests} submitLabel="Taslak oluştur" />
       </div>
     </>

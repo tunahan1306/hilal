@@ -124,7 +124,7 @@ export function ProfilesTable({ rows, initialStatus }: { rows: ProfileRow[]; ini
           </SelectContent>
         </Select>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-border/70 bg-card">
+      <div className="overflow-x-auto rounded-lg border border-hairline">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((hg) => (

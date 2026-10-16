@@ -11,7 +11,19 @@ export const metadata: Metadata = {
 
 export default function SafetyPage() {
   return (
-    <ProsePage title="Güvenlik ve topluluk kuralları" path="/guvenlik" lead="Hilal, yetişkinlerin ortak ilgi alanları üzerinden sosyal çevre edinmesi için tasarlanmıştır.">
+    <ProsePage eyebrow="Topluluk" title="Güvenlik ve topluluk kuralları" path="/guvenlik" lead="Hilal, yetişkinlerin ortak ilgi alanları üzerinden sosyal çevre edinmesi için tasarlanmıştır.">
+      <h2 id="yetiskin">Yalnızca yetişkinler (18+)</h2>
+      <p>
+        Hilal yalnızca 18 yaş ve üzeri kişilere yöneliktir. Sitedeki <strong>18+</strong> işareti bir bilgilendirmedir; tek başına
+        yaşın kanıtı sayılmaz ve hiçbir içeriğin yayınlanmasına izin vermez.
+      </p>
+      <p>Yaş güvencesi şu katmanlarla sağlanır:</p>
+      <ul>
+        <li><strong>Profil sahipleri:</strong> her profil yayından önce kimlik belgesi üzerinden yaş doğrulamasından geçer. Doğrulama kaydı olmayan veya 18 yaşından küçük görünen profil teknik olarak yayınlanamaz (uygulama ve veritabanı düzeyinde).</li>
+        <li><strong>Belgeler:</strong> doğrulama belgeleri herkese açık olmayan bir depoda tutulur ve saklama süresi dolunca silinir; yalnızca doğrulama sonucu saklanır.</li>
+        <li><strong>Bildirim:</strong> reşit olmayan kişi şüphesi bildirildiğinde profil inceleme tamamlanana kadar yayından kaldırılır.</li>
+        <li><strong>Ziyaretçiler:</strong> içerik müstehcen değildir ve hesap gerektirmez; ziyaretçi yaşı için ek bir doğrulama yöntemi hukuki değerlendirme sonrasında belirlenecektir.</li>
+      </ul>
       <h2>Kimler yer alabilir?</h2>
       <ul>
         <li>Yalnızca 18 yaşını doldurmuş ve yaşı belge ile doğrulanmış kişiler.</li>

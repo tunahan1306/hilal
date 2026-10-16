@@ -16,8 +16,8 @@ export default async function StatsPage() {
   return (
     <>
       <PageHeader title="İstatistikler" description="Profil görüntülemeleri, aynı ziyaretçi ve profil için saatte bir kez sayılır. Kişisel veri tutulmaz." />
-      <section className="mb-6 rounded-xl border border-border/70 bg-card p-5"><ViewsChart data={views30} label="Toplam profil görüntülemesi (son 30 gün)" /></section>
-      <section className="rounded-xl border border-border/70 bg-card p-5">
+      <section className="mb-6 rounded-lg border border-hairline p-5"><ViewsChart data={views30} label="Toplam profil görüntülemesi (son 30 gün)" /></section>
+      <section className="rounded-lg border border-hairline p-5">
         <h2 className="mb-4 text-sm font-medium">İllere göre yayındaki profiller</h2>
         <ul className="space-y-2">
           {cities.map((c) => (

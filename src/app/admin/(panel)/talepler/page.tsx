@@ -27,7 +27,7 @@ export default async function PrivacyRequestsPage() {
           {requests.map((r) => {
             const overdue = (r.status === "received" || r.status === "in_progress") && Date.parse(r.dueAt) < now;
             return (
-              <li key={r.id} className="rounded-xl border border-border/70 bg-card p-5" data-testid="privacy-row">
+              <li key={r.id} className="rounded-lg border border-hairline p-5" data-testid="privacy-row">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="font-medium">{PRIVACY_REQUEST_LABELS[r.type]} · {r.requesterName}</p>

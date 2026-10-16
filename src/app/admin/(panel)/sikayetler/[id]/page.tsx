@@ -44,7 +44,7 @@ export default async function ReportDetailPage({ params }: PageProps<"/admin/sik
         actions={<StatusBadge tone={REPORT_STATUS_TONE[report.status]} className="self-center">{REPORT_STATUS_LABELS[report.status]}</StatusBadge>}
       />
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <section className="space-y-4 rounded-xl border border-border/70 bg-card p-5">
+        <section className="space-y-4 rounded-lg border border-hairline p-5">
           <div>
             <h2 className="text-sm font-medium text-muted-foreground">Açıklama</h2>
             <p className="mt-1 whitespace-pre-line">{report.description}</p>
@@ -79,7 +79,7 @@ export default async function ReportDetailPage({ params }: PageProps<"/admin/sik
           </div>
         </section>
         <div className="space-y-6">
-          <section className="rounded-xl border border-border/70 bg-card p-5 text-sm">
+          <section className="rounded-lg border border-hairline p-5 text-sm">
             <h2 className="mb-2 font-semibold">İlgili profil</h2>
             {profile ? (
               <>
@@ -88,7 +88,7 @@ export default async function ReportDetailPage({ params }: PageProps<"/admin/sik
               </>
             ) : <p className="text-muted-foreground">Profil silinmiş.</p>}
           </section>
-          <section className="rounded-xl border border-border/70 bg-card p-5">
+          <section className="rounded-lg border border-hairline p-5">
             <h2 className="mb-3 font-semibold">Moderasyon geçmişi</h2>
             <ol className="space-y-3 text-sm" data-testid="moderation-history">
               {actions.length ? actions.map((a) => (

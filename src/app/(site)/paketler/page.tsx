@@ -13,14 +13,14 @@ export default async function PlansPage() {
   const plans = (await getPlans()).filter((p) => p.active);
   const order = { basic: 0, plus: 1, premium: 2 } as const;
   return (
-    <ProsePage title="Üyelik paketleri" path="/paketler" lead="Profil sahipleri için görünürlük paketleri. Paketler yalnızca sosyal tanışma faaliyetleri içindir.">
-      <div role="note" className="rounded-xl border border-border bg-muted/50 p-4 text-sm">
+    <ProsePage eyebrow="Profil sahipleri için" title="Üyelik paketleri" path="/paketler" lead="Profil sahipleri için görünürlük paketleri. Paketler yalnızca sosyal tanışma faaliyetleri içindir.">
+      <div role="note" className="border-l-2 border-brass py-1 pl-4 text-sm text-muted-foreground">
         Şu anda platform üzerinden ödeme alınmamaktadır. Paketler yönetim tarafından tanımlanır; sponsorlu profiller ziyaretçilere her zaman “Sponsorlu” etiketiyle gösterilir.
       </div>
-      <ul className="not-prose grid gap-4 md:grid-cols-3">
+      <ul className="grid gap-0 border-t border-hairline md:grid-cols-3 md:gap-8 md:border-t-0">
         {plans.sort((a, b) => order[a.code] - order[b.code]).map((p) => (
-          <li key={p.id} className="flex flex-col rounded-2xl border border-border/70 bg-card p-6 shadow-[var(--shadow-card)]">
-            <h2 className="!mt-0 text-xl font-semibold">{p.name}</h2>
+          <li key={p.id} className="flex flex-col border-b border-hairline py-6 md:border-b-0 md:border-t md:border-foreground/80 md:pt-5">
+            <h2 className="!mt-0 !border-0 !pt-0">{p.name}</h2>
             <p className="mt-2 text-sm text-muted-foreground">{p.description}</p>
             <ul className="mt-5 space-y-2 text-sm !list-none !pl-0">
               <Feature>En fazla {p.maxPhotos} fotoğraf</Feature>

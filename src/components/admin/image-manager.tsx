@@ -51,7 +51,7 @@ export function ImageManager({
           {images.map((img, i) => {
             const a = actions[img.id];
             return (
-              <li key={img.id} className="overflow-hidden rounded-xl border border-border/70 bg-card">
+              <li key={img.id} className="overflow-hidden rounded-lg border border-hairline">
                 <div className="relative aspect-[4/5] bg-muted">
                   <Image src={img.url} alt={img.alt} fill sizes="240px" className="object-cover" />
                   <span className="absolute left-2 top-2">

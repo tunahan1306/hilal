@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <ProsePage title="Kullanım koşulları" path="/kullanim-kosullari" notice={<LegalDraftNotice />}>
+    <ProsePage eyebrow="Yasal" title="Kullanım koşulları" path="/kullanim-kosullari" notice={<LegalDraftNotice />}>
       <h2>Hizmetin kapsamı</h2>
       <p>Hilal, yetişkinlerin ortak ilgi alanları üzerinden sosyal tanışmasına yönelik bir profil keşif platformudur. Platform, ücretli cinsel hizmet tanıtımı, aracılık veya müşteri yönlendirme amacıyla kullanılamaz.</p>
       <h2>Profiller</h2>

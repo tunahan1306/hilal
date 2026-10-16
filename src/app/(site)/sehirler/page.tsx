@@ -15,29 +15,33 @@ export default async function CitiesPage() {
   const byRegion = new Map<string, ReturnType<typeof listProvinces>>();
   for (const p of listProvinces()) byRegion.set(p.region, [...(byRegion.get(p.region) ?? []), p]);
   const regions = [...byRegion.entries()].sort((a, b) => a[0].localeCompare(b[0], "tr"));
+  const active = listProvinces().filter((p) => profileCountFor(counts, p.plate) > 0).length;
 
   return (
-    <div className="container-page py-8 sm:py-12">
+    <div className="container-page pb-8 pt-6 sm:pt-10">
       <Breadcrumbs items={[{ name: "Şehirler", href: "/sehirler" }]} />
-      <header className="mb-10 mt-4">
-        <h1 className="text-3xl font-semibold sm:text-4xl">Türkiye&apos;nin 81 ili</h1>
-        <p className="mt-2 text-muted-foreground">Bölgelere göre gruplandırılmış iller. Profil sayıları anlık olarak güncellenir.</p>
+      <header className="mb-14 mt-8 grid gap-6 border-b border-hairline pb-10 lg:grid-cols-12 lg:items-end">
+        <div className="lg:col-span-7">
+          <p className="eyebrow text-muted-foreground">İndeks · 7 bölge</p>
+          <h1 className="font-display mt-4 text-display-xl">81 il</h1>
+        </div>
+        <p className="max-w-[44ch] text-lede text-muted-foreground lg:col-span-5 lg:justify-self-end">
+          Şu anda {active} ilde yayında profil var. Profil sayıları anlık güncellenir; profili olmayan iller arama motorlarına gösterilmez.
+        </p>
       </header>
-      <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-x-12 gap-y-14 md:grid-cols-2 xl:grid-cols-3">
         {regions.map(([region, provinces]) => (
           <section key={region} aria-labelledby={`r-${region}`}>
-            <h2 id={`r-${region}`} className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">{region}</h2>
-            <ul className="divide-y divide-border/70 rounded-2xl border border-border/70 bg-card">
+            <h2 id={`r-${region}`} className="font-display mb-4 text-display-sm">{region}</h2>
+            <ul className="border-t border-foreground/80">
               {provinces.map((p) => {
                 const n = profileCountFor(counts, p.plate);
                 return (
-                  <li key={p.slug}>
-                    <Link href={`/sehir/${p.slug}`} className="flex min-h-11 items-center justify-between px-4 text-sm hover:bg-accent">
-                      <span className="flex items-center gap-3">
-                        <span className="w-6 text-xs tabular-nums text-muted-foreground">{String(p.plate).padStart(2, "0")}</span>
-                        {p.name}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{n ? `${n} profil` : ""}</span>
+                  <li key={p.slug} className="border-b border-hairline">
+                    <Link href={`/sehir/${p.slug}`} className="group grid min-h-11 grid-cols-[2rem_1fr_auto] items-center gap-2 py-2 text-[0.9375rem]">
+                      <span className="text-xs tabular-nums text-muted-foreground">{String(p.plate).padStart(2, "0")}</span>
+                      <span className={n ? "transition-transform group-hover:translate-x-1" : "text-muted-foreground transition-transform group-hover:translate-x-1"}>{p.name}</span>
+                      <span className="text-xs tabular-nums text-muted-foreground">{n ? `${n} profil` : ""}</span>
                     </Link>
                   </li>
                 );

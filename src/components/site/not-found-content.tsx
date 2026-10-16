@@ -1,16 +1,15 @@
 import Link from "next/link";
-import { Compass } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CrescentMark } from "./logo";
 
 export function NotFoundContent({ description = "Aradığınız sayfa taşınmış, kaldırılmış veya hiç var olmamış olabilir." }: { description?: string }) {
   return (
-    <div className="container-page flex flex-1 flex-col items-center justify-center py-24 text-center">
-      <div className="mb-5 grid size-14 place-items-center rounded-full bg-muted"><Compass className="size-6 text-muted-foreground" aria-hidden /></div>
-      <h1 className="text-3xl font-semibold">Sayfa bulunamadı</h1>
-      <p className="mt-2 max-w-md text-muted-foreground">{description}</p>
-      <div className="mt-6 flex gap-2">
-        <Button asChild><Link href="/kesfet">Profilleri keşfet</Link></Button>
-        <Button asChild variant="outline"><Link href="/">Ana sayfa</Link></Button>
+    <div className="container-page flex flex-1 flex-col justify-center py-24">
+      <p className="eyebrow flex items-center gap-2 text-muted-foreground"><CrescentMark className="size-4" /> 404</p>
+      <h1 className="font-display mt-5 text-display-xl">Sayfa bulunamadı</h1>
+      <p className="mt-4 max-w-md text-lede text-muted-foreground">{description}</p>
+      <div className="mt-8 flex flex-wrap gap-3">
+        <Link href="/kesfet" className="inline-flex h-11 items-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground">Profilleri keşfet</Link>
+        <Link href="/sehirler" className="inline-flex h-11 items-center rounded-md border border-hairline px-5 text-sm">Şehirler</Link>
       </div>
     </div>
   );

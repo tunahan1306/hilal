@@ -15,12 +15,12 @@ export default async function InterestsPage() {
   return (
     <>
       <PageHeader title="İlgi alanları" description="Profillerde kullanılan ilgi alanları. Yalnızca sosyal etkinlik ve hobiler eklenmelidir." />
-      <section className="mb-6 rounded-xl border border-border/70 bg-card p-5"><InterestForm action={interestAction} /></section>
+      <section className="mb-6 rounded-lg border border-hairline p-5"><InterestForm action={interestAction} /></section>
       <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {interests.map((i) => {
           const used = profiles.filter((p) => p.interestIds.includes(i.id)).length;
           return (
-            <li key={i.id} className="flex items-center justify-between rounded-xl border border-border/70 bg-card px-4 py-3">
+            <li key={i.id} className="flex items-center justify-between rounded-lg border border-hairline px-4 py-3">
               <div>
                 <p className="font-medium">{i.name}</p>
                 <p className="text-xs text-muted-foreground">/{i.slug} · {used} profil</p>

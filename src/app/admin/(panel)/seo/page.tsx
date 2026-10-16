@@ -30,7 +30,7 @@ export default async function SeoPage() {
         title="SEO yönetimi"
         description="İl ve ilçe sayfaları yalnızca yeterli profil (≥3) veya özgün tanıtım metni varsa indekslenir. Filtrelenmiş varyantlar her zaman noindex'tir."
       />
-      <section className="mb-8 rounded-xl border border-border/70 bg-card p-5">
+      <section className="mb-8 rounded-lg border border-hairline p-5">
         <h2 className="mb-4 font-semibold">Yeni sayfa ayarı</h2>
         <SeoPageForm action={seoPageAction} />
       </section>
@@ -40,7 +40,7 @@ export default async function SeoPage() {
           {pages.map((p) => {
             const indexed = shouldIndexListing({ profileCount: countFor(p.path), hasCuratedIntro: Boolean(p.intro), override: p.indexOverride });
             return (
-              <details key={p.id} className="rounded-xl border border-border/70 bg-card p-4">
+              <details key={p.id} className="rounded-lg border border-hairline p-4">
                 <summary className="flex cursor-pointer items-center justify-between gap-2">
                   <code className="text-sm">{p.path}</code>
                   <span className="flex gap-2"><StatusBadge>{countFor(p.path)} profil</StatusBadge><StatusBadge tone={indexed ? "success" : "neutral"}>{indexed ? "index" : "noindex"}</StatusBadge></span>

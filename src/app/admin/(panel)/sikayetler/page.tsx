@@ -20,7 +20,7 @@ export default async function ReportsPage() {
   return (
     <>
       <PageHeader title="Şikâyetler" description="Kritik kategorilerde profil otomatik olarak yayından kaldırılır; karar ve itirazlar kayıt altındadır." />
-      <div className="overflow-x-auto rounded-xl border border-border/70 bg-card">
+      <div className="overflow-x-auto rounded-lg border border-hairline">
         <Table>
           <TableHeader>
             <TableRow><TableHead>Profil</TableHead><TableHead>Kategori</TableHead><TableHead>Durum</TableHead><TableHead>Tarih</TableHead></TableRow>

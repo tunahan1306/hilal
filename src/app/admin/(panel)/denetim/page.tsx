@@ -13,7 +13,7 @@ export default async function AuditPage() {
   return (
     <>
       <PageHeader title="Denetim kayıtları" description="Son 200 işlem. Kayıtlar değiştirilemez (veritabanı tetikleyicisi) ve kişisel veri içermez." />
-      <div className="overflow-x-auto rounded-xl border border-border/70 bg-card">
+      <div className="overflow-x-auto rounded-lg border border-hairline">
         <Table>
           <TableHeader><TableRow><TableHead>Zaman</TableHead><TableHead>İşlem</TableHead><TableHead>Varlık</TableHead><TableHead>Yapan</TableHead><TableHead>Ayrıntı</TableHead></TableRow></TableHeader>
           <TableBody>

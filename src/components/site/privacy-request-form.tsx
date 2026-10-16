@@ -16,7 +16,7 @@ export function PrivacyRequestForm({ defaultProfileUrl }: { defaultProfileUrl?: 
   const [state, action, pending] = useActionState<FormState, FormData>(privacyRequestAction, null);
   if (state?.ok) {
     return (
-      <div role="status" className="flex flex-col items-center gap-3 rounded-2xl border border-border/70 bg-card p-8 text-center">
+      <div role="status" className="flex flex-col items-start gap-3 border-y border-hairline py-10">
         <CheckCircle2 className="size-10 text-success" aria-hidden />
         <p>{state.message}</p>
       </div>
@@ -24,7 +24,7 @@ export function PrivacyRequestForm({ defaultProfileUrl }: { defaultProfileUrl?: 
   }
   const err = (k: string) => state?.errors?.[k]?.[0];
   return (
-    <form action={action} onSubmit={preservingSubmit(action)} className="grid gap-5 rounded-2xl border border-border/70 bg-card p-5 sm:p-8" noValidate>
+    <form action={action} onSubmit={preservingSubmit(action)} className="grid gap-5 border-t border-hairline pt-8" noValidate>
       <div className="hidden" aria-hidden>
         <label>Web sitesi<input name="website" tabIndex={-1} autoComplete="off" /></label>
       </div>

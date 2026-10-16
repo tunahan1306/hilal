@@ -29,7 +29,7 @@ export function ConsentPanel({
   return (
     <section className="space-y-4" aria-labelledby="rz">
       <h2 id="rz" className="font-semibold">Rıza kayıtları</h2>
-      <ul className="divide-y divide-border/70 rounded-xl border border-border/70">
+      <ul className="divide-y divide-border/70 rounded-lg border border-hairline">
         {consents.length ? consents.map((c) => (
           <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
             <div>
@@ -83,7 +83,7 @@ export function VerificationPanel({
   return (
     <section className="space-y-4" aria-labelledby="dg">
       <h2 id="dg" className="font-semibold">Doğrulama kayıtları</h2>
-      <ul className="divide-y divide-border/70 rounded-xl border border-border/70">
+      <ul className="divide-y divide-border/70 rounded-lg border border-hairline">
         {records.length ? records.map((v) => (
           <li key={v.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
             <div>

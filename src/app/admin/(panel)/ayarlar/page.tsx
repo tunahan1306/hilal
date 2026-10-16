@@ -14,8 +14,8 @@ export default async function SettingsPage() {
   return (
     <>
       <PageHeader title="Ayarlar" />
-      <section className="mb-6 rounded-xl border border-border/70 bg-card p-5"><SettingsForm action={settingsAction} settings={settings} /></section>
-      <section className="rounded-xl border border-border/70 bg-card p-5 text-sm">
+      <section className="mb-6 rounded-lg border border-hairline p-5"><SettingsForm action={settingsAction} settings={settings} /></section>
+      <section className="rounded-lg border border-hairline p-5 text-sm">
         <h2 className="mb-2 font-semibold">Hesap güvenliği</h2>
         <p>{admin.email} · rol: {admin.role}</p>
         <p className="mt-1 text-muted-foreground">

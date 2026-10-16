@@ -13,6 +13,7 @@ export const metadata: Metadata = {
 export default function RemovalRequestPage({ searchParams }: PageProps<"/kaldirma-talebi">) {
   return (
     <ProsePage
+      eyebrow="Haklarınız"
       title="Profil kaldırma ve KVKK başvurusu"
       path="/kaldirma-talebi"
       lead="Profil sahibiyseniz veya fotoğrafınızın izinsiz kullanıldığını düşünüyorsanız bize bildirin. Başvurular en geç 30 gün içinde sonuçlandırılır."

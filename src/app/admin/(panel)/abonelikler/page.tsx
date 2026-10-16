@@ -33,7 +33,7 @@ export default async function SubscriptionsPage({ searchParams }: PageProps<"/ad
         description="Görünürlük paketleri yalnızca kayıt olarak tutulur. Bu sürümde tahsilat entegrasyonu yoktur; ödeme altyapısı hukuki inceleme ve ödeme kuruluşu onayından sonra eklenecektir."
         actions={filterSoon || profileFilter ? <Link prefetch={false} href="/admin/abonelikler" className="text-sm text-brand hover:underline">Filtreyi kaldır</Link> : <Link prefetch={false} href="/admin/abonelikler?filtre=yakinda" className="text-sm text-brand hover:underline">Yakında bitecekler</Link>}
       />
-      <section className="mb-6 rounded-xl border border-border/70 bg-card p-5">
+      <section className="mb-6 rounded-lg border border-hairline p-5">
         <h2 className="mb-4 font-semibold">Yeni abonelik kaydı</h2>
         <SubscriptionForm
           action={createSubscriptionAction}
@@ -43,7 +43,7 @@ export default async function SubscriptionsPage({ searchParams }: PageProps<"/ad
           today={now.toISOString().slice(0, 10)}
         />
       </section>
-      <div className="overflow-x-auto rounded-xl border border-border/70 bg-card">
+      <div className="overflow-x-auto rounded-lg border border-hairline">
         <Table>
           <TableHeader>
             <TableRow>

@@ -103,7 +103,7 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
         </TabsList>
 
         <TabsContent value="yayin" className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
-          <section className="rounded-xl border border-border/70 bg-card p-5" aria-labelledby="kontrol">
+          <section className="rounded-lg border border-hairline p-5" aria-labelledby="kontrol">
             <h2 id="kontrol" className="mb-1 font-semibold">Yayın ön koşulları</h2>
             <p className="mb-4 text-sm text-muted-foreground">Tüm koşullar sağlanmadan profil yayınlanamaz. Aynı kural veritabanı seviyesinde de uygulanır.</p>
             <ul className="space-y-2" data-testid="publish-checklist">
@@ -115,7 +115,7 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
               ))}
             </ul>
           </section>
-          <section className="space-y-4 rounded-xl border border-border/70 bg-card p-5" aria-labelledby="islem">
+          <section className="space-y-4 rounded-lg border border-hairline p-5" aria-labelledby="islem">
             <h2 id="islem" className="font-semibold">İşlemler</h2>
             <div>
               <p className="mb-2 text-sm">Moderasyon: <StatusBadge tone={profile.moderationStatus === "approved" ? "success" : profile.moderationStatus === "rejected" ? "danger" : "warning"}>{MOD_LABEL[profile.moderationStatus]}</StatusBadge></p>
@@ -150,7 +150,7 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
           </section>
         </TabsContent>
 
-        <TabsContent value="genel" className="rounded-xl border border-border/70 bg-card p-5">
+        <TabsContent value="genel" className="rounded-lg border border-hairline p-5">
           {s === "archived" ? <p className="mb-4 text-sm text-muted-foreground">Arşivlenmiş profil düzenlenemez; önce taslağa alın.</p> : null}
           <ProfileForm
             action={updateProfileAction.bind(null, id)}
@@ -170,18 +170,18 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
           />
         </TabsContent>
 
-        <TabsContent value="foto" className="rounded-xl border border-border/70 bg-card p-5">
+        <TabsContent value="foto" className="rounded-lg border border-hairline p-5">
           <ImageManager images={images} limit={plan?.maxPhotos ?? 3} upload={uploadImageAction.bind(null, id)} actions={imgActions} />
         </TabsContent>
 
-        <TabsContent value="riza" className="grid gap-8 rounded-xl border border-border/70 bg-card p-5">
+        <TabsContent value="riza" className="grid gap-8 rounded-lg border border-hairline p-5">
           <ConsentPanel consents={consents} add={consentAction.bind(null, id)} revoke={revoke} dates={dates} />
           <VerificationPanel records={verifications} add={verificationAction.bind(null, id)} dates={dates} />
         </TabsContent>
 
-        <TabsContent value="abonelik" className="space-y-4 rounded-xl border border-border/70 bg-card p-5">
+        <TabsContent value="abonelik" className="space-y-4 rounded-lg border border-hairline p-5">
           <p className="text-sm">Aktif paket: <strong>{plan?.name ?? "—"}</strong> {activeSub ? `· ${formatDate(activeSub.endsAt)} tarihine kadar` : "(abonelik yok, Basic sınırları geçerli)"}</p>
-          <ul className="divide-y divide-border/70 rounded-xl border border-border/70 text-sm">
+          <ul className="divide-y divide-border/70 rounded-lg border border-hairline text-sm">
             {subs.length ? subs.map((x) => (
               <li key={x.id} className="flex flex-wrap justify-between gap-2 p-3">
                 <span>{plans.find((p) => p.id === x.planId)?.name} · {formatDate(x.startsAt)} – {formatDate(x.endsAt)}{x.sponsored ? " · sponsorlu" : ""}</span>
@@ -194,7 +194,7 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
         </TabsContent>
 
         <TabsContent value="gecmis" className="grid gap-6 lg:grid-cols-2">
-          <section className="rounded-xl border border-border/70 bg-card p-5">
+          <section className="rounded-lg border border-hairline p-5">
             <h2 className="mb-3 font-semibold">Şikâyetler ve moderasyon</h2>
             <ul className="space-y-2 text-sm">
               {reports.map((r) => (
@@ -204,7 +204,7 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
               {!reports.length && !modActions.length ? <li className="text-muted-foreground">Kayıt yok.</li> : null}
             </ul>
           </section>
-          <section className="rounded-xl border border-border/70 bg-card p-5">
+          <section className="rounded-lg border border-hairline p-5">
             <h2 className="mb-3 font-semibold">Denetim kayıtları</h2>
             <ul className="space-y-1.5 text-sm">
               {audit.length ? audit.map((a) => (
@@ -214,7 +214,7 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
           </section>
         </TabsContent>
 
-        <TabsContent value="veri" className="space-y-4 rounded-xl border border-border/70 bg-card p-5">
+        <TabsContent value="veri" className="space-y-4 rounded-lg border border-hairline p-5">
           <p className="text-sm text-muted-foreground">KVKK erişim talepleri için profil verisini dışa aktarın; silme talepleri için profili ve tüm ilişkili belgeleri kalıcı olarak silin.</p>
           <div className="flex flex-wrap gap-2">
             <ExportButton action={exportProfileAction.bind(null, id)} filename={`profil-${profile.slug}.json`} />

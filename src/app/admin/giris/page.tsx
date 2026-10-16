@@ -8,10 +8,10 @@ export const metadata: Metadata = { title: "Yönetici girişi", robots: { index:
 
 export default function LoginPage({ searchParams }: PageProps<"/admin/giris">) {
   return (
-    <main className="grid min-h-dvh place-items-center bg-muted/40 px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-border/70 bg-card p-6 shadow-[var(--shadow-raised)] sm:p-8">
-        <Logo className="mb-6" />
-        <h1 className="text-xl font-semibold">Yönetim paneli</h1>
+    <main className="grid min-h-dvh place-items-center bg-background px-4 font-sans">
+      <div className="w-full max-w-sm rounded-lg border border-hairline bg-paper p-6 sm:p-8">
+        <Logo className="mb-8" />
+        <h1 className="text-xl font-semibold tracking-tight">Yönetim paneli</h1>
         <p className="mb-6 mt-1 text-sm text-muted-foreground">Yalnızca yetkili yöneticiler. Tüm girişler kayıt altına alınır.</p>
         <Suspense fallback={<div className="h-64" />}>
           <Form searchParams={searchParams} />
