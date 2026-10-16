@@ -23,7 +23,7 @@ export default async function PlansPage() {
             <h2 className="!mt-0 !border-0 !pt-0">{p.name}</h2>
             <p className="mt-2 text-sm text-muted-foreground">{p.description}</p>
             <ul className="mt-5 space-y-2 text-sm !list-none !pl-0">
-              <Feature>En fazla {p.maxPhotos} fotoğraf</Feature>
+              <Feature>En fazla {p.storageQuotaMb} MB depolama</Feature>
               <Feature off={!p.sponsoredEligible}>Sponsorlu görünürlük</Feature>
               <Feature off={!p.customization}>Gelişmiş kişiselleştirme</Feature>
               <Feature off={!p.advancedStats}>İlave istatistikler</Feature>

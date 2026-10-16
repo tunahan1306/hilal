@@ -14,9 +14,10 @@ function service(): SupabaseClient {
   return client;
 }
 
-function must<T>(res: { data: T; error: { message: string } | null }): T {
+function must<T>(res: { data: T; error: { message: string } | null }): NonNullable<T> {
   if (res.error) throw new Error(res.error.message);
-  return res.data;
+  if (res.data === null) throw new Error("Depolama yanıtı boş");
+  return res.data as NonNullable<T>;
 }
 
 export function createSupabaseStorage(): MediaStorage {

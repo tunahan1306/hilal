@@ -24,7 +24,7 @@ export default async function ProfilesPage({ searchParams }: PageProps<"/admin/p
     repo.listInterests(),
     repo.listAllConsents(),
     repo.listAllVerifications(),
-    repo.listAllImages(),
+    repo.listAllMedia(),
     searchParams.then((s) => (typeof s.durum === "string" ? s.durum : undefined)),
   ]);
   const byProfile = <T extends { profileId: string }>(rows: T[]) => {
@@ -41,7 +41,7 @@ export default async function ProfilesPage({ searchParams }: PageProps<"/admin/p
       const images = imagesOf.get(p.id) ?? [];
       const own = reports.filter((r) => r.profileId === p.id);
       const readiness = evaluatePublishReadiness({
-        profile: p, consents, verifications, images, reports: own, now,
+        profile: p, consents, verifications, media: images, reports: own, now,
         interestNames: interests.filter((i) => p.interestIds.includes(i.id)).map((i) => i.name),
       });
       return {

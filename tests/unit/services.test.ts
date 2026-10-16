@@ -1,9 +1,11 @@
+import { memoryGet, resetMemoryStorage } from "@/server/storage/memory";
+import { docFromPlainText } from "@/domain/rich-text";
 import sharp from "sharp";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Admin } from "@/domain/types";
 import { resetRateLimits } from "@/server/rate-limit";
 import { getRepository } from "@/server/repositories";
-import { readDemoFile, resetDemoStore } from "@/server/repositories/memory";
+import { resetDemoStore } from "@/server/repositories/memory";
 import { DomainError, PublishBlockedError, RateLimitedError } from "@/server/services/errors";
 import { processUpload, sniffImageType } from "@/server/services/images";
 import { REPORTS_PER_HOUR, submitReport } from "@/server/services/moderation";
@@ -16,6 +18,7 @@ const repo = () => getRepository();
 
 beforeEach(async () => {
   resetDemoStore();
+  resetMemoryStorage();
   resetRateLimits();
   admin = (await repo().getAdmin("admin-0001"))!;
 });
@@ -26,6 +29,7 @@ const input = {
   provincePlate: 34,
   districtSlug: "kadikoy",
   bio: "Kitap kulübü ve sahil yürüyüşlerini seven sentetik test profili.",
+  bioDoc: docFromPlainText("Yetişkinler için sentetik sosyal test profili."),
   interestIds: [] as string[],
   seoTitle: null,
   seoDescription: null,
@@ -82,7 +86,7 @@ describe("profil yaşam döngüsü", () => {
     const p = await profiles.createProfile(admin, input);
     await makeReady(p.id);
     await profiles.publishProfile(admin, p.id);
-    await profiles.uploadProfileImage(admin, p.id, await pngBuffer(), "yeni");
+    await profiles.uploadProfileImage(admin, p.id, await sharp({ create: { width: 80, height: 100, channels: 3, background: "#aa5577" } }).png().toBuffer(), "yeni");
     expect((await repo().getPublicProfile(p.slug))!.images).toHaveLength(1);
   });
 
@@ -126,20 +130,20 @@ describe("profil yaşam döngüsü", () => {
     await expect(profiles.recordVerification(admin, p.id, { type: "age", status: "approved", method: "x", note: null })).rejects.toThrow(/18/);
   });
 
-  it("paket fotoğraf sınırını uygular", async () => {
+  it("paketin depolama kotasını uygular", async () => {
     const p = await profiles.createProfile(admin, input);
-    for (let i = 0; i < 3; i++) await profiles.uploadProfileImage(admin, p.id, await pngBuffer(), "x");
-    await expect(profiles.uploadProfileImage(admin, p.id, await pngBuffer(), "x")).rejects.toThrow(/en fazla 3/);
+    const { requestUpload } = await import("@/server/services/media");
+    await expect(requestUpload(admin, p.id, { mimeType: "video/mp4", bytes: 301 * 1024 * 1024, fileName: "test.mp4" })).rejects.toThrow(/büyük|kota/);
   });
 
   it("KVKK silme tüm ilişkili verileri ve dosyaları kaldırır", async () => {
     const p = await profiles.createProfile(admin, input);
     const img = await profiles.uploadProfileImage(admin, p.id, await pngBuffer(), "x");
-    expect(readDemoFile(img.storagePath)).not.toBeNull();
+    expect(memoryGet("priv", img.storagePath)).not.toBeNull();
     await profiles.deleteProfilePermanently(admin, p.id, "KVKK test");
     expect(await repo().getProfile(p.id)).toBeNull();
-    expect(await repo().listImages(p.id)).toHaveLength(0);
-    expect(readDemoFile(img.storagePath)).toBeNull();
+    expect(await repo().listMedia(p.id)).toHaveLength(0);
+    expect(memoryGet("priv", img.storagePath)).toBeNull();
   });
 
   it("dışa aktarma doğrulama belgesi yolunu içermez", async () => {

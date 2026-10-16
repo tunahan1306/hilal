@@ -20,7 +20,7 @@ export function ImageManager({
   upload,
   actions,
 }: {
-  images: ProfileImage[];
+  images: (ProfileImage & { previewUrl: string })[];
   limit: number;
   upload: (prev: ActionResult, fd: FormData) => Promise<ActionResult>;
   actions: Record<string, { confirm: BoundImageAction; unconfirm: BoundImageAction; remove: BoundImageAction; up: BoundImageAction; down: BoundImageAction }>;
@@ -40,7 +40,7 @@ export function ImageManager({
             </div>
             <Button type="submit" disabled={pending || images.length >= limit}><Upload className="size-4" aria-hidden /> Yükle</Button>
             <p className="text-xs text-muted-foreground sm:col-span-3">
-              {images.length}/{limit} fotoğraf (paket sınırı). Metadata (EXIF/GPS) silinir, görsel WebP olarak yeniden kodlanır. Yeni görseller hak doğrulanana kadar yayında görünmez.
+              {images.length} fotoğraf. Depolama kotası paketinizle belirlenir. Metadata (EXIF/GPS) silinir, görsel WebP olarak yeniden kodlanır. Yeni görseller hak doğrulanana kadar yayında görünmez.
             </p>
           </>
         )}
@@ -53,7 +53,7 @@ export function ImageManager({
             return (
               <li key={img.id} className="overflow-hidden rounded-lg border border-hairline">
                 <div className="relative aspect-[4/5] bg-muted">
-                  <Image src={img.url} alt={img.alt} fill sizes="240px" className="object-cover" />
+                  <Image unoptimized src={img.previewUrl} alt={img.alt} fill sizes="240px" className="object-cover" />
                   <span className="absolute left-2 top-2">
                     {img.rightsConfirmed ? <StatusBadge tone="success">Hak doğrulandı</StatusBadge> : <StatusBadge tone="warning">Hak bekliyor</StatusBadge>}
                   </span>

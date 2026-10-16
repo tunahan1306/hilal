@@ -9,7 +9,7 @@ function ctx(over: Partial<PublishContext> = {}, profile: Partial<Profile> = {})
   return {
     profile: {
       id: "p1", slug: "p1", nickname: "Deniz", birthDate: "1995-01-01", provincePlate: 34, districtSlug: null,
-      bio: "Kitap kulübü ve yürüyüşleri seviyorum, yeni arkadaşlar arıyorum.", interestIds: [], status: "draft",
+      bioDoc: null, bio: "Kitap kulübü ve yürüyüşleri seviyorum, yeni arkadaşlar arıyorum.", interestIds: [], status: "draft",
       moderationStatus: "approved", moderationNote: null, moderatedBy: null, moderatedAt: null, publishedAt: null,
       archivedAt: null, seoTitle: null, seoDescription: null, noindex: false, createdBy: "a", createdAt: "", updatedAt: "",
       ...profile,
@@ -19,7 +19,7 @@ function ctx(over: Partial<PublishContext> = {}, profile: Partial<Profile> = {})
       { id: "c2", profileId: "p1", type: "photo_rights", grantedAt: "", revokedAt: null, evidencePath: null, method: "x", recordedBy: "a" },
     ],
     verifications: [{ id: "v1", profileId: "p1", type: "age", status: "approved", method: "x", documentPath: null, checkedBy: "a", checkedAt: "", retainUntil: null, note: null, createdAt: "" }],
-    images: [{ id: "i1", profileId: "p1", storagePath: "x", url: "/x.webp", alt: "", width: 1, height: 1, position: 0, rightsConfirmed: true, createdAt: "" }],
+    media: [{ id: "i1", profileId: "p1", kind: "image", status: "ready", storagePath: "x", thumbPath: null, publicUrl: "/x.webp", publicPosterUrl: null, publicPaths: [], mimeType: "image/webp", bytes: 1, alt: "", width: 1, height: 1, durationSeconds: null, position: 0, isCover: true, rightsConfirmed: true, ownershipSource: "owner", ownershipNote: null, rightsConfirmedBy: "a", rightsConfirmedAt: "", moderation: "approved", moderatedBy: "a", moderatedAt: "", sha256: null, dhash: null, failureReason: null, createdAt: "" }],
     reports: [],
     interestNames: [],
     now,
@@ -45,8 +45,8 @@ describe("yayın ön koşulları", () => {
     expect(failed(ctx({}, { birthDate: "2009-01-01" }))).toEqual(["adult"]);
   });
   it("fotoğraf haklarını denetler", () => {
-    expect(failed(ctx({ images: [] }))).toEqual(["images_present", "images_rights_confirmed"]);
-    expect(failed(ctx({ images: ctx().images.map((i) => ({ ...i, rightsConfirmed: false })) }))).toEqual(["images_rights_confirmed"]);
+    expect(failed(ctx({ media: [] }))).toEqual(["approved_cover"]);
+    expect(failed(ctx({ media: ctx().media.map((i) => ({ ...i, rightsConfirmed: false })) }))).toEqual(["approved_cover"]);
   });
   it("moderasyon onayı ve içerik politikasını denetler", () => {
     expect(failed(ctx({}, { moderationStatus: "pending" }))).toEqual(["moderation_approved"]);
@@ -69,7 +69,7 @@ describe("abonelik durumları", () => {
     id: "s", profileId: "p", planId: "pl", startsAt: "2026-10-01T00:00:00Z", endsAt: "2026-11-01T00:00:00Z", status: "active",
     autoRenew: false, sponsored: true, cancelledAt: null, externalRef: null, note: null, createdAt: "", ...o,
   });
-  const plan = (o: Partial<MembershipPlan> = {}): MembershipPlan => ({ id: "pl", code: "plus", name: "Plus", description: "", maxPhotos: 6, sponsoredEligible: true, advancedStats: false, customization: false, priceMonthlyTry: 0, active: true, ...o });
+  const plan = (o: Partial<MembershipPlan> = {}): MembershipPlan => ({ id: "pl", code: "plus", name: "Plus", description: "", storageQuotaMb: 1500, sponsoredEligible: true, advancedStats: false, customization: false, priceMonthlyTry: 0, active: true, ...o });
 
   it("tarihlere göre etkin durumu hesaplar", () => {
     expect(effectiveStatus(sub({}), now)).toBe("active");

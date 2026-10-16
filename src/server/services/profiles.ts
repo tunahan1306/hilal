@@ -5,7 +5,6 @@ import { scanProfileContent } from "@/domain/content-policy";
 import { getProvinceByPlate, listDistricts } from "@/domain/locations";
 import { activeConsent, canTransition, evaluatePublishReadiness, PROFILE_STATUS_LABELS } from "@/domain/publishing";
 import type { ProfileInput } from "@/domain/schemas";
-import { effectiveStatus } from "@/domain/subscriptions";
 import { slugifyTr } from "@/domain/text";
 import type { Admin, ConsentType, Profile, ProfileStatus, VerificationStatus, VerificationType } from "@/domain/types";
 import { getRepository } from "../repositories";
@@ -314,4 +313,39 @@ export function provinceLabel(p: Pick<Profile, "provincePlate" | "districtSlug">
   if (!province) return "—";
   const district = p.districtSlug ? listDistricts(province.plate).find((d) => d.slug === p.districtSlug) : undefined;
   return district ? `${district.name}, ${province.name}` : province.name;
+}
+
+/** Compatibility entry points for the existing image manager. */
+export async function uploadProfileImage(actor: Admin, profileId: string, data: Buffer, alt: string) {
+  const { requestUpload, finalizeUpload, updateMediaAlt } = await import("./media");
+  const { getStorage } = await import("../storage");
+  const { sniffImageType } = await import("./images");
+  const mimeType = sniffImageType(data);
+  if (!mimeType) throw new DomainError("Geçersiz görsel");
+  const ticket = await requestUpload(actor, profileId, { mimeType, bytes: data.length, fileName: "image" });
+  const record = await getRepository().getMedia(ticket.mediaId);
+  await getStorage().writePrivate(record!.storagePath, data, mimeType);
+  const result = await finalizeUpload(actor, ticket.mediaId);
+  if (result.media.status !== "ready") throw new DomainError(result.media.failureReason ?? "Görsel işlenemedi");
+  await updateMediaAlt(actor, ticket.mediaId, alt);
+  return (await getRepository().getMedia(ticket.mediaId))!;
+}
+export async function confirmImageRights(actor: Admin, profileId: string, imageId: string, confirmed: boolean) {
+  const m = await getRepository().getMedia(imageId);
+  if (m?.profileId !== profileId) throw new DomainError("Görsel bulunamadı");
+  const { setMediaRights, moderateMedia } = await import("./media");
+  await setMediaRights(actor, imageId, { confirmed, source: confirmed ? "owner" : null, note: "Yönetici tarafından kullanım hakkı ve yayın onayı" });
+  if (confirmed) await moderateMedia(actor, [imageId], "approved");
+}
+export async function deleteProfileImage(actor: Admin, profileId: string, imageId: string) {
+  if ((await getRepository().getMedia(imageId))?.profileId !== profileId) throw new DomainError("Görsel bulunamadı");
+  await (await import("./media")).deleteMedia(actor, imageId);
+}
+export async function moveProfileImage(actor: Admin, profileId: string, imageId: string, direction: number) {
+  const items = await getRepository().listMedia(profileId);
+  const index = items.findIndex((m) => m.id === imageId);
+  const target = index + direction;
+  if (index < 0 || target < 0 || target >= items.length) return;
+  [items[index], items[target]] = [items[target], items[index]];
+  await (await import("./media")).reorderMedia(actor, profileId, items.map((m) => m.id));
 }

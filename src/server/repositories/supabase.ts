@@ -31,7 +31,7 @@ import type { DashboardCounts, Repository } from "./types";
  */
 
 type Row = Record<string, unknown>;
-const PROFILE_IMAGES_BUCKET = "profile-images";
+
 
 function env(name: string): string {
   const v = process.env[name];
@@ -115,6 +115,7 @@ async function toProfile(r: Row, interestIds: string[]): Promise<Profile> {
     provincePlate: loc.plateByCityId.get(r.city_id as string) ?? 0,
     districtSlug: r.district_id ? (loc.districtSlugById.get(r.district_id as string) ?? null) : null,
     bio: r.bio as string,
+    bioDoc: (r.bio_doc as Profile["bioDoc"]) ?? null,
     interestIds,
     status: r.status as Profile["status"],
     moderationStatus: r.moderation_status as Profile["moderationStatus"],
@@ -139,7 +140,7 @@ async function profileColumns(p: Partial<Profile>): Promise<Row> {
     ["slug", "slug"], ["nickname", "nickname"], ["birthDate", "birth_date"], ["bio", "bio"], ["status", "status"],
     ["moderationStatus", "moderation_status"], ["moderationNote", "moderation_note"], ["moderatedBy", "moderated_by"],
     ["moderatedAt", "moderated_at"], ["publishedAt", "published_at"], ["archivedAt", "archived_at"],
-    ["seoTitle", "seo_title"], ["seoDescription", "seo_description"], ["noindex", "noindex"], ["createdBy", "created_by"],
+    ["bioDoc", "bio_doc"], ["seoTitle", "seo_title"], ["seoDescription", "seo_description"], ["noindex", "noindex"], ["createdBy", "created_by"],
   ];
   for (const [k, col] of map) if (k in p) row[col] = p[k];
   if (p.provincePlate !== undefined) {
@@ -154,18 +155,11 @@ async function profileColumns(p: Partial<Profile>): Promise<Row> {
   return row;
 }
 
-const toImage = (r: Row): ProfileImage => ({
-  id: r.id as string,
-  profileId: r.profile_id as string,
-  storagePath: r.storage_path as string,
-  url: r.url as string,
-  alt: (r.alt as string) ?? "",
-  width: r.width as number,
-  height: r.height as number,
-  position: r.position as number,
-  rightsConfirmed: Boolean(r.rights_confirmed),
-  createdAt: r.created_at as string,
-});
+const mediaColumns = {"id": "id", "profileId": "profile_id", "kind": "kind", "status": "status", "storagePath": "storage_path", "thumbPath": "thumb_path", "publicUrl": "public_url", "publicPosterUrl": "public_poster_url", "publicPaths": "public_paths", "mimeType": "mime_type", "bytes": "bytes", "width": "width", "height": "height", "durationSeconds": "duration_seconds", "alt": "alt", "position": "position", "isCover": "is_cover", "rightsConfirmed": "rights_confirmed", "ownershipSource": "ownership_source", "ownershipNote": "ownership_note", "rightsConfirmedBy": "rights_confirmed_by", "rightsConfirmedAt": "rights_confirmed_at", "moderation": "moderation", "moderatedBy": "moderated_by", "moderatedAt": "moderated_at", "sha256": "sha256", "dhash": "dhash", "failureReason": "failure_reason", "createdAt": "created_at"} as const;
+const toImage = (r: Row): ProfileImage => Object.fromEntries(Object.entries(mediaColumns).map(([key, column]) => [key, r[column]])) as ProfileImage;
+function mediaRow(input: Partial<ProfileImage>): Row {
+  return Object.fromEntries(Object.entries(mediaColumns).filter(([key]) => key in input).map(([key, column]) => [column, input[key as keyof ProfileImage]]));
+}
 
 const toConsent = (r: Row): ProfileConsent => ({
   id: r.id as string,
@@ -220,7 +214,7 @@ const toPlan = (r: Row): MembershipPlan => ({
   code: r.code as MembershipPlan["code"],
   name: r.name as string,
   description: r.description as string,
-  maxPhotos: r.max_photos as number,
+  storageQuotaMb: r.storage_quota_mb as number,
   sponsoredEligible: Boolean(r.sponsored_eligible),
   advancedStats: Boolean(r.advanced_stats),
   customization: Boolean(r.customization),
@@ -285,13 +279,12 @@ async function hydratePublic(rows: Row[]): Promise<PublicProfile[]> {
   if (!rows.length) return [];
   const ids = rows.map((r) => r.id as string);
   const [images, interests] = await Promise.all([
-    anon().from("profile_images_public").select("*").in("profile_id", ids).order("position"),
+    anon().from("profile_media_public").select("*").in("profile_id", ids).order("position"),
     anon().from("profile_interests_public").select("*").in("profile_id", ids),
   ]);
   const imgRows = check(images) as Row[];
   const intRows = check(interests) as Row[];
   return rows.map((r) => {
-    const maxPhotos = (r.max_photos as number) ?? 3;
     return {
       id: r.id as string,
       slug: r.slug as string,
@@ -304,15 +297,16 @@ async function hydratePublic(rows: Row[]): Promise<PublicProfile[]> {
       },
       district: r.district_slug ? { name: r.district_name as string, slug: r.district_slug as string } : null,
       bio: r.bio as string,
+    bioDoc: (r.bio_doc as Profile["bioDoc"]) ?? null,
       interests: intRows
         .filter((i) => i.profile_id === r.id)
         .map((i) => ({ slug: i.slug as string, name: i.name as string })),
       verified: Boolean(r.verified),
       sponsored: Boolean(r.sponsored),
       images: imgRows
-        .filter((i) => i.profile_id === r.id)
-        .slice(0, maxPhotos)
+        .filter((i) => i.profile_id === r.id && i.kind === "image")
         .map((i) => ({ url: i.url as string, alt: i.alt as string, width: i.width as number, height: i.height as number })),
+      videos: imgRows.filter((i) => i.profile_id === r.id && i.kind === "video").map((i) => ({ url: i.url as string, posterUrl: i.poster_url as string | null, alt: i.alt as string, width: i.width as number, height: i.height as number, mimeType: i.mime_type as string, durationSeconds: i.duration_seconds as number | null })),
       publishedAt: r.published_at as string,
       updatedAt: r.updated_at as string,
       seo: {
@@ -353,7 +347,7 @@ export function createSupabaseRepository(): Repository {
   return {
     kind: "supabase",
 
-    async searchPublicProfiles(filters, { limit, offset }) {
+    async searchPublicProfiles(filters, { limit, offset, cursor }) {
       let ids: string[] | null = null;
       if (filters.ilgi.length) {
         const rows = check(
@@ -371,9 +365,10 @@ export function createSupabaseRepository(): Repository {
       if (filters.yasMax !== undefined) q = q.lte("age", filters.yasMax);
       if (filters.dogrulanmis) q = q.eq("verified", true);
       if (ids) q = q.in("id", ids);
+      if (cursor) q = q.or(`published_at.lt.${cursor.publishedAt},and(published_at.eq.${cursor.publishedAt},id.lt.${cursor.id})`);
       const res = await q
-        .order("sponsored", { ascending: false })
         .order("published_at", { ascending: false })
+        .order("id", { ascending: false })
         .range(offset, offset + limit - 1);
       const rows = check(res) as Row[];
       return { items: await hydratePublic(rows), total: res.count ?? rows.length };
@@ -392,13 +387,13 @@ export function createSupabaseRepository(): Repository {
           .select("*")
           .order("sponsored", { ascending: false })
           .order("published_at", { ascending: false })
+        .order("id", { ascending: false })
           .limit(limit),
       ) as Row[];
       return hydratePublic(rows);
     },
 
     async countPublishedByLocation() {
-      const rows = check(await anon().from("profiles_public").select("city_plate, district_slug")) as Row[];
       const counts = new Map<string, { plate: number; districtSlug: string | null; count: number }>();
       const bump = (plate: number, districtSlug: string | null) => {
         const key = `${plate}|${districtSlug ?? ""}`;
@@ -406,9 +401,18 @@ export function createSupabaseRepository(): Repository {
         cur.count += 1;
         counts.set(key, cur);
       };
-      for (const r of rows) {
-        bump(r.city_plate as number, null);
-        if (r.district_slug) bump(r.city_plate as number, r.district_slug as string);
+      // Aggregate compact location columns in bounded keyset batches, never the full profile table at once.
+      let after: string | undefined;
+      while (true) {
+        let q = anon().from("profiles_public").select("id, city_plate, district_slug").order("id").limit(500);
+        if (after) q = q.gt("id", after);
+        const rows = check(await q) as Row[];
+        for (const r of rows) {
+          bump(r.city_plate as number, null);
+          if (r.district_slug) bump(r.city_plate as number, r.district_slug as string);
+        }
+        if (rows.length < 500) break;
+        after = rows.at(-1)!.id as string;
       }
       return [...counts.values()];
     },
@@ -468,57 +472,26 @@ export function createSupabaseRepository(): Repository {
       check(await service().from("profiles").delete().eq("id", id));
     },
 
-    async listImages(profileId) {
-      const rows = check(
-        await service().from("profile_images").select("*").eq("profile_id", profileId).order("position"),
-      ) as Row[];
-      return rows.map(toImage);
+    async listMedia(profileId) {
+      return (check(await service().from("profile_media").select("*").eq("profile_id", profileId).order("position")) as Row[]).map(toImage);
     },
-    async listAllImages() {
-      return (check(await service().from("profile_images").select("*").order("position")) as Row[]).map(toImage);
+    async listAllMedia(filter) {
+      let q = service().from("profile_media").select("*").order("position");
+      if (filter?.moderation) q = q.eq("moderation", filter.moderation);
+      if (filter?.kind) q = q.eq("kind", filter.kind);
+      return (check(await q) as Row[]).map(toImage);
     },
-    async listAllConsents() {
-      return (check(await service().from("profile_consents").select("*")) as Row[]).map(toConsent);
-    },
-    async listAllVerifications() {
-      return (check(await service().from("verification_records").select("*")) as Row[]).map(toVerification);
-    },
-    async addImage(input) {
-      const r = check(
-        await service()
-          .from("profile_images")
-          .insert({
-            profile_id: input.profileId,
-            storage_path: input.storagePath,
-            url: input.url,
-            alt: input.alt,
-            width: input.width,
-            height: input.height,
-            position: input.position,
-            rights_confirmed: input.rightsConfirmed,
-          })
-          .select()
-          .single(),
-      ) as Row;
-      return toImage(r);
-    },
-    async updateImage(id, patch) {
-      const row: Row = {};
-      if (patch.alt !== undefined) row.alt = patch.alt;
-      if (patch.position !== undefined) row.position = patch.position;
-      if (patch.rightsConfirmed !== undefined) row.rights_confirmed = patch.rightsConfirmed;
-      return toImage(check(await service().from("profile_images").update(row).eq("id", id).select().single()) as Row);
-    },
-    async deleteImage(id) {
-      const r = check(await service().from("profile_images").delete().eq("id", id).select().maybeSingle()) as Row | null;
+    async listAllConsents() { return (check(await service().from("profile_consents").select("*")) as Row[]).map(toConsent); },
+    async listAllVerifications() { return (check(await service().from("verification_records").select("*")) as Row[]).map(toVerification); },
+    async getMedia(id) {
+      const r = check(await service().from("profile_media").select("*").eq("id", id).maybeSingle()) as Row | null;
       return r ? toImage(r) : null;
     },
-    async storeImageFile(path, data, contentType) {
-      check(await service().storage.from(PROFILE_IMAGES_BUCKET).upload(path, data, { contentType, upsert: false }));
-      return { url: service().storage.from(PROFILE_IMAGES_BUCKET).getPublicUrl(path).data.publicUrl };
-    },
-    async removeImageFile(path) {
-      check(await service().storage.from(PROFILE_IMAGES_BUCKET).remove([path]));
+    async addMedia(input) { return toImage(check(await service().from("profile_media").insert(mediaRow(input)).select().single()) as Row); },
+    async updateMedia(id, patch) { return toImage(check(await service().from("profile_media").update(mediaRow(patch)).eq("id", id).select().single()) as Row); },
+    async deleteMedia(id) {
+      const r = check(await service().from("profile_media").delete().eq("id", id).select().maybeSingle()) as Row | null;
+      return r ? toImage(r) : null;
     },
     async storePrivateDocument(path, data, contentType) {
       const [bucket, ...rest] = path.split("/");

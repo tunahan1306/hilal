@@ -1,3 +1,4 @@
+import { docFromPlainText } from "@/domain/rich-text";
 /**
  * Supabase repository entegrasyon testi. Yerel Supabase gerekir:
  *   supabase start && supabase db reset
@@ -44,7 +45,8 @@ describe.skipIf(!enabled)("Supabase repository (entegrasyon)", () => {
     provincePlate: 6,
     districtSlug: "cankaya",
     bio: "Supabase entegrasyon testi için oluşturulmuş sentetik profil.",
-    interestIds: [] as string[],
+    bioDoc: docFromPlainText("Yetişkinler için sentetik sosyal test profili."),
+  interestIds: [] as string[],
     seoTitle: null,
     seoDescription: null,
     noindex: false,
@@ -72,8 +74,7 @@ describe.skipIf(!enabled)("Supabase repository (entegrasyon)", () => {
     await profiles.recordVerification(admin, p.id, { type: "identity", status: "approved", method: "entegrasyon", note: null });
     const png = await sharp({ create: { width: 300, height: 400, channels: 3, background: "#557788" } }).png().toBuffer();
     const img = await profiles.uploadProfileImage(admin, p.id, png, "Sentetik");
-    expect(img.url).toContain("/storage/v1/object/public/profile-images/");
-    expect((await fetch(img.url)).status).toBe(200);
+    expect(img.publicUrl).toBeNull();
 
     // Özel belgeler anon tarafından okunamaz
     const consents = await repo.listConsents(p.id);
@@ -114,7 +115,7 @@ describe.skipIf(!enabled)("Supabase repository (entegrasyon)", () => {
     expect((await repo.getPublicProfile(p.slug))!.sponsored).toBe(false);
 
     // Toplu okumalar (yönetim listesi) ve kötüye kullanım sayaçları
-    expect((await repo.listAllImages()).some((i) => i.profileId === p.id)).toBe(true);
+    expect((await repo.listAllMedia()).some((i) => i.profileId === p.id)).toBe(true);
     expect((await repo.listAllConsents()).filter((c) => c.profileId === p.id)).toHaveLength(2);
     expect((await repo.listAllVerifications()).filter((v) => v.profileId === p.id)).toHaveLength(2);
     const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
@@ -146,7 +147,7 @@ describe.skipIf(!enabled)("Supabase repository (entegrasyon)", () => {
     expect(JSON.stringify(exported)).not.toContain("verification-documents/");
     await profiles.deleteProfilePermanently(admin, p.id, "entegrasyon");
     expect(await repo.getProfile(p.id)).toBeNull();
-    expect((await fetch(img.url)).status).not.toBe(200);
+    expect((await fetch(pub!.images[0].url)).status).not.toBe(200);
     created.splice(created.indexOf(p.id), 1);
   });
 

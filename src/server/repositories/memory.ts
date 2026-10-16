@@ -59,14 +59,14 @@ function publishedProjections(now: Date): PublicProfile[] {
 
 function sortListing(a: PublicProfile, b: PublicProfile): number {
   if (a.sponsored !== b.sponsored) return a.sponsored ? -1 : 1;
-  return b.publishedAt.localeCompare(a.publishedAt);
+  return b.publishedAt.localeCompare(a.publishedAt) || b.id.localeCompare(a.id);
 }
 
 export function createMemoryRepository(): Repository {
   return {
     kind: "memory",
 
-    async searchPublicProfiles(filters: ProfileFilters, { limit, offset }) {
+    async searchPublicProfiles(filters: ProfileFilters, { limit, offset, cursor }) {
       const now = new Date();
       const province = filters.il ? getProvince(filters.il) : undefined;
       if (filters.il && !province) return { items: [], total: 0 };
@@ -77,8 +77,9 @@ export function createMemoryRepository(): Repository {
         .filter((p) => filters.yasMax === undefined || p.age <= filters.yasMax)
         .filter((p) => filters.ilgi.every((slug) => p.interests.some((i) => i.slug === slug)))
         .filter((p) => !filters.dogrulanmis || p.verified)
-        .sort(sortListing);
-      return { items: clone(items.slice(offset, offset + limit)), total: items.length };
+        .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt) || b.id.localeCompare(a.id));
+      const remaining = cursor ? items.filter((p) => p.publishedAt < cursor.publishedAt || (p.publishedAt === cursor.publishedAt && p.id < cursor.id)) : items;
+      return { items: clone(remaining.slice(offset, offset + limit)), total: items.length };
     },
 
     async getPublicProfile(slug) {

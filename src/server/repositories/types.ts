@@ -47,7 +47,7 @@ export interface Repository {
   readonly kind: "supabase" | "memory";
 
   // Kamuya açık okuma (yalnızca yayındaki profiller)
-  searchPublicProfiles(filters: ProfileFilters, opts: { limit: number; offset: number }): Promise<SearchResult>;
+  searchPublicProfiles(filters: ProfileFilters, opts: { limit: number; offset: number; cursor?: { publishedAt: string; id: string } }): Promise<SearchResult>;
   getPublicProfile(slug: string): Promise<PublicProfile | null>;
   listFeaturedProfiles(limit: number): Promise<PublicProfile[]>;
   countPublishedByLocation(): Promise<LocationCount[]>;

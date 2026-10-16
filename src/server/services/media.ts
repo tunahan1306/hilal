@@ -336,7 +336,7 @@ export async function previewUrls(items: ProfileMedia[], expiresInSeconds = 3600
   await Promise.all(
     items.map(async (m) => {
       if (m.status !== "ready") return;
-      const sign = (p: string) => (p.startsWith("demo/") ? Promise.resolve(`/${p}`) : storage.signedUrl(p, expiresInSeconds));
+      const sign = (p: string) => (p.startsWith("demo/") ? Promise.resolve(`/api/admin/media?path=${encodeURIComponent(p)}`) : storage.signedUrl(p, expiresInSeconds));
       out[m.id] = { src: await sign(m.storagePath), thumb: m.thumbPath ? await sign(m.thumbPath) : null };
     }),
   );

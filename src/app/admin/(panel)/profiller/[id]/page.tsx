@@ -1,3 +1,4 @@
+import { previewUrls } from "@/server/services/media";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -41,7 +42,7 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
   const repo = getRepository();
   if (!(await repo.getProfile(id))) notFound();
   const ctx = await loadPublishContext(id);
-  const { profile, consents, verifications, images, reports } = ctx;
+  const { profile, consents, verifications, media: images, reports } = ctx;
   const readiness = evaluatePublishReadiness(ctx);
   const [interests, subs, plans, audit, views, modActions] = await Promise.all([
     repo.listInterests(),
@@ -59,6 +60,8 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
     dates[v.id] = formatDate(v.checkedAt ?? v.createdAt);
     if (v.retainUntil) dates[`${v.id}-r`] = formatDate(v.retainUntil);
   }
+  const previews = await previewUrls(images);
+  const displayImages = images.filter((m) => m.kind === "image").map((m) => ({ ...m, previewUrl: previews[m.id]?.src ?? m.publicUrl ?? "" }));
   const imgActions = Object.fromEntries(
     images.map((img) => [
       img.id,
@@ -171,7 +174,7 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
         </TabsContent>
 
         <TabsContent value="foto" className="rounded-lg border border-hairline p-5">
-          <ImageManager images={images} limit={plan?.maxPhotos ?? 3} upload={uploadImageAction.bind(null, id)} actions={imgActions} />
+          <ImageManager images={displayImages} limit={Number.MAX_SAFE_INTEGER} upload={uploadImageAction.bind(null, id)} actions={imgActions} />
         </TabsContent>
 
         <TabsContent value="riza" className="grid gap-8 rounded-lg border border-hairline p-5">
