@@ -269,4 +269,5 @@ export type PublicProfile = {
   images: Pick<ProfileImage, "url" | "alt" | "width" | "height">[];
   publishedAt: string;
   updatedAt: string;
+  seo: { title: string | null; description: string | null; noindex: boolean };
 };

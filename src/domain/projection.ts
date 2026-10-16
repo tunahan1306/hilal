@@ -52,5 +52,6 @@ export function toPublicProfile(args: {
       .map((i) => ({ url: i.url, alt: i.alt, width: i.width, height: i.height })),
     publishedAt: profile.publishedAt,
     updatedAt: profile.updatedAt,
+    seo: { title: profile.seoTitle, description: profile.seoDescription, noindex: profile.noindex },
   };
 }

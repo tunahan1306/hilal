@@ -1,0 +1,376 @@
+import "server-only";
+import { randomBytes } from "node:crypto";
+import { isAdult } from "@/domain/age";
+import { scanProfileContent } from "@/domain/content-policy";
+import { getProvinceByPlate, listDistricts } from "@/domain/locations";
+import { activeConsent, canTransition, evaluatePublishReadiness, PROFILE_STATUS_LABELS } from "@/domain/publishing";
+import type { ProfileInput } from "@/domain/schemas";
+import { effectiveStatus } from "@/domain/subscriptions";
+import { slugifyTr } from "@/domain/text";
+import type { Admin, ConsentType, Profile, ProfileStatus, VerificationStatus, VerificationType } from "@/domain/types";
+import { getRepository } from "../repositories";
+import { audit } from "./audit";
+import { DomainError, PublishBlockedError } from "./errors";
+import { processUpload, validateDocument } from "./images";
+
+const DAY = 86_400_000;
+
+function verificationRetentionDays(): number {
+  const n = Number(process.env.VERIFICATION_DOC_RETENTION_DAYS ?? 30);
+  return Number.isFinite(n) && n > 0 ? n : 30;
+}
+
+function assertLocation(input: Pick<ProfileInput, "provincePlate" | "districtSlug">) {
+  const province = getProvinceByPlate(input.provincePlate);
+  if (!province) throw new DomainError("Geçersiz il");
+  if (input.districtSlug && !listDistricts(province.plate).some((d) => d.slug === input.districtSlug)) {
+    throw new DomainError("İlçe seçilen ile ait değil");
+  }
+}
+
+async function assertInterests(ids: string[]) {
+  const known = new Set((await getRepository().listInterests()).map((i) => i.id));
+  if (ids.some((id) => !known.has(id))) throw new DomainError("Geçersiz ilgi alanı");
+}
+
+async function mustGetProfile(id: string): Promise<Profile> {
+  const p = await getRepository().getProfile(id);
+  if (!p) throw new DomainError("Profil bulunamadı", "not_found");
+  return p;
+}
+
+export async function loadPublishContext(profileId: string, now = new Date()) {
+  const repo = getRepository();
+  const profile = await mustGetProfile(profileId);
+  const [consents, verifications, images, reports, interests] = await Promise.all([
+    repo.listConsents(profileId),
+    repo.listVerifications(profileId),
+    repo.listImages(profileId),
+    repo.listReports({ profileId }),
+    repo.listInterests(),
+  ]);
+  const interestNames = interests.filter((i) => profile.interestIds.includes(i.id)).map((i) => i.name);
+  return { profile, consents, verifications, images, reports, interestNames, now };
+}
+
+export async function createProfile(actor: Admin, input: ProfileInput): Promise<Profile> {
+  assertLocation(input);
+  await assertInterests(input.interestIds);
+  const slug = `${slugifyTr(input.nickname) || "profil"}-${randomBytes(3).toString("hex")}`;
+  const profile = await getRepository().createProfile({
+    slug,
+    nickname: input.nickname,
+    birthDate: input.birthDate,
+    provincePlate: input.provincePlate,
+    districtSlug: input.districtSlug,
+    bio: input.bio,
+    interestIds: input.interestIds,
+    status: "draft",
+    moderationStatus: "pending",
+    seoTitle: input.seoTitle,
+    seoDescription: input.seoDescription,
+    noindex: input.noindex,
+    createdBy: actor.id,
+  });
+  const findings = scanProfileContent({ nickname: input.nickname, bio: input.bio });
+  await audit(actor, "profile.create", "profile", profile.id, { findings: findings.map((f) => f.rule) });
+  return profile;
+}
+
+/**
+ * Yayındaki bir profilin görünen içeriği değişirse profil yeniden moderasyona
+ * düşer ve yayından kalkar: onaylanmamış içerik hiçbir zaman yayında kalmaz.
+ */
+export async function updateProfile(actor: Admin, id: string, input: ProfileInput): Promise<{ profile: Profile; requeued: boolean }> {
+  assertLocation(input);
+  await assertInterests(input.interestIds);
+  const current = await mustGetProfile(id);
+  if (current.status === "archived") throw new DomainError("Arşivlenmiş profil düzenlenemez; önce taslağa alın");
+  const contentChanged =
+    current.nickname !== input.nickname ||
+    current.bio !== input.bio ||
+    current.interestIds.slice().sort().join() !== input.interestIds.slice().sort().join();
+  const requeue = contentChanged && (current.moderationStatus === "approved" || current.status === "published");
+  const profile = await getRepository().updateProfile(id, {
+    nickname: input.nickname,
+    birthDate: input.birthDate,
+    provincePlate: input.provincePlate,
+    districtSlug: input.districtSlug,
+    bio: input.bio,
+    interestIds: input.interestIds,
+    seoTitle: input.seoTitle,
+    seoDescription: input.seoDescription,
+    noindex: input.noindex,
+    ...(requeue
+      ? { moderationStatus: "pending" as const, status: current.status === "published" ? ("in_review" as const) : current.status }
+      : {}),
+  });
+  await audit(actor, "profile.update", "profile", id, { requeued: requeue });
+  return { profile, requeued: requeue };
+}
+
+async function transition(actor: Admin, id: string, to: ProfileStatus, extra: Partial<Profile> = {}, meta: Record<string, unknown> = {}) {
+  const current = await mustGetProfile(id);
+  if (!canTransition(current.status, to)) {
+    throw new DomainError(`"${PROFILE_STATUS_LABELS[current.status]}" durumundan "${PROFILE_STATUS_LABELS[to]}" durumuna geçilemez`);
+  }
+  const profile = await getRepository().updateProfile(id, { status: to, ...extra });
+  await audit(actor, `profile.${to}`, "profile", id, { from: current.status, ...meta });
+  return profile;
+}
+
+export async function submitForReview(actor: Admin, id: string) {
+  return transition(actor, id, "in_review");
+}
+
+export async function setModeration(actor: Admin, id: string, decision: "approved" | "rejected", note: string | null) {
+  const current = await mustGetProfile(id);
+  if (decision === "approved") {
+    const findings = scanProfileContent({ nickname: current.nickname, bio: current.bio });
+    if (findings.some((f) => f.severity === "block")) {
+      throw new DomainError(`İçerik politikası ihlali varken onaylanamaz: ${findings.map((f) => f.message).join(", ")}`);
+    }
+  }
+  const profile = await getRepository().updateProfile(id, {
+    moderationStatus: decision,
+    moderationNote: note,
+    moderatedBy: actor.id,
+    moderatedAt: new Date().toISOString(),
+    // Reddedilen profil yayında kalamaz.
+    ...(decision === "rejected" && current.status === "published" ? { status: "unpublished" as const } : {}),
+  });
+  await audit(actor, `profile.moderation.${decision}`, "profile", id, { note });
+  return profile;
+}
+
+export async function publishProfile(actor: Admin, id: string, now = new Date()) {
+  const ctx = await loadPublishContext(id, now);
+  const readiness = evaluatePublishReadiness(ctx);
+  if (!readiness.ready) {
+    const failed = readiness.checks.filter((c) => !c.passed).map((c) => c.label);
+    await audit(actor, "profile.publish_blocked", "profile", id, { failed });
+    throw new PublishBlockedError(failed);
+  }
+  return transition(actor, id, "published", { publishedAt: ctx.profile.publishedAt ?? now.toISOString(), archivedAt: null });
+}
+
+export async function unpublishProfile(actor: Admin, id: string, reason: string) {
+  return transition(actor, id, "unpublished", {}, { reason });
+}
+
+export async function archiveProfile(actor: Admin, id: string) {
+  return transition(actor, id, "archived", { archivedAt: new Date().toISOString() });
+}
+
+export async function restoreToDraft(actor: Admin, id: string) {
+  return transition(actor, id, "draft", { archivedAt: null, moderationStatus: "pending" });
+}
+
+/** KVKK silme: profil, görseller ve özel belgeler kalıcı olarak silinir. */
+export async function deleteProfilePermanently(actor: Admin, id: string, reason: string) {
+  const repo = getRepository();
+  const profile = await mustGetProfile(id);
+  const [images, consents, verifications] = await Promise.all([
+    repo.listImages(id),
+    repo.listConsents(id),
+    repo.listVerifications(id),
+  ]);
+  await Promise.all([
+    ...images.filter((i) => !i.storagePath.startsWith("demo/")).map((i) => repo.removeImageFile(i.storagePath)),
+    ...consents.filter((c) => c.evidencePath).map((c) => repo.removePrivateDocument(c.evidencePath!)),
+    ...verifications.filter((v) => v.documentPath).map((v) => repo.removePrivateDocument(v.documentPath!)),
+  ]);
+  await repo.deleteProfile(id);
+  // Denetim kaydında kişisel veri tutulmaz; yalnızca kimlik ve gerekçe.
+  await audit(actor, "profile.delete", "profile", id, { reason, slug: profile.slug });
+}
+
+// ---------------------------------------------------------------------------
+// Görseller
+// ---------------------------------------------------------------------------
+async function photoLimit(profileId: string, now = new Date()): Promise<number> {
+  const repo = getRepository();
+  const [subs, plans] = await Promise.all([repo.listSubscriptions({ profileId }), repo.listPlans()]);
+  const active = subs.find((s) => effectiveStatus(s, now) === "active");
+  const plan = plans.find((p) => p.id === active?.planId) ?? plans.find((p) => p.code === "basic");
+  return plan?.maxPhotos ?? 3;
+}
+
+export async function uploadProfileImage(actor: Admin, profileId: string, file: Buffer, alt: string) {
+  const repo = getRepository();
+  await mustGetProfile(profileId);
+  const existing = await repo.listImages(profileId);
+  const limit = await photoLimit(profileId);
+  if (existing.length >= limit) throw new DomainError(`Bu profilin paketi en fazla ${limit} fotoğrafa izin veriyor`);
+  const processed = await processUpload(file);
+  const path = `${profileId}/${crypto.randomUUID()}.webp`;
+  const { url } = await repo.storeImageFile(path, processed.data, processed.contentType);
+  const image = await repo.addImage({
+    profileId,
+    storagePath: path,
+    url,
+    alt: alt.slice(0, 160),
+    width: processed.width,
+    height: processed.height,
+    position: existing.length,
+    // Yeni yüklenen her görselin kullanım hakkı ayrıca doğrulanmalıdır.
+    rightsConfirmed: false,
+  });
+  await audit(actor, "image.upload", "profile", profileId, { imageId: image.id });
+  return image;
+}
+
+export async function confirmImageRights(actor: Admin, profileId: string, imageId: string, confirmed: boolean) {
+  const repo = getRepository();
+  const images = await repo.listImages(profileId);
+  if (!images.some((i) => i.id === imageId)) throw new DomainError("Görsel bu profile ait değil");
+  if (confirmed && !activeConsent(await repo.listConsents(profileId), "photo_rights")) {
+    throw new DomainError("Önce fotoğraf kullanım izni kaydedilmeli");
+  }
+  await repo.updateImage(imageId, { rightsConfirmed: confirmed });
+  await audit(actor, confirmed ? "image.rights_confirmed" : "image.rights_revoked", "profile", profileId, { imageId });
+}
+
+export async function deleteProfileImage(actor: Admin, profileId: string, imageId: string) {
+  const repo = getRepository();
+  const images = await repo.listImages(profileId);
+  if (!images.some((i) => i.id === imageId)) throw new DomainError("Görsel bu profile ait değil");
+  const removed = await repo.deleteImage(imageId);
+  if (removed && !removed.storagePath.startsWith("demo/")) await repo.removeImageFile(removed.storagePath);
+  const rest = images.filter((i) => i.id !== imageId);
+  await Promise.all(rest.map((img, idx) => (img.position !== idx ? repo.updateImage(img.id, { position: idx }) : null)));
+  await audit(actor, "image.delete", "profile", profileId, { imageId });
+}
+
+export async function moveProfileImage(actor: Admin, profileId: string, imageId: string, direction: -1 | 1) {
+  const repo = getRepository();
+  const images = await repo.listImages(profileId);
+  const idx = images.findIndex((i) => i.id === imageId);
+  const target = idx + direction;
+  if (idx < 0 || target < 0 || target >= images.length) return;
+  await repo.updateImage(images[idx].id, { position: target });
+  await repo.updateImage(images[target].id, { position: idx });
+  await audit(actor, "image.reorder", "profile", profileId, { imageId, direction });
+}
+
+// ---------------------------------------------------------------------------
+// Rıza ve doğrulama
+// ---------------------------------------------------------------------------
+export async function recordConsent(actor: Admin, profileId: string, type: ConsentType, method: string, evidence?: Buffer) {
+  const repo = getRepository();
+  await mustGetProfile(profileId);
+  if (activeConsent(await repo.listConsents(profileId), type)) throw new DomainError("Bu türde aktif bir rıza kaydı zaten var");
+  let evidencePath: string | null = null;
+  if (evidence && evidence.length) {
+    const contentType = validateDocument(evidence);
+    evidencePath = `consent-documents/${profileId}/${crypto.randomUUID()}`;
+    await repo.storePrivateDocument(evidencePath, evidence, contentType);
+  }
+  const consent = await repo.addConsent({
+    profileId,
+    type,
+    grantedAt: new Date().toISOString(),
+    evidencePath,
+    method,
+    recordedBy: actor.id,
+  });
+  await audit(actor, "consent.grant", "profile", profileId, { type, consentId: consent.id });
+  return consent;
+}
+
+/** Rıza geri alınırsa profil derhal yayından kalkar (DB tetikleyicisiyle aynı kural). */
+export async function revokeConsent(actor: Admin, profileId: string, consentId: string) {
+  const repo = getRepository();
+  const consent = (await repo.listConsents(profileId)).find((c) => c.id === consentId);
+  if (!consent) throw new DomainError("Rıza kaydı bulunamadı");
+  if (consent.revokedAt) return consent;
+  const revoked = await repo.revokeConsent(consentId, new Date().toISOString());
+  const profile = await mustGetProfile(profileId);
+  if ((consent.type === "publication" || consent.type === "photo_rights") && profile.status === "published") {
+    await repo.updateProfile(profileId, { status: "unpublished" });
+    await audit(actor, "profile.auto_unpublished", "profile", profileId, { reason: `consent_revoked:${consent.type}` });
+  }
+  if (consent.type === "photo_rights") {
+    const images = await repo.listImages(profileId);
+    await Promise.all(images.map((i) => repo.updateImage(i.id, { rightsConfirmed: false })));
+  }
+  await audit(actor, "consent.revoke", "profile", profileId, { type: consent.type, consentId });
+  return revoked;
+}
+
+export async function recordVerification(
+  actor: Admin,
+  profileId: string,
+  input: { type: VerificationType; status: VerificationStatus; method: string; note: string | null },
+  document?: Buffer,
+) {
+  const repo = getRepository();
+  const profile = await mustGetProfile(profileId);
+  if (input.type === "age" && input.status === "approved") {
+    if (!isAdult(profile.birthDate, new Date())) throw new DomainError("Doğum tarihine göre profil sahibi 18 yaşından küçük");
+  }
+  let documentPath: string | null = null;
+  let retainUntil: string | null = null;
+  if (document && document.length) {
+    const contentType = validateDocument(document);
+    documentPath = `verification-documents/${profileId}/${crypto.randomUUID()}`;
+    await repo.storePrivateDocument(documentPath, document, contentType);
+    retainUntil = new Date(Date.now() + verificationRetentionDays() * DAY).toISOString();
+  }
+  const now = new Date().toISOString();
+  const record = await repo.addVerification({
+    profileId,
+    type: input.type,
+    status: input.status,
+    method: input.method,
+    documentPath,
+    checkedBy: actor.id,
+    checkedAt: now,
+    retainUntil,
+    note: input.note,
+  });
+  await audit(actor, "verification.record", "profile", profileId, { type: input.type, status: input.status });
+  return record;
+}
+
+/** Saklama süresi dolan doğrulama belgelerini siler (kayıt kalır, belge gider). */
+export async function purgeExpiredVerificationDocuments(now = new Date()): Promise<number> {
+  const repo = getRepository();
+  const expired = await repo.listExpiredVerificationDocuments(now.toISOString());
+  for (const v of expired) {
+    if (v.documentPath) await repo.removePrivateDocument(v.documentPath);
+    await repo.clearVerificationDocument(v.id);
+    await audit(null, "verification.document_purged", "profile", v.profileId, { verificationId: v.id });
+  }
+  return expired.length;
+}
+
+/** KVKK erişim talebi için profil verisinin dışa aktarımı. */
+export async function exportProfileData(actor: Admin, profileId: string) {
+  const repo = getRepository();
+  const profile = await mustGetProfile(profileId);
+  const [images, consents, verifications, subscriptions, reports] = await Promise.all([
+    repo.listImages(profileId),
+    repo.listConsents(profileId),
+    repo.listVerifications(profileId),
+    repo.listSubscriptions({ profileId }),
+    repo.listReports({ profileId }),
+  ]);
+  await audit(actor, "profile.export", "profile", profileId);
+  return {
+    exportedAt: new Date().toISOString(),
+    profile,
+    images: images.map(({ url, alt, createdAt }) => ({ url, alt, createdAt })),
+    consents: consents.map(({ type, grantedAt, revokedAt, method }) => ({ type, grantedAt, revokedAt, method })),
+    verifications: verifications.map(({ type, status, checkedAt, method }) => ({ type, status, checkedAt, method })),
+    subscriptions,
+    reportsCount: reports.length,
+  };
+}
+
+export function provinceLabel(p: Pick<Profile, "provincePlate" | "districtSlug">): string {
+  const province = getProvinceByPlate(p.provincePlate);
+  if (!province) return "—";
+  const district = p.districtSlug ? listDistricts(province.plate).find((d) => d.slug === p.districtSlug) : undefined;
+  return district ? `${district.name}, ${province.name}` : province.name;
+}

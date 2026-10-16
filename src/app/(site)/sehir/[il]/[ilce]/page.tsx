@@ -1,0 +1,31 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { LocationPage } from "@/components/site/location-page";
+import { getDistrict, getProvince, getProvinceByPlate } from "@/domain/locations";
+import { getLocationCounts } from "@/server/queries/public";
+import { locationMetadata } from "@/server/queries/location-seo";
+
+/** Yalnızca profil bulunan ilçeler önceden üretilir; diğerleri ilk ziyarette render edilir. */
+export async function generateStaticParams() {
+  const counts = await getLocationCounts();
+  const params = counts
+    .filter((c) => c.districtSlug)
+    .map((c) => ({ il: getProvinceByPlate(c.plate)!.slug, ilce: c.districtSlug! }));
+  return params.length ? params : [{ il: "istanbul", ilce: "kadikoy" }];
+}
+
+export async function generateMetadata({ params, searchParams }: PageProps<"/sehir/[il]/[ilce]">): Promise<Metadata> {
+  const { il, ilce } = await params;
+  const province = getProvince(il);
+  const district = getDistrict(il, ilce);
+  if (!province || !district) return {};
+  return locationMetadata(province, district, await searchParams);
+}
+
+export default async function DistrictPage({ params, searchParams }: PageProps<"/sehir/[il]/[ilce]">) {
+  const { il, ilce } = await params;
+  const province = getProvince(il);
+  const district = getDistrict(il, ilce);
+  if (!province || !district) notFound();
+  return <LocationPage province={province} district={district} searchParams={searchParams} />;
+}

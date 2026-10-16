@@ -379,6 +379,9 @@ select
   p.bio,
   p.published_at,
   p.updated_at,
+  p.seo_title,
+  p.seo_description,
+  p.noindex,
   exists (
     select 1 from verification_records v
     where v.profile_id = p.id and v.type = 'identity' and v.status = 'approved'
