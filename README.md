@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Hilal — sosyal keşif platformu (MVP)
 
-## Getting Started
+Türkiye'nin 81 ilinde ve 973 ilçesinde, 18 yaş üstü yetişkinlerin **yönetim tarafından, açık rıza ile oluşturulan** sosyal profillerini şehir/ilçe ve ilgi alanına göre keşfetmesini sağlayan web uygulaması.
 
-First, run the development server:
+> **Kesin ürün kuralı:** Platform ücretli cinsel hizmet tanıtımı, fuhşa aracılık veya müşteri yönlendirme amacıyla kullanılamaz. Bu kural yalnızca metinle değil; içerik taraması, yayın ön koşulları, iletişim bilgisi yasağı, otomatik yayından kaldırma ve veritabanı tetikleyicileriyle uygulanır (bkz. [SECURITY.md](SECURITY.md)).
+
+> **Gerçek profil yayınlanmadan önce** [LEGAL_REVIEW_CHECKLIST.md](LEGAL_REVIEW_CHECKLIST.md) içindeki maddeler bir hukuk uzmanı tarafından değerlendirilmelidir. Bu depo hiçbir mevzuata otomatik uyum sağlandığını iddia etmez.
+
+## Hızlı başlangıç (demo modu)
+
+Supabase olmadan, bellek içi **sentetik** verilerle çalışır (veriler süreç yeniden başlayınca sıfırlanır).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npx playwright install chromium     # E2E testleri için
+echo "ALLOW_DEMO_MODE=true" > .env.local
+npm run dev                          # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Yönetim paneli: `http://localhost:3000/admin`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Alan | Demo değeri (yalnızca yerel) |
+| --- | --- |
+| E-posta | `admin@demo.local` |
+| Şifre | `demo-admin-2026!` |
+| TOTP kodu | `npm run demo:totp` çıktısı |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Bu varsayılanlar yalnızca geliştirme içindir; `DEMO_ADMIN_*` ve `SESSION_SECRET` ile değiştirilebilir. Production'da Supabase Auth + TOTP MFA kullanılır.
 
-## Learn More
+## Supabase ile çalıştırma
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+supabase start                       # yerel Supabase (Docker)
+supabase db reset                    # migration + seed (81 il, 973 ilçe, ilgi alanları, paketler)
+cp .env.example .env.local           # URL/anahtarları `supabase status` çıktısından doldurun
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+İlk yöneticiyi oluşturma: Supabase Auth'ta kullanıcı oluşturun, ardından SQL ile `admins` tablosuna ekleyin (bkz. [DEPLOYMENT.md](DEPLOYMENT.md#ilk-yönetici)). İlk girişte TOTP kurulumu zorunludur.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Komutlar
 
-## Deploy on Vercel
+| Komut | Açıklama |
+| --- | --- |
+| `npm run dev` / `build` / `start` | Geliştirme, production build, production sunucu |
+| `npm run typecheck` | Route tipleri + TypeScript strict |
+| `npm run lint` | ESLint (Next + React Compiler kuralları) |
+| `npm test` | Vitest — domain kuralları + servis entegrasyon testleri |
+| `npm run test:e2e` | Playwright — masaüstü + mobil (önce `npm run build`) |
+| `npm run test:db` | Geçici Postgres'te migration + seed + RLS/yayın kuralı SQL testleri |
+| `npm run test:integration` | Yerel Supabase'e karşı repository/servis entegrasyon testleri (`supabase start && supabase db reset` sonrası) |
+| `E2E_SUPABASE=1 npx playwright test tests/e2e/supabase-auth.spec.ts` | Supabase Auth + zorunlu TOTP akışı (Supabase env ile build gerekir) |
+| `npm run check` | typecheck + lint + unit + build |
+| `npm run data:locations` | İl/ilçe JSON'unu kaynak dökümlerden yeniden üretir |
+| `npm run data:seed-sql` | `supabase/seed.sql` üretir |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Dokümantasyon
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [ARCHITECTURE.md](ARCHITECTURE.md) — katmanlar, veri akışı, önbellek
+- [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) — tokenlar, tema, bileşen kuralları
+- [DATABASE.md](DATABASE.md) — şema, RLS, saklama/silme
+- [SEO.md](SEO.md) — programatik SEO ve indeks kuralları
+- [SECURITY.md](SECURITY.md) — tehdit modeli ve kontroller
+- [LEGAL_REVIEW_CHECKLIST.md](LEGAL_REVIEW_CHECKLIST.md) — hukuk incelemesi gereken konular
+- [DEPLOYMENT.md](DEPLOYMENT.md) — Vercel + Supabase kurulumu
+- [TASKS.md](TASKS.md) — aşama durumu ve açık işler

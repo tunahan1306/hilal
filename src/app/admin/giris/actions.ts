@@ -83,7 +83,12 @@ export async function verifyMfaAction(_prev: LoginState, formData: FormData): Pr
   const { data: user } = await supabase.auth.getUser();
   if (!user.user || (await limited(user.user.email ?? user.user.id))) return { message: GENERIC };
   const factors = await supabase.auth.mfa.listFactors();
-  const factor = factors.data?.totp.find((f) => f.status === "verified") ?? factors.data?.all.find((f) => f.factor_type === "totp");
+  // Doğrulanmış faktör varsa o; yoksa kurulum sırasında oluşturulan en yeni faktör.
+  const factor =
+    factors.data?.totp.find((f) => f.status === "verified") ??
+    factors.data?.all
+      .filter((f) => f.factor_type === "totp")
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
   if (!factor) return { message: "Kayıtlı doğrulayıcı bulunamadı." };
   const res = await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
   if (res.error) return { message: GENERIC };
@@ -96,6 +101,12 @@ export async function enrollMfa(): Promise<{ qr: string; secret: string; factorI
   const supabase = await createSupabaseServerClient();
   const { data: user } = await supabase.auth.getUser();
   if (!user.user || !(await getRepository().getAdmin(user.user.id))) return { error: "Önce giriş yapın." };
+  const existing = await supabase.auth.mfa.listFactors();
+  if (existing.data?.totp.some((f) => f.status === "verified")) return { error: "Doğrulayıcı zaten kayıtlı; kodunuzla giriş yapın." };
+  // Yarım kalmış (doğrulanmamış) kurulumları temizle; tek bir aktif kurulum kalsın.
+  for (const f of existing.data?.all ?? []) {
+    if (f.factor_type === "totp" && f.status !== "verified") await supabase.auth.mfa.unenroll({ factorId: f.id });
+  }
   const res = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: `hilal-${Date.now()}` });
   if (res.error) return { error: res.error.message };
   return { qr: res.data.totp.qr_code, secret: res.data.totp.secret, factorId: res.data.id };

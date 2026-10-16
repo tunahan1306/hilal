@@ -16,7 +16,8 @@
     "data:locations": "python3 -I scripts/build-locations.py",
     "data:seed-sql": "node scripts/build-seed-sql.mjs",
     "data:demo-images": "node scripts/generate-demo-images.mjs",
-    "check": "npm run typecheck && npm run lint && npm test && npm run build"
+    "check": "npm run typecheck && npm run lint && npm test && npm run build",
+    "test:integration": "./scripts/test-integration.sh"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -37,7 +38,6 @@
     "react-dom": "19.3.0",
     "react-hook-form": "^7.90.0",
     "server-only": "^0.0.1",
-    "shadcn": "^4.22.0",
     "sharp": "^0.35.5",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.7.0",
@@ -48,19 +48,15 @@
     "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/turbopack": "^4",
-    "@testing-library/jest-dom": "^7.0.1",
-    "@testing-library/react": "^16.3.3",
     "@types/node": "^24.19.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitejs/plugin-react": "^6.1.2",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
-    "jsdom": "^30.1.3",
+    "shadcn": "^4.22.0",
     "supabase": "^2.121.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^5.0.5"
   }
 }

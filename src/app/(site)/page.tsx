@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, FileCheck2, Flag, ShieldCheck, UserCheck } from "lucide-react";
 import { CityPicker } from "@/components/site/city-picker";
+import { EmptyState } from "@/components/site/empty-state";
 import { JsonLd } from "@/components/site/json-ld";
 import { ProfileGrid } from "@/components/site/profile-grid";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -121,7 +122,11 @@ export default async function HomePage() {
           description="Sponsorlu profiller açıkça etiketlenir."
           action={<Link href="/kesfet" className="text-sm font-medium text-brand underline-offset-4 hover:underline">Tümünü gör</Link>}
         />
-        <ProfileGrid profiles={featured} priorityCount={2} />
+        {featured.length ? (
+          <ProfileGrid profiles={featured} priorityCount={2} />
+        ) : (
+          <EmptyState title="Henüz yayında profil yok" description="Profiller yalnızca rıza, yaş doğrulaması ve moderasyon tamamlandıktan sonra yayınlanır." />
+        )}
       </section>
 
       {/* Popüler şehirler */}

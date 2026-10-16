@@ -18,6 +18,8 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: false,
     timeout: 60_000,
-    env: { ALLOW_DEMO_MODE: "true", NEXT_PUBLIC_SITE_URL: `http://localhost:${PORT}` },
+    env: process.env.E2E_SUPABASE
+      ? { NEXT_PUBLIC_SITE_URL: `http://localhost:${PORT}` }
+      : { ALLOW_DEMO_MODE: "true", NEXT_PUBLIC_SITE_URL: `http://localhost:${PORT}` },
   },
 });
