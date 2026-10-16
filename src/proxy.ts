@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { AGE_COOKIE, AGE_COOKIE_VALUE } from "@/domain/age-confirmation";
 import { getDistrict, getProvince } from "@/domain/locations";
 
 /**
@@ -15,10 +16,27 @@ export async function proxy(request: NextRequest) {
   if (pathname.startsWith("/sehir/")) {
     const [, , il, ilce, ...rest] = pathname.split("/");
     const valid = rest.length === 0 && getProvince(il ?? "") && (!ilce || getDistrict(il!, ilce));
-    if (valid) return NextResponse.next();
-    // rewrite() durum kodunu korumadığından statik 404 sayfası 404 koduyla döndürülür.
-    const page = await fetch(new URL("/bulunamadi", request.url), { headers: { accept: "text/html" } });
-    return new NextResponse(page.body, { status: 404, headers: { "content-type": "text/html; charset=utf-8" } });
+    if (!valid) {
+      // rewrite() durum kodunu korumadığından statik 404 sayfası 404 koduyla döndürülür.
+      const page = await fetch(new URL("/bulunamadi", request.url), { headers: { accept: "text/html" } });
+      return new NextResponse(page.body, { status: 404, headers: { "content-type": "text/html; charset=utf-8" } });
+    }
+  }
+
+  const restricted = pathname === "/" || pathname === "/kesfet" || pathname.startsWith("/sehir/") || pathname.startsWith("/profil/");
+  const media = pathname.startsWith("/demo/") || pathname.startsWith("/media/") || pathname === "/_next/image";
+  if ((restricted || media) && request.cookies.get(AGE_COOKIE)?.value !== AGE_COOKIE_VALUE) {
+    if (media) return new NextResponse(null, { status: 403, headers: { "Cache-Control": "private, no-store" } });
+    const target = new URL("/yas-onayi", request.url);
+    target.searchParams.set("returnTo", pathname + request.nextUrl.search);
+    const response = NextResponse.rewrite(target);
+    response.headers.set("Cache-Control", "private, no-store");
+    return response;
+  }
+  if (!pathname.startsWith("/admin")) {
+    const response = NextResponse.next();
+    if (restricted || media) response.headers.set("Cache-Control", "private, no-store");
+    return response;
   }
 
   if (pathname.startsWith("/admin/giris")) return NextResponse.next();
@@ -49,5 +67,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/sehir/:path*"],
+  matcher: ["/", "/kesfet", "/profil/:path*", "/admin/:path*", "/sehir/:path*", "/demo/:path*", "/media/:path*", "/_next/image"],
 };

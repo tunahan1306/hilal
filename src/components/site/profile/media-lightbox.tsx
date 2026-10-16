@@ -16,7 +16,7 @@ const WIDTHS = [640, 1080, 1600, 2048];
 
 /** Next görsel optimizasyonu üzerinden duyarlı kaynaklar (yerel ve izinli uzak görseller). */
 function optimized(url: string, w: number) {
-  return `/_next/image?url=${encodeURIComponent(url)}&w=${w}&q=82`;
+  return `/api/image?src=${encodeURIComponent(url)}&w=${w}&q=82`;
 }
 
 function toSlide(m: MediaItem): Slide {
