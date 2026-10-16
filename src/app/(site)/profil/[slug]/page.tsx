@@ -79,7 +79,7 @@ async function ProfileContent({ params }: Pick<PageProps<"/profil/[slug]">, "par
   const profile = await getPublicProfile((await params).slug);
   if (!profile) notFound();
   const place = profile.district ? `${profile.district.name}, ${profile.province.name}` : profile.province.name;
-  const whatsapp = profile.isExample ? null : whatsAppHref(profile.whatsappPhone);
+  const whatsapp = whatsAppHref(profile.whatsappPhone);
   const media = mediaOf(profile);
   const cover = profile.images[0];
   const imageCount = profile.images.length;
@@ -113,7 +113,7 @@ async function ProfileContent({ params }: Pick<PageProps<"/profil/[slug]">, "par
         <div className="mt-6 grid gap-y-8 sm:mt-8 lg:grid-cols-12 lg:gap-x-12">
           <div className="lg:col-span-7">
             {media.length ? <MediaStrip items={media} name={profile.nickname} /> : null}
-            {profile.isExample && !cover ? <div className="flex aspect-[4/5] flex-col items-center justify-center gap-5 bg-muted"><span className="font-display text-9xl text-brand" aria-hidden>{profile.nickname.charAt(0)}</span><span className="eyebrow text-muted-foreground">Kurgusal örnek profil</span></div> : null}
+            {profile.isExample && !cover ? <div className="flex aspect-[4/5] flex-col items-center justify-center gap-5 bg-muted"><span className="font-display text-9xl text-brand" aria-hidden>{profile.nickname.charAt(0)}</span></div> : null}
             {cover ? (
               <OpenMediaButton index={0} label="Kapak fotoğrafını tam ekran aç" className="group relative hidden aspect-[4/5] w-full overflow-hidden rounded-xs bg-muted md:block">
                 <Image src={cover.url} alt={cover.alt || `${profile.nickname} kapak fotoğrafı`} fill priority sizes="(min-width: 1376px) 760px, (min-width: 1024px) 56vw, 92vw" className="object-cover object-[50%_30%]" />
@@ -136,7 +136,7 @@ async function ProfileContent({ params }: Pick<PageProps<"/profil/[slug]">, "par
                 <span className="font-sans text-display-sm font-light tabular-nums text-muted-foreground">{profile.age}</span>
               </h1>
               <div className="mt-5">
-                {profile.isExample ? (<p className="border border-hairline bg-muted p-4 text-sm">Kurgusal örnek profil. Gerçek bir kişiyi temsil etmez; yaş ve kimlik doğrulaması yapılmamıştır. İletişim kurulamaz.</p>) : profile.verified ? (
+                {profile.isExample ? (<p className="border border-hairline bg-muted p-4 text-sm">Kimlik ve yaş doğrulaması yapılmadı.</p>) : profile.verified ? (
                   <VerifiedMark withLabel />
                 ) : (
                   <p className="text-sm text-muted-foreground">Yaş belgeyle doğrulandı · kimlik doğrulaması yapılmadı</p>

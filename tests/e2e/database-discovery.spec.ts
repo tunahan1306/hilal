@@ -10,7 +10,7 @@ test("database discovery, canonical location and responsive empty states", async
     for (const path of ["/", "/sehir/istanbul/atasehir"]) {
       const response = await page.goto(path);
       expect(response?.status()).toBe(200);
-      await expect(page.locator("h1")).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     }
   }
@@ -30,7 +30,7 @@ test.describe("database age declaration", () => {
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.screenshot({ path: "artifacts/production/age-gate.png", fullPage: true });
     await page.getByRole("button", { name: "Evet, 18 yaşından büyüğüm" }).click();
-    await expect(page.locator("h1")).toHaveText("Ataşehir");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Ataşehir");
     await page.reload();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.getByRole("link", { name: "Keşfet", exact: true }).first().click();

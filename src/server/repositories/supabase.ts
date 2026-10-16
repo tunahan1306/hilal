@@ -307,7 +307,7 @@ async function hydratePublic(rows: Row[]): Promise<PublicProfile[]> {
         .map((i) => ({ slug: i.slug as string, name: i.name as string })),
       verified: Boolean(r.verified),
       sponsored: Boolean(r.sponsored),
-      images: imgRows
+      images: r.is_example && r.example_image_url ? [{ url: String(r.example_image_url), alt: `${r.nickname} profil görseli`, width: Number(r.example_image_width), height: Number(r.example_image_height) }] : imgRows
         .filter((i) => i.profile_id === r.id && i.kind === "image")
         .map((i) => ({ url: i.url as string, alt: i.alt as string, width: i.width as number, height: i.height as number })),
       videos: imgRows.filter((i) => i.profile_id === r.id && i.kind === "video").map((i) => ({ url: i.url as string, posterUrl: i.poster_url as string | null, alt: i.alt as string, width: i.width as number, height: i.height as number, mimeType: i.mime_type as string, durationSeconds: i.duration_seconds as number | null })),

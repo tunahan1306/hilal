@@ -1,0 +1,62 @@
+[
+  {
+    "name": "ece",
+    "prompt": "Use case: photorealistic-natural. One vertical 4:5 editorial portrait of an original fictional adult woman aged 27, dark shoulder-length hair, brown eyes, fully clothed ivory blouse, tasteful Istanbul cafe, natural window light, realistic skin texture, head and upper torso, no text, logos or watermark.",
+    "tool": "built-in image_gen",
+    "origin": "generated character portrait"
+  },
+  {
+    "name": "defne",
+    "prompt": "Use case: photorealistic-natural. Asset: one vertical 4:5 editorial profile portrait for an adult social discovery website. An original fictional adult woman aged 29, long chestnut hair, hazel eyes, navy blazer over a cream top, relaxed natural confident expression, at a leafy Kadikoy cafe terrace. One person, head and upper torso, face in upper third. Natural soft daylight, sophisticated premium photographic composition, realistic skin texture, subtle plum and warm champagne color accents, background softly blurred. Fully clothed and nonsexual. Original face, no resemblance to any celebrity or real named person. No nudity, lingerie, suggestive pose, text, logos, collage or watermark.",
+    "tool": "built-in image_gen",
+    "origin": "generated character portrait"
+  },
+  {
+    "name": "selin",
+    "prompt": "Use case: photorealistic-natural. Asset: one vertical 4:5 editorial profile portrait for an adult social discovery website. An original fictional adult woman aged 31, short dark bob, brown eyes, burgundy knit top, relaxed natural confident expression, at a softly lit Besiktas book cafe. One person, head and upper torso, face in upper third. Natural soft daylight, sophisticated premium photographic composition, realistic skin texture, subtle plum and warm champagne color accents, background softly blurred. Fully clothed and nonsexual. Original face, no resemblance to any celebrity or real named person. No nudity, lingerie, suggestive pose, text, logos, collage or watermark.",
+    "tool": "built-in image_gen",
+    "origin": "generated character portrait"
+  },
+  {
+    "name": "derya",
+    "prompt": "Use case: photorealistic-natural. Asset: one vertical 4:5 editorial profile portrait for an adult social discovery website. An original fictional adult woman aged 32, shoulder-length wavy auburn hair, brown eyes, beige trench coat, relaxed natural confident expression, at a calm Uskudar waterfront promenade. One person, head and upper torso, face in upper third. Natural soft daylight, sophisticated premium photographic composition, realistic skin texture, subtle plum and warm champagne color accents, background softly blurred. Fully clothed and nonsexual. Original face, no resemblance to any celebrity or real named person. No nudity, lingerie, suggestive pose, text, logos, collage or watermark.",
+    "tool": "built-in image_gen",
+    "origin": "generated character portrait"
+  },
+  {
+    "name": "naz",
+    "prompt": "Use case: photorealistic-natural. Asset: one vertical 4:5 editorial profile portrait for an adult social discovery website. An original fictional adult woman aged 28, curly dark brown hair, warm brown eyes, ivory sweater, relaxed natural confident expression, at a stylish Sisli cafe with warm wooden walls. One person, head and upper torso, face in upper third. Natural soft daylight, sophisticated premium photographic composition, realistic skin texture, subtle plum and warm champagne color accents, background softly blurred. Fully clothed and nonsexual. Original face, no resemblance to any celebrity or real named person. No nudity, lingerie, suggestive pose, text, logos, collage or watermark.",
+    "tool": "built-in image_gen",
+    "origin": "generated character portrait"
+  },
+  {
+    "name": "melis",
+    "prompt": "Use case: photorealistic-natural. Asset: one vertical 4:5 editorial profile portrait for an adult social discovery website. An original fictional adult woman aged 30, straight honey-brown shoulder-length hair, green eyes, elegant plum blouse, relaxed natural confident expression, at a quiet Beyoglu gallery cafe. One person, head and upper torso, face in upper third. Natural soft daylight, sophisticated premium photographic composition, realistic skin texture, subtle plum and warm champagne color accents, background softly blurred. Fully clothed and nonsexual. Original face, no resemblance to any celebrity or real named person. No nudity, lingerie, suggestive pose, text, logos, collage or watermark.",
+    "tool": "built-in image_gen",
+    "origin": "generated character portrait"
+  },
+  {
+    "name": "asli",
+    "prompt": "Use case: photorealistic-natural. Asset: one vertical 4:5 editorial profile portrait for an adult social discovery website. An original fictional adult woman aged 32, long black hair, dark brown eyes, a dark green fully clothed day dress, relaxed natural confident expression, at a coastal Bakirkoy garden terrace. One person, head and upper torso, face in upper third. Natural soft daylight, sophisticated premium photographic composition, realistic skin texture, subtle plum and warm champagne color accents, background softly blurred. Fully clothed and nonsexual. Original face, no resemblance to any celebrity or real named person. No nudity, lingerie, suggestive pose, text, logos, collage or watermark.",
+    "tool": "built-in image_gen",
+    "origin": "generated character portrait"
+  },
+  {
+    "name": "ipek",
+    "prompt": "Use case: photorealistic-natural. Asset: one vertical 4:5 editorial profile portrait for an adult social discovery website. An original fictional adult woman aged 26, short wavy light brown hair, brown eyes, pale blue shirt, relaxed natural confident expression, at a sunlit Maltepe seaside cafe. One person, head and upper torso, face in upper third. Natural soft daylight, sophisticated premium photographic composition, realistic skin texture, subtle plum and warm champagne color accents, background softly blurred. Fully clothed and nonsexual. Original face, no resemblance to any celebrity or real named person. No nudity, lingerie, suggestive pose, text, logos, collage or watermark.",
+    "tool": "built-in image_gen",
+    "origin": "generated character portrait"
+  },
+  {
+    "name": "zeynep",
+    "prompt": "Use case: photorealistic-natural. Asset: one vertical 4:5 editorial profile portrait for an adult social discovery website. An original fictional adult woman aged 29, shoulder-length straight dark hair, hazel eyes, a navy cardigan and white top, relaxed natural confident expression, at a tasteful Ankara city cafe. One person, head and upper torso, face in upper third. Natural soft daylight, sophisticated premium photographic composition, realistic skin texture, subtle plum and warm champagne color accents, background softly blurred. Fully clothed and nonsexual. Original face, no resemblance to any celebrity or real named person. No nudity, lingerie, suggestive pose, text, logos, collage or watermark.",
+    "tool": "built-in image_gen",
+    "origin": "generated character portrait"
+  },
+  {
+    "name": "elif",
+    "prompt": "Use case: photorealistic-natural. Asset: one vertical 4:5 editorial profile portrait for an adult social discovery website. An original fictional adult woman aged 30, curly chestnut hair, brown eyes, an elegant champagne-colored blouse, relaxed natural confident expression, at a leafy Izmir Karsiyaka terrace. One person, head and upper torso, face in upper third. Natural soft daylight, sophisticated premium photographic composition, realistic skin texture, subtle plum and warm champagne color accents, background softly blurred. Fully clothed and nonsexual. Original face, no resemblance to any celebrity or real named person. No nudity, lingerie, suggestive pose, text, logos, collage or watermark.",
+    "tool": "built-in image_gen",
+    "origin": "generated character portrait"
+  }
+]

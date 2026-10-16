@@ -1,4 +1,6 @@
 import Image from "next/image";
+import { MessageCircle } from "lucide-react";
+import { whatsAppHref } from "@/domain/whatsapp";
 import type { PublicProfile } from "@/domain/types";
 import { cn } from "@/lib/utils";
 import { VerifiedMark } from "./verified-mark";
@@ -24,6 +26,7 @@ export function ProfileCard({
   className?: string;
 }) {
   const image = profile.images[0];
+  const whatsapp = whatsAppHref(profile.whatsappPhone);
   const location = profile.district ? `${profile.district.name}, ${profile.province.name}` : profile.province.name;
   const feature = variant === "feature";
   return (
@@ -41,10 +44,8 @@ export function ProfileCard({
         ) : profile.isExample ? (
           <div className="flex h-full flex-col items-center justify-center gap-4 text-muted-foreground">
             <span className="font-display text-7xl text-brand" aria-hidden>{profile.nickname.charAt(0)}</span>
-            <span className="eyebrow">Kurgusal örnek</span>
           </div>
         ) : null}
-        {profile.isExample ? <span className="absolute left-2 top-2 bg-background/95 px-2 py-1 text-xs text-foreground">Örnek profil</span> : null}
         {feature && profile.images.length > 1 ? (
           <span className="absolute bottom-2 right-2 rounded-xs bg-background/95 px-1.5 py-0.5 text-[0.6875rem] tabular-nums text-foreground backdrop-blur-sm">
             {profile.images.length} fotoğraf
@@ -67,6 +68,7 @@ export function ProfileCard({
           <span className="shrink-0 font-sans text-sm tabular-nums text-muted-foreground">{profile.age}</span>
           {profile.verified ? <VerifiedMark className="shrink-0 self-center" /> : null}
         </h3>
+        {whatsapp ? <a href={whatsapp} target="_blank" rel="noopener noreferrer nofollow" aria-label={`${profile.nickname} WhatsApp iletişim (yeni sekme)`} className="relative z-10 mt-3 inline-flex min-h-11 items-center gap-2 rounded-md bg-emerald-700 px-3 text-sm font-medium text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"><MessageCircle className="size-4" aria-hidden /> WhatsApp</a> : null}
 
       </div>
     </article>
