@@ -190,6 +190,19 @@ export const MODERATION_ACTION_TYPES = [
 ] as const;
 export type ModerationActionType = (typeof MODERATION_ACTION_TYPES)[number];
 
+export const MODERATION_ACTION_LABELS: Record<ModerationActionType, string> = {
+  review_started: "İncelemeye alındı",
+  content_removed: "İçerik kaldırıldı",
+  profile_unpublished: "Profil yayından kaldırıldı",
+  profile_restored: "Profil geri yüklendi",
+  report_rejected: "Şikâyet reddedildi",
+  report_resolved: "Şikâyet sonuçlandı",
+  appeal_received: "İtiraz alındı",
+  appeal_accepted: "İtiraz kabul edildi",
+  appeal_rejected: "İtiraz reddedildi",
+  auto_unpublished: "Otomatik yayından kaldırma",
+};
+
 export type ModerationAction = {
   id: string;
   reportId: string | null;

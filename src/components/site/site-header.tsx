@@ -27,13 +27,7 @@ export function SiteHeader() {
           </Suspense>
         </nav>
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
-          <Link
-            href="/kesfet"
-            className="hidden h-9 items-center gap-2 rounded-md border border-hairline px-3 text-sm text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground md:inline-flex"
-          >
-            <Search className="size-4" aria-hidden /> Şehir veya profil keşfet
-          </Link>
-          <Link href="/kesfet" className="inline-flex size-10 items-center justify-center rounded-md md:hidden" aria-label="Profil ara">
+          <Link href="/kesfet" className="inline-flex size-10 items-center justify-center rounded-md hover:bg-secondary" aria-label="Profilleri keşfet ve filtrele">
             <Search className="size-[1.15rem]" aria-hidden />
           </Link>
           <Link href="/guvenlik#yetiskin" className="inline-flex items-center rounded-full" aria-label="Yalnızca yetişkinler — topluluk kuralları">

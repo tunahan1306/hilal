@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Check } from "lucide-react";
+import { Check, Minus } from "lucide-react";
 import { ProsePage } from "@/components/site/prose-page";
 import { getPlans } from "@/server/queries/public";
 
@@ -37,8 +37,8 @@ export default async function PlansPage() {
 
 function Feature({ children, off }: { children: React.ReactNode; off?: boolean }) {
   return (
-    <li className={`flex items-center gap-2 ${off ? "text-muted-foreground line-through decoration-muted-foreground/40" : ""}`}>
-      <Check className={`size-4 ${off ? "opacity-30" : "text-brand"}`} aria-hidden />
+    <li className={`flex items-center gap-2 ${off ? "text-muted-foreground" : ""}`}>
+      {off ? <Minus className="size-4 opacity-60" aria-hidden /> : <Check className="size-4 text-brand" aria-hidden />}
       <span>{children}</span>
       {off ? <span className="sr-only">(dahil değil)</span> : null}
     </li>

@@ -133,7 +133,8 @@ async function ProfileContent({ params }: Pick<PageProps<"/profil/[slug]">, "par
               </p>
               <h1 className="font-display mt-5 flex flex-wrap items-baseline gap-x-4 text-display-xl">
                 {profile.nickname}
-                <span className="font-sans text-display-sm font-light tabular-nums text-muted-foreground">{profile.age}</span>
+                <span className="sr-only">, </span>
+                <span className="font-sans text-display-sm font-light tabular-nums text-muted-foreground">{profile.age}<span className="sr-only"> yaşında</span></span>
               </h1>
               <div className="mt-5">
                 {profile.isExample ? (<p className="border border-hairline bg-muted p-4 text-sm">Kimlik ve yaş doğrulaması yapılmadı.</p>) : profile.verified ? (

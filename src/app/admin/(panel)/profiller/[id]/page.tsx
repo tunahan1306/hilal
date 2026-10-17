@@ -10,12 +10,12 @@ import { DeleteProfileDialog, ExportButton } from "@/components/admin/data-tools
 import { ImageManager } from "@/components/admin/image-manager";
 import { PageHeader } from "@/components/admin/page-header";
 import { ProfileForm } from "@/components/admin/profile-form";
-import { PROFILE_STATUS_TONE, StatusBadge } from "@/components/admin/status-badge";
+import { PROFILE_STATUS_TONE, REPORT_STATUS_LABELS, StatusBadge } from "@/components/admin/status-badge";
 import { ViewsChart } from "@/components/admin/views-chart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { canTransition, evaluatePublishReadiness, PROFILE_STATUS_LABELS } from "@/domain/publishing";
 import { effectiveStatus, SUBSCRIPTION_STATUS_LABELS } from "@/domain/subscriptions";
-import { REPORT_CATEGORY_LABELS } from "@/domain/types";
+import { MODERATION_ACTION_LABELS, REPORT_CATEGORY_LABELS } from "@/domain/types";
 import { formatDate } from "@/lib/site";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
@@ -205,9 +205,9 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
             <h2 className="mb-3 font-semibold">Şikâyetler ve moderasyon</h2>
             <ul className="space-y-2 text-sm">
               {reports.map((r) => (
-                <li key={r.id}><Link prefetch={false} href={`/admin/sikayetler/${r.id}`} className="hover:underline">{REPORT_CATEGORY_LABELS[r.category]}</Link> <span className="text-muted-foreground">· {r.status} · {formatDate(r.createdAt)}</span></li>
+                <li key={r.id}><Link prefetch={false} href={`/admin/sikayetler/${r.id}`} className="hover:underline">{REPORT_CATEGORY_LABELS[r.category]}</Link> <span className="text-muted-foreground">· {REPORT_STATUS_LABELS[r.status]} · {formatDate(r.createdAt)}</span></li>
               ))}
-              {modActions.map((a) => <li key={a.id} className="text-muted-foreground">{a.type} · {formatDate(a.createdAt)}{a.note ? ` · ${a.note}` : ""}</li>)}
+              {modActions.map((a) => <li key={a.id} className="text-muted-foreground">{MODERATION_ACTION_LABELS[a.type]} · {formatDate(a.createdAt)}{a.note ? ` · ${a.note}` : ""}</li>)}
               {!reports.length && !modActions.length ? <li className="text-muted-foreground">Kayıt yok.</li> : null}
             </ul>
           </section>

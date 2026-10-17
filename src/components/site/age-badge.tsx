@@ -13,7 +13,7 @@ export function AgeBadge({ className, size = "sm" }: { className?: string; size?
       title="Yalnızca 18 yaş ve üzeri"
       className={cn(
         "inline-flex select-none items-center justify-center rounded-full border border-brass/70 font-sans font-semibold tabular-nums tracking-tight text-foreground",
-        size === "sm" ? "h-6 min-w-6 px-1.5 text-[0.625rem]" : "h-7 min-w-7 px-2 text-xs",
+        size === "sm" ? "h-6 min-w-6 px-1.5 text-[0.6875rem]" : "h-7 min-w-7 px-2 text-xs",
         className,
       )}
     >
