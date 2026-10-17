@@ -62,13 +62,14 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
 async function NavWithBadges() {
   await requireAdmin();
   const repo = getRepository();
-  const [reports, profiles, privacy] = await Promise.all([repo.listReports(), repo.listProfiles(), repo.listPrivacyRequests()]);
+  const [reports, profiles, privacy, contact] = await Promise.all([repo.listReports(), repo.listProfiles(), repo.listPrivacyRequests(), repo.countUnreadContactMessages()]);
   return (
     <AdminNav
       badges={{
         "/admin/sikayetler": reports.filter((r) => r.status === "open" || r.status === "appealed").length,
         "/admin/profiller": profiles.filter((p) => p.status === "in_review").length,
         "/admin/talepler": privacy.filter((p) => p.status === "received").length,
+        "/admin/iletisim": contact,
       }}
     />
   );

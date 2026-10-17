@@ -20,7 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return shouldIndexListing({ profileCount: count, hasCuratedIntro: Boolean(seo?.intro), override: seo?.indexOverride ?? null });
   };
 
-  const staticPages = ["/", "/kesfet", "/sehirler", "/guvenlik", "/paketler", "/kvkk", "/kullanim-kosullari", "/kaldirma-talebi"].map((p) => ({
+  const staticPages = ["/", "/kesfet", "/sehirler", "/guvenlik", "/paketler", "/kvkk", "/kullanim-kosullari", "/kaldirma-talebi", "/iletisim"].map((p) => ({
     url: `${base}${p === "/" ? "" : p}`,
     changeFrequency: "weekly" as const,
     priority: p === "/" ? 1 : 0.6,

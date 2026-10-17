@@ -5,7 +5,7 @@ import { CrescentMark } from "./logo";
 
 const GROUPS = [
   { title: "Keşfet", links: [["/kesfet", "Tüm profiller"], ["/sehirler", "81 il"], ["/sehir/istanbul", "İstanbul"], ["/sehir/ankara", "Ankara"], ["/sehir/izmir", "İzmir"]] },
-  { title: "Topluluk", links: [["/guvenlik", "Kurallar ve güvenlik"], ["/kaldirma-talebi", "Profil kaldırma"], ["/paketler", "Üyelik paketleri"]] },
+  { title: "Topluluk", links: [["/guvenlik", "Kurallar ve güvenlik"], ["/kaldirma-talebi", "Profil kaldırma"], ["/paketler", "Üyelik paketleri"], ["/iletisim", "İletişim"]] },
   { title: "Yasal", links: [["/kvkk", "KVKK aydınlatma"], ["/kullanim-kosullari", "Kullanım koşulları"]] },
 ] as const;
 

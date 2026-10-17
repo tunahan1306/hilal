@@ -146,5 +146,51 @@ begin
   end if;
 end $$;
 
+-- 9) İletişim mesajları: anon okuyamaz/yazamaz; MFA'sız oturum göremez; MFA'lı yönetici görür
+insert into contact_messages (category, name, email, subject, message, ip_hash) values
+  ('general', 'Test Kişi', 'test@test.local', 'Test konusu', 'Bu yalnızca sentetik bir test mesajıdır.', 'abcdef0123456789abcdef01');
+do $$
+begin
+  begin
+    insert into contact_messages (category, name, email, subject, message, ip_hash) values
+      ('general', '<b>x</b>', 'test@test.local', 'Test konusu', 'Bu yalnızca sentetik bir test mesajıdır.', 'abcdef0123456789abcdef01');
+    raise exception 'TEST FAILED: HTML içeren ad kabul edildi';
+  exception when check_violation then null;
+  end;
+end $$;
+set local role anon;
+do $$
+begin
+  begin
+    perform 1 from contact_messages limit 1;
+    raise exception 'TEST FAILED: anon iletişim mesajlarını okuyabildi';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into contact_messages (category, name, email, subject, message, ip_hash) values
+      ('general', 'Anon', 'a@test.local', 'Konu', 'Anon doğrudan yazmaya çalışıyor, engellenmeli.', 'abcdef0123456789abcdef01');
+    raise exception 'TEST FAILED: anon iletişim mesajı ekleyebildi';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+select set_config('request.jwt.claims', '{"aal":"aal1"}', true);
+do $$
+declare n int;
+begin
+  select count(*) into n from contact_messages;
+  if n <> 0 then raise exception 'TEST FAILED: MFA olmadan % iletişim mesajı görüldü', n; end if;
+end $$;
+select set_config('request.jwt.claims', '{"aal":"aal2"}', true);
+do $$
+declare n int;
+begin
+  select count(*) into n from contact_messages;
+  if n <> 1 then raise exception 'TEST FAILED: MFA ile yönetici % iletişim mesajı gördü', n; end if;
+end $$;
+reset role;
+
 select 'ALL DB TESTS PASSED' as result;
 rollback;

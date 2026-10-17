@@ -141,6 +141,7 @@ export type DemoStore = {
   subscriptions: Subscription[];
   audit: import("@/domain/types").AuditLog[];
   privacy: import("@/domain/types").PrivacyRequest[];
+  contact: import("@/domain/types").ContactMessage[];
   seo: SeoPage[];
   settings: import("@/domain/types").SiteSettings;
   views: Map<string, number>;
@@ -409,6 +410,7 @@ export function createDemoStore(now: Date): DemoStore {
     subscriptions,
     audit: [],
     privacy: [],
+    contact: [],
     seo,
     settings: {
       siteName: "Hilal",

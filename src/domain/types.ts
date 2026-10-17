@@ -275,6 +275,46 @@ export type PrivacyRequest = {
   createdAt: string;
 };
 
+export const CONTACT_CATEGORIES = ["general", "support", "partnership", "content_report", "other"] as const;
+export type ContactCategory = (typeof CONTACT_CATEGORIES)[number];
+
+export const CONTACT_CATEGORY_LABELS: Record<ContactCategory, string> = {
+  general: "Genel soru",
+  support: "Teknik destek",
+  partnership: "İş birliği",
+  content_report: "Profil veya içerik bildirimi",
+  other: "Diğer",
+};
+
+export const CONTACT_LIMITS = { name: 120, email: 200, subject: 150, message: 3000 } as const;
+
+export const CONTACT_STATUSES = ["new", "in_progress", "answered", "closed", "spam"] as const;
+export type ContactStatus = (typeof CONTACT_STATUSES)[number];
+
+export const CONTACT_STATUS_LABELS: Record<ContactStatus, string> = {
+  new: "Yeni",
+  in_progress: "İşlemde",
+  answered: "Yanıtlandı",
+  closed: "Kapatıldı",
+  spam: "Spam",
+};
+
+export type ContactMessage = {
+  id: string;
+  category: ContactCategory;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: ContactStatus;
+  /** İlk açılış zamanı; null = okunmadı. */
+  readAt: string | null;
+  /** Tuzlu IP özeti (ham IP saklanmaz); yalnızca kötüye kullanım sınırı için. */
+  ipHash: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type SeoPage = {
   id: string;
   path: string;

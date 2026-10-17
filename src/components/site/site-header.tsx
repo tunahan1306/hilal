@@ -10,6 +10,7 @@ export const MAIN_NAV = [
   { href: "/kesfet", label: "Keşfet" },
   { href: "/sehirler", label: "Şehirler" },
   { href: "/guvenlik", label: "Topluluk" },
+  { href: "/iletisim", label: "İletişim" },
 ] as const;
 
 export function SiteHeader() {

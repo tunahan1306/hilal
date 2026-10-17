@@ -4,6 +4,8 @@ import { isAdult } from "./age";
 import { docFromPlainText, parseRichDoc } from "./rich-text";
 import {
   CONSENT_TYPES,
+  CONTACT_CATEGORIES,
+  CONTACT_LIMITS,
   PRIVACY_REQUEST_TYPES,
   REPORT_CATEGORIES,
   VERIFICATION_STATUSES,
@@ -98,6 +100,20 @@ export const privacyRequestSchema = z.object({
   website: z.string().max(0).optional(),
 });
 export type PrivacyRequestInput = z.infer<typeof privacyRequestSchema>;
+
+export const contactMessageSchema = z.object({
+  category: z.enum(CONTACT_CATEGORIES, { message: "Bir kategori seçin" }),
+  name: trimmed(2, CONTACT_LIMITS.name, "Ad soyad").refine(noHtml, "HTML karakterleri kullanılamaz"),
+  email: z.string().trim().max(CONTACT_LIMITS.email).pipe(z.email("Geçerli bir e-posta girin")),
+  subject: trimmed(3, CONTACT_LIMITS.subject, "Konu").refine(noHtml, "HTML karakterleri kullanılamaz"),
+  message: trimmed(20, CONTACT_LIMITS.message, "Mesaj").refine(noHtml, "HTML karakterleri kullanılamaz"),
+  acknowledge: z.literal(true, { message: "Aydınlatma metnini okuduğunuzu onaylayın" }),
+  /** Honeypot: insanlar bu alanı görmez; dolu gelirse istek reddedilir. */
+  website: z.string().max(0).optional(),
+  /** Formun render edildiği an (ms). Çok hızlı gönderimler bot kabul edilir. */
+  startedAt: z.coerce.number().int().nonnegative().optional(),
+});
+export type ContactMessageInput = z.infer<typeof contactMessageSchema>;
 
 export const consentInputSchema = z.object({
   type: z.enum(CONSENT_TYPES),

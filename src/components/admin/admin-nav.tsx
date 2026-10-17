@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BarChart3, ClipboardList, CreditCard, Flag, Images, LayoutDashboard, Search, Settings, ShieldCheck, Tags, Users, type LucideIcon,
+  BarChart3, ClipboardList, CreditCard, Flag, Images, Inbox, LayoutDashboard, Search, Settings, ShieldCheck, Tags, Users, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +23,7 @@ export const ADMIN_NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     items: [
       { href: "/admin/sikayetler", label: "Şikâyetler", icon: Flag, shortcut: "G S" },
       { href: "/admin/talepler", label: "KVKK talepleri", icon: ShieldCheck },
+      { href: "/admin/iletisim", label: "İletişim talepleri", icon: Inbox },
     ],
   },
   { title: "Ticari", items: [{ href: "/admin/abonelikler", label: "Abonelikler", icon: CreditCard }] },

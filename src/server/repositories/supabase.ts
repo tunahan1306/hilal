@@ -9,6 +9,7 @@ import type {
   MembershipPlan,
   ModerationAction,
   ModerationReport,
+  ContactMessage,
   PrivacyRequest,
   Profile,
   ProfileConsent,
@@ -253,6 +254,20 @@ const toPrivacy = (r: Row): PrivacyRequest => ({
   dueAt: r.due_at as string,
   completedAt: (r.completed_at as string) ?? null,
   createdAt: r.created_at as string,
+});
+
+const toContact = (r: Row): ContactMessage => ({
+  id: r.id as string,
+  category: r.category as ContactMessage["category"],
+  name: r.name as string,
+  email: r.email as string,
+  subject: r.subject as string,
+  message: r.message as string,
+  status: r.status as ContactMessage["status"],
+  readAt: (r.read_at as string) ?? null,
+  ipHash: r.ip_hash as string,
+  createdAt: r.created_at as string,
+  updatedAt: r.updated_at as string,
 });
 
 const toSeo = (r: Row): SeoPage => ({
@@ -739,6 +754,47 @@ export function createSupabaseRepository(): Repository {
       return toPrivacy(check(await service().from("privacy_requests").update(row).eq("id", id).select().single()) as Row);
     },
 
+    // İletişim mesajları yalnızca service role ile okunur/yazılır; tabloda anon erişimi yoktur (RLS).
+    async createContactMessage(input) {
+      const r = check(
+        await service()
+          .from("contact_messages")
+          .insert({ category: input.category, name: input.name, email: input.email, subject: input.subject, message: input.message, ip_hash: input.ipHash })
+          .select()
+          .single(),
+      ) as Row;
+      return toContact(r);
+    },
+    async countContactMessagesSince(ipHash, sinceIso) {
+      const res = await service().from("contact_messages").select("id", { count: "exact", head: true }).eq("ip_hash", ipHash).gte("created_at", sinceIso);
+      if (res.error) throw res.error;
+      return res.count ?? 0;
+    },
+    async countUnreadContactMessages() {
+      const res = await service().from("contact_messages").select("id", { count: "exact", head: true }).is("read_at", null).neq("status", "spam");
+      // Migration henüz uygulanmadıysa yönetim paneli çökmesin.
+      if (res.error && (res.error.code === "PGRST205" || res.error.code === "42P01")) return 0;
+      if (res.error) throw new Error(res.error.message);
+      return res.count ?? 0;
+    },
+    async listContactMessages(filter = {}) {
+      let q = service().from("contact_messages").select("*");
+      if (filter.status) q = q.eq("status", filter.status);
+      if (filter.category) q = q.eq("category", filter.category);
+      if (filter.unread) q = q.is("read_at", null);
+      return (check(await q.order("created_at", { ascending: false }).order("id", { ascending: false }).limit(500)) as Row[]).map(toContact);
+    },
+    async getContactMessage(id) {
+      const rows = check(await service().from("contact_messages").select("*").eq("id", id).limit(1)) as Row[];
+      return rows[0] ? toContact(rows[0]) : null;
+    },
+    async updateContactMessage(id, patch) {
+      const row: Row = {};
+      if (patch.status) row.status = patch.status;
+      if ("readAt" in patch) row.read_at = patch.readAt;
+      return toContact(check(await service().from("contact_messages").update(row).eq("id", id).select().single()) as Row);
+    },
+
     async listSeoPages() {
       return (check(await anon().from("seo_pages").select("*").order("path")) as Row[]).map(toSeo);
     },
@@ -815,13 +871,14 @@ export function createSupabaseRepository(): Repository {
         startsAt: r.starts_at as string,
         endsAt: r.ends_at as string,
       }));
-      const [totalProfiles, published, drafts, inReview, openReports, openPrivacyRequests] = await Promise.all([
+      const [totalProfiles, published, drafts, inReview, openReports, openPrivacyRequests, unreadContactMessages] = await Promise.all([
         count("profiles"),
         count("profiles", "status", ["published"]),
         count("profiles", "status", ["draft"]),
         count("profiles", "status", ["in_review"]),
         count("moderation_reports", "status", ["open", "in_review", "appealed"]),
         count("privacy_requests", "status", ["received", "in_progress"]),
+        this.countUnreadContactMessages(),
       ]);
       return {
         totalProfiles,
@@ -832,6 +889,7 @@ export function createSupabaseRepository(): Repository {
         activeSubscriptions: subs.filter((s) => effectiveStatus(s, now) === "active").length,
         expiringSoon: subs.filter((s) => isExpiringSoon(s, now)).length,
         openPrivacyRequests,
+        unreadContactMessages,
       };
     },
 

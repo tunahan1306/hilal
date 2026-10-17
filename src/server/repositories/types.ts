@@ -7,6 +7,9 @@ import type {
   MembershipPlan,
   ModerationAction,
   ModerationReport,
+  ContactCategory,
+  ContactMessage,
+  ContactStatus,
   PrivacyRequest,
   Profile,
   ProfileConsent,
@@ -36,6 +39,7 @@ export type DashboardCounts = {
   activeSubscriptions: number;
   expiringSoon: number;
   openPrivacyRequests: number;
+  unreadContactMessages: number;
 };
 
 export type DailyViews = { day: string; views: number };
@@ -116,6 +120,14 @@ export interface Repository {
   createPrivacyRequest(input: Omit<PrivacyRequest, "id" | "createdAt" | "status" | "completedAt">): Promise<PrivacyRequest>;
   listPrivacyRequests(): Promise<PrivacyRequest[]>;
   updatePrivacyRequest(id: string, patch: Partial<Pick<PrivacyRequest, "status" | "completedAt" | "profileId">>): Promise<PrivacyRequest>;
+
+  // İletişim talepleri
+  createContactMessage(input: Omit<ContactMessage, "id" | "createdAt" | "updatedAt" | "status" | "readAt">): Promise<ContactMessage>;
+  countContactMessagesSince(ipHash: string, sinceIso: string): Promise<number>;
+  countUnreadContactMessages(): Promise<number>;
+  listContactMessages(filter?: { status?: ContactStatus; category?: ContactCategory; unread?: boolean }): Promise<ContactMessage[]>;
+  getContactMessage(id: string): Promise<ContactMessage | null>;
+  updateContactMessage(id: string, patch: Partial<Pick<ContactMessage, "status" | "readAt">>): Promise<ContactMessage>;
 
   // SEO ve ayarlar
   listSeoPages(): Promise<SeoPage[]>;

@@ -18,3 +18,12 @@ export function formatDate(iso: string, opts: Intl.DateTimeFormatOptions = { day
 export function formatNumber(n: number) {
   return new Intl.NumberFormat("tr-TR").format(n);
 }
+
+/**
+ * Herkese açık iletişim e-postası yalnızca yapılandırılmışsa gösterilir;
+ * uydurma veya yer tutucu adres yayımlanmaz.
+ */
+export function publicContactEmail(env: NodeJS.ProcessEnv = process.env): string | null {
+  const v = env.CONTACT_PUBLIC_EMAIL?.trim();
+  return v && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) && !/@example\.(com|org|net)$/i.test(v) ? v : null;
+}

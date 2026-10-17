@@ -332,6 +332,33 @@ export function createMemoryRepository(): Repository {
       return clone(r);
     },
 
+    async createContactMessage(input) {
+      const now = new Date().toISOString();
+      const row = { ...input, id: nextId("msg"), status: "new" as const, readAt: null, createdAt: now, updatedAt: now };
+      store().contact.push(row);
+      return clone(row);
+    },
+    async countContactMessagesSince(ipHash, sinceIso) {
+      return store().contact.filter((m) => m.ipHash === ipHash && m.createdAt >= sinceIso).length;
+    },
+    async countUnreadContactMessages() {
+      return store().contact.filter((m) => m.readAt === null && m.status !== "spam").length;
+    },
+    async listContactMessages(filter = {}) {
+      return clone(store().contact)
+        .filter((m) => (!filter.status || m.status === filter.status) && (!filter.category || m.category === filter.category) && (!filter.unread || m.readAt === null))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+    },
+    async getContactMessage(id) {
+      const m = store().contact.find((x) => x.id === id);
+      return m ? clone(m) : null;
+    },
+    async updateContactMessage(id, patch) {
+      const m = must(store().contact.find((x) => x.id === id), "Mesaj");
+      Object.assign(m, patch, { updatedAt: new Date().toISOString() });
+      return clone(m);
+    },
+
     async listSeoPages() {
       return clone(store().seo).sort((a, b) => a.path.localeCompare(b.path));
     },
@@ -388,6 +415,7 @@ export function createMemoryRepository(): Repository {
         activeSubscriptions: s.subscriptions.filter((x) => effectiveStatus(x, now) === "active").length,
         expiringSoon: s.subscriptions.filter((x) => isExpiringSoon(x, now)).length,
         openPrivacyRequests: s.privacy.filter((r) => r.status === "received" || r.status === "in_progress").length,
+        unreadContactMessages: await this.countUnreadContactMessages(),
       };
     },
 

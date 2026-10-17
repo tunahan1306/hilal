@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { consentInputSchema, profileInputSchema, seoPageInputSchema, verificationInputSchema } from "@/domain/schemas";
 import { slugifyTr } from "@/domain/text";
-import type { Admin, PrivacyRequestStatus } from "@/domain/types";
+import type { Admin, ContactStatus, PrivacyRequestStatus } from "@/domain/types";
+import { CONTACT_STATUSES } from "@/domain/types";
 import { AuthorizationError, assertAdmin } from "@/server/auth/session";
 import { invalidatePublic } from "@/server/cache";
 import { getRepository } from "@/server/repositories";
@@ -14,6 +15,7 @@ import * as profiles from "@/server/services/profiles";
 import * as moderation from "@/server/services/moderation";
 import * as subscriptions from "@/server/services/subscriptions";
 import { updatePrivacyRequestStatus } from "@/server/services/privacy";
+import { markContactMessageUnread, updateContactMessageStatus } from "@/server/services/contact";
 
 export type ActionResult = { ok: boolean; message: string; errors?: Record<string, string[]>; data?: unknown } | null;
 
@@ -222,6 +224,21 @@ export async function privacyStatusAction(id: string, status: PrivacyRequestStat
   return run(async (admin) => {
     await updatePrivacyRequestStatus(admin, id, status);
     return "Başvuru durumu güncellendi.";
+  }, { invalidate: false });
+}
+
+export async function contactStatusAction(id: string, status: ContactStatus): Promise<ActionResult> {
+  return run(async (admin) => {
+    if (!CONTACT_STATUSES.includes(status)) throw new DomainError("Geçersiz durum.");
+    await updateContactMessageStatus(admin, id, status);
+    return "Mesaj durumu güncellendi.";
+  }, { invalidate: false });
+}
+
+export async function contactUnreadAction(id: string): Promise<ActionResult> {
+  return run(async (admin) => {
+    await markContactMessageUnread(admin, id);
+    return "Mesaj okunmadı olarak işaretlendi.";
   }, { invalidate: false });
 }
 

@@ -35,3 +35,5 @@ export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
 };
 export const REPORT_STATUS_TONE = { open: "danger", in_review: "warning", resolved: "success", rejected: "neutral", appealed: "warning" } as const;
 
+
+export const CONTACT_STATUS_TONE = { new: "warning", in_progress: "brand", answered: "success", closed: "neutral", spam: "danger" } as const;
