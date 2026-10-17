@@ -36,7 +36,7 @@ export async function ProfileListing({ filters, mode }: { filters: ProfileFilter
           <ProgressiveProfiles key={JSON.stringify(filters)} initial={result} filters={filters} />
         </>
       ) : (
-        hasActiveFilters({ ...filters, il: mode.type === "location" ? undefined : filters.il, ilce: mode.type === "location" ? undefined : filters.ilce }) ? (
+        hasActiveFilters({ ...filters, il: mode.type === "location" ? undefined : filters.il, ilce: mode.type === "location" ? undefined : filters.ilce, yaka: mode.type === "location" ? undefined : filters.yaka }) ? (
           <EmptyState
             icon={Users}
             title="Bu kriterlere uygun profil bulunamadı"

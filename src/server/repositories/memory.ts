@@ -2,6 +2,7 @@ import "server-only";
 import type { ProfileFilters } from "@/domain/filters";
 import { getProvince, listProvinces, listDistricts } from "@/domain/locations";
 import { toPublicProfile } from "@/domain/projection";
+import { sideDistricts } from "@/domain/istanbul";
 import { effectiveStatus, isExpiringSoon } from "@/domain/subscriptions";
 import type { Profile, PublicProfile } from "@/domain/types";
 import { createDemoStore, type DemoStore } from "./demo-seed";
@@ -71,9 +72,11 @@ export function createMemoryRepository(): Repository {
       const now = new Date();
       const province = filters.il ? getProvince(filters.il) : undefined;
       if (filters.il && !province) return { items: [], total: 0 };
+      const side = sideDistricts(filters);
       const items = publishedProjections(now)
         .filter((p) => !province || p.province.plate === province.plate)
         .filter((p) => !filters.ilce || p.district?.slug === filters.ilce)
+        .filter((p) => !side || (p.district !== null && side.includes(p.district.slug)))
         .filter((p) => filters.yasMin === undefined || p.age >= filters.yasMin)
         .filter((p) => filters.yasMax === undefined || p.age <= filters.yasMax)
         .filter((p) => filters.ilgi.every((slug) => p.interests.some((i) => i.slug === slug)))

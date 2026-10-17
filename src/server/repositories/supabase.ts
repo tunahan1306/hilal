@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { sideDistricts } from "@/domain/istanbul";
 import { effectiveStatus, isExpiringSoon } from "@/domain/subscriptions";
 import type {
   Admin,
@@ -377,6 +378,8 @@ export function createSupabaseRepository(): Repository {
       let q = anon().from("discovery_profiles").select("*", { count: "exact" });
       if (filters.il) q = q.eq("city_slug", filters.il);
       if (filters.ilce) q = q.eq("district_slug", filters.ilce);
+      const side = sideDistricts(filters);
+      if (side) q = q.in("district_slug", [...side]);
       if (filters.yasMin !== undefined) q = q.gte("age", filters.yasMin);
       if (filters.yasMax !== undefined) q = q.lte("age", filters.yasMax);
       if (filters.dogrulanmis) q = q.eq("verified", true);

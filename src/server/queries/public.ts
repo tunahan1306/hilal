@@ -3,6 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { connection } from "next/server";
 import type { ProfileFilters } from "@/domain/filters";
 import { PAGE_SIZE } from "@/domain/filters";
+import { ISTANBUL_SIDES } from "@/domain/istanbul";
 import { TAGS } from "../cache";
 import { getRepository } from "../repositories";
 
@@ -83,4 +84,11 @@ export async function discoverProfiles(filters: ProfileFilters, cursor?: import(
   const items = result.items.slice(0, PAGE_SIZE);
   const last = items.at(-1);
   return { items, total: result.total, nextCursor: result.items.length > PAGE_SIZE && last ? encodeCursor({ publishedAt: last.publishedAt, id: last.id }) : null };
+}
+
+/** İstanbul yakalarının profil sayıları (ilçe sayımlarının toplamı). */
+export function istanbulSideCounts(counts: Awaited<ReturnType<typeof getLocationCounts>>) {
+  const plate = 34;
+  const sum = (districts: readonly string[]) => districts.reduce((n, d) => n + profileCountFor(counts, plate, d), 0);
+  return { avrupa: sum(ISTANBUL_SIDES.avrupa.districts), anadolu: sum(ISTANBUL_SIDES.anadolu.districts) };
 }

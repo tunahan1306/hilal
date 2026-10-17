@@ -1,5 +1,6 @@
 // İstemci paketine girdiği için (filtre çubuğu) bu modül zod içermez.
 import { MINIMUM_AGE } from "./age";
+import { isIstanbulSide, type IstanbulSide } from "./istanbul";
 
 export const MAX_AGE_FILTER = 99;
 export const PAGE_SIZE = 12;
@@ -10,6 +11,7 @@ const isSlug = (v: unknown): v is string => typeof v === "string" && SLUG.test(v
 export type ProfileFilters = {
   il?: string;
   ilce?: string;
+  yaka?: IstanbulSide;
   yasMin?: number;
   yasMax?: number;
   ilgi: string[];
@@ -34,6 +36,7 @@ function toAge(v: string | undefined): number | undefined {
 export function parseFilters(params: RawParams): ProfileFilters {
   const il = first(params.il);
   const ilce = first(params.ilce);
+  const yaka = first(params.yaka);
   const ilgiRaw = params.ilgi;
   const ilgiList = (Array.isArray(ilgiRaw) ? ilgiRaw : ilgiRaw ? ilgiRaw.split(",") : [])
     .map((s) => s.trim())
@@ -46,6 +49,7 @@ export function parseFilters(params: RawParams): ProfileFilters {
   return {
     il: isSlug(il) ? il : undefined,
     ilce: isSlug(il) && isSlug(ilce) ? ilce : undefined,
+    yaka: isIstanbulSide(yaka) ? yaka : undefined,
     yasMin,
     yasMax,
     ilgi: [...new Set(ilgiList)],
@@ -60,6 +64,7 @@ export function serializeFilters(f: Partial<ProfileFilters>, omit: (keyof Profil
   const skip = new Set(omit);
   if (f.il && !skip.has("il")) sp.set("il", f.il);
   if (f.ilce && !skip.has("ilce")) sp.set("ilce", f.ilce);
+  if (f.yaka && !skip.has("yaka")) sp.set("yaka", f.yaka);
   if (f.yasMin !== undefined && !skip.has("yasMin")) sp.set("yasMin", String(f.yasMin));
   if (f.yasMax !== undefined && !skip.has("yasMax")) sp.set("yasMax", String(f.yasMax));
   if (f.ilgi?.length && !skip.has("ilgi")) sp.set("ilgi", f.ilgi.join(","));
@@ -70,5 +75,5 @@ export function serializeFilters(f: Partial<ProfileFilters>, omit: (keyof Profil
 }
 
 export function hasActiveFilters(f: ProfileFilters): boolean {
-  return Boolean(f.il || f.ilce || f.yasMin !== undefined || f.yasMax !== undefined || f.ilgi.length || f.dogrulanmis);
+  return Boolean(f.il || f.ilce || f.yaka || f.yasMin !== undefined || f.yasMax !== undefined || f.ilgi.length || f.dogrulanmis);
 }
