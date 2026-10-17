@@ -18,7 +18,7 @@ export function SiteFooter() {
             <CrescentMark className="size-[0.7em]" /> Hilal
           </p>
           <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-            Türkiye&apos;nin 81 ilinde sosyal keşif yapmak isteyen yetişkinlerin, rızası alınmış ve doğrulanmış sosyal profilleri.
+            Türkiye&apos;nin 81 ilinde yetişkinler için sosyal keşif. Profillerin doğrulama durumu her profilde ayrıca gösterilir.
           </p>
         </div>
         {GROUPS.map((g) => (

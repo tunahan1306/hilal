@@ -13,6 +13,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob:${supabaseHost ? ` https://${supabaseHost}` : ""}`,
   "font-src 'self'",
+  `media-src 'self' blob:${supabaseHost ? ` https://${supabaseHost}` : ""}`,
   `connect-src 'self'${supabaseHost ? ` https://${supabaseHost} wss://${supabaseHost}` : ""}`,
   "frame-ancestors 'none'",
   "form-action 'self'",

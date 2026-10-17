@@ -121,6 +121,9 @@ export interface Repository {
   listPrivacyRequests(): Promise<PrivacyRequest[]>;
   updatePrivacyRequest(id: string, patch: Partial<Pick<PrivacyRequest, "status" | "completedAt" | "profileId">>): Promise<PrivacyRequest>;
 
+  /** Adres şu anda kamuya açık (yayında + onaylı) bir medyaya mı ait? Görsel vekili için. */
+  isPublishedMediaUrl(url: string): Promise<boolean>;
+
   // İletişim talepleri
   createContactMessage(input: Omit<ContactMessage, "id" | "createdAt" | "updatedAt" | "status" | "readAt">): Promise<ContactMessage>;
   countContactMessagesSince(ipHash: string, sinceIso: string): Promise<number>;

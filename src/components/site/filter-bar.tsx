@@ -172,7 +172,7 @@ export function FilterBar(props: Props) {
             <div className="px-5 py-6">
               <FilterFields {...props} update={update} idPrefix="m" />
             </div>
-            <SheetFooter className="pb-safe sticky bottom-0 flex-row gap-2 border-t border-hairline bg-background px-5 py-4">
+            <SheetFooter className="sticky bottom-0 flex-row gap-2 border-t border-hairline bg-background px-5 pt-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
               {activeCount ? (
                 <button type="button" onClick={clear} className="h-11 rounded-md px-4 text-sm underline-offset-4 hover:underline">Temizle</button>
               ) : null}

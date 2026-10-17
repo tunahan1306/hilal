@@ -6,7 +6,7 @@ import { getLocationCounts, profileCountFor } from "@/server/queries/public";
 
 export const metadata: Metadata = {
   title: "Türkiye'nin 81 ili",
-  description: "Türkiye'nin 81 ilinde ve ilçelerinde doğrulanmış sosyal profilleri bölge bölge keşfedin.",
+  description: "Türkiye'nin 81 ilinde ve ilçelerinde sosyal profilleri bölge bölge keşfedin.",
   alternates: { canonical: "/sehirler" },
 };
 

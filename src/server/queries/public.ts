@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { cacheLife, cacheTag } from "next/cache";
 import { connection } from "next/server";
 import type { ProfileFilters } from "@/domain/filters";
@@ -23,15 +24,17 @@ export async function searchProfiles(filters: ProfileFilters) {
   return getRepository().searchPublicProfiles(filters, { limit: PAGE_SIZE, offset });
 }
 
-export async function getPublicProfile(slug: string) {
+/** Aynı istekte metadata ve sayfa aynı sonucu paylaşır (tek veritabanı okuması). */
+export const getPublicProfile = cache(async (slug: string) => {
   await connection();
   return getRepository().getPublicProfile(slug);
-}
+});
 
-export async function getLocationCounts() {
+/** İl/ilçe sayımları istek başına bir kez okunur (sayfa, metadata ve özet paylaşır). */
+export const getLocationCounts = cache(async () => {
   await connection();
   return getRepository().countPublishedByLocation();
-}
+});
 
 export async function getPublicProfileSlugs() {
   "use cache";

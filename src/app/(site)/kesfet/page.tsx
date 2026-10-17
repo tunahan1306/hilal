@@ -9,7 +9,7 @@ export async function generateMetadata({ searchParams }: PageProps<"/kesfet">): 
   const filtered = hasActiveFilters(filters) || filters.sayfa > 1;
   return {
     title: "Profilleri keşfet",
-    description: "Türkiye genelinde şehir, ilçe, yaş aralığı göre doğrulanmış sosyal profilleri keşfedin.",
+    description: "Türkiye genelinde şehir, ilçe ve yaş aralığına göre sosyal profilleri keşfedin.",
     alternates: { canonical: "/kesfet" },
     // Filtrelenmiş ve sayfalanmış varyantlar indekslenmez (ince/kopya içerik önlemi).
     robots: filtered ? { index: false, follow: true } : undefined,
@@ -23,7 +23,7 @@ export default function ExplorePage({ searchParams }: PageProps<"/kesfet">) {
       <header className="mb-10 mt-8 grid gap-4 border-b border-hairline pb-10 lg:mb-12 lg:grid-cols-12 lg:items-end">
         <h1 className="font-display text-display-xl lg:col-span-7">Keşfet</h1>
         <p className="max-w-[44ch] text-lede text-muted-foreground lg:col-span-5 lg:justify-self-end">
-          Türkiye genelinde, rızası alınmış ve yaşı doğrulanmış yetişkin profiller. Şehir, yaş aralığı ve konuma göre daraltın.
+          Türkiye genelindeki yetişkin profilleri şehir, ilçe ve yaş aralığına göre daraltın. Doğrulama durumu her profilde ayrıca belirtilir.
         </p>
       </header>
       <Suspense fallback={<ProfileListingSkeleton />}>

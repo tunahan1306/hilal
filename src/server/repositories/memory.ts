@@ -332,6 +332,10 @@ export function createMemoryRepository(): Repository {
       return clone(r);
     },
 
+    async isPublishedMediaUrl(url) {
+      return publishedProjections(new Date()).some((p) => p.images.some((i) => i.url === url) || (p.videos ?? []).some((v) => v.url === url || v.posterUrl === url));
+    },
+
     async createContactMessage(input) {
       const now = new Date().toISOString();
       const row = { ...input, id: nextId("msg"), status: "new" as const, readAt: null, createdAt: now, updatedAt: now };

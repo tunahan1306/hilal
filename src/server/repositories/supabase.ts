@@ -754,6 +754,16 @@ export function createSupabaseRepository(): Repository {
       return toPrivacy(check(await service().from("privacy_requests").update(row).eq("id", id).select().single()) as Row);
     },
 
+    async isPublishedMediaUrl(url) {
+      const [media, poster, example] = await Promise.all([
+        anon().from("profile_media_public").select("profile_id", { count: "exact", head: true }).eq("url", url),
+        anon().from("profile_media_public").select("profile_id", { count: "exact", head: true }).eq("poster_url", url),
+        anon().from("discovery_profiles").select("id", { count: "exact", head: true }).eq("example_image_url", url),
+      ]);
+      for (const r of [media, poster, example]) if (r.error) throw new Error(r.error.message);
+      return (media.count ?? 0) + (poster.count ?? 0) + (example.count ?? 0) > 0;
+    },
+
     // İletişim mesajları yalnızca service role ile okunur/yazılır; tabloda anon erişimi yoktur (RLS).
     async createContactMessage(input) {
       const r = check(
