@@ -149,7 +149,12 @@ export const subscriptionInputSchema = z.object({
 });
 
 export const seoPageInputSchema = z.object({
-  path: z.string().regex(/^\/[a-z0-9\-/]*$/, "Geçersiz yol"),
+  path: z
+    .string()
+    .trim()
+    .regex(/^\/[a-z0-9\-/]*$/, "Geçersiz yol")
+    .refine((p) => p === "/" || !p.endsWith("/"), "Yol / ile bitmemeli (ör. /sehir/istanbul)")
+    .refine((p) => !/^\/(admin|api|media|_next)(\/|$)/.test(p), "Yönetim ve sistem yolları için SEO ayarı yapılamaz"),
   title: z.string().trim().max(70).optional().transform((v) => v || null),
   description: z.string().trim().max(160).optional().transform((v) => v || null),
   canonical: z

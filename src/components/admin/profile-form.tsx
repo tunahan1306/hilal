@@ -3,6 +3,7 @@
 import { useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Controller, useForm, useWatch } from "react-hook-form";
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -47,6 +48,7 @@ export function ProfileForm({
     mode: "onBlur",
   });
   const { register, control, handleSubmit, setValue, formState } = form;
+  useUnsavedChangesGuard(formState.isDirty && !pending);
   const plate = Number(useWatch({ control, name: "provincePlate" }));
   const districts = useMemo(() => (plate ? listDistricts(plate) : []), [plate, listDistricts]);
   const nickname = useWatch({ control, name: "nickname" });
@@ -71,6 +73,7 @@ export function ProfileForm({
       if (!res) return;
       if (res.ok) {
         toast.success(res.message);
+        form.reset(values as FormIn); // kaydedilen değerler yeni temel; koruma kalkar
         router.refresh();
       } else {
         toast.error(res.message);
@@ -85,10 +88,10 @@ export function ProfileForm({
     <form onSubmit={onSubmit} className="grid gap-6" noValidate>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Takma ad" id="nickname" error={err("nickname")} hint="Gerçek ad kullanılmaz.">
-          <Input id="nickname" {...register("nickname")} aria-invalid={Boolean(err("nickname"))} />
+          <Input id="nickname" {...register("nickname")} aria-invalid={Boolean(err("nickname"))} aria-describedby={err("nickname") ? "nickname-error" : undefined} />
         </Field>
         <Field label="Doğum tarihi" id="birthDate" error={err("birthDate")} hint="Yalnızca yönetimde saklanır; sitede yaş olarak görünür.">
-          <Input id="birthDate" type="date" {...register("birthDate")} aria-invalid={Boolean(err("birthDate"))} />
+          <Input id="birthDate" type="date" {...register("birthDate")} aria-invalid={Boolean(err("birthDate"))} aria-describedby={err("birthDate") ? "birthDate-error" : undefined} />
         </Field>
         <Field label="İl" id="provincePlate" error={err("provincePlate")}>
           <Controller
@@ -96,7 +99,7 @@ export function ProfileForm({
             name="provincePlate"
             render={({ field }) => (
               <Select value={field.value ? String(field.value) : ""} onValueChange={(v) => { field.onChange(Number(v)); setValue("districtSlug", ""); }}>
-                <SelectTrigger id="provincePlate" className="w-full" aria-invalid={Boolean(err("provincePlate"))}><SelectValue placeholder="İl seçin" /></SelectTrigger>
+                <SelectTrigger id="provincePlate" className="w-full" aria-invalid={Boolean(err("provincePlate"))} aria-describedby={err("provincePlate") ? "provincePlate-error" : undefined}><SelectValue placeholder="İl seçin" /></SelectTrigger>
                 <SelectContent className="max-h-80">
                   {provinces.map((p) => <SelectItem key={p.plate} value={String(p.plate)}>{p.name}</SelectItem>)}
                 </SelectContent>
@@ -124,7 +127,7 @@ export function ProfileForm({
       <fieldset className="grid gap-3 rounded-md border border-hairline p-4">
         <legend className="px-2 text-sm font-medium">WhatsApp iletişimi (isteğe bağlı)</legend>
         <Field label="WhatsApp telefon numarası" id="whatsappPhone" error={err("whatsappPhone")} hint="Örnek: +90 5XX XXX XX XX. İzin yoksa numara kamuya gösterilmez.">
-          <Input id="whatsappPhone" type="tel" autoComplete="off" maxLength={40} {...register("whatsappPhone", { onChange: () => setValue("whatsappConsent", false) })} aria-invalid={Boolean(err("whatsappPhone"))} />
+          <Input id="whatsappPhone" type="tel" autoComplete="off" maxLength={40} {...register("whatsappPhone", { onChange: () => setValue("whatsappConsent", false) })} aria-invalid={Boolean(err("whatsappPhone"))} aria-describedby={err("whatsappPhone") ? "whatsappPhone-error" : undefined} />
         </Field>
         <Controller control={control} name="whatsappConsent" render={({ field }) => (
           <div className="flex items-start gap-3">
@@ -136,7 +139,7 @@ export function ProfileForm({
       </fieldset>
 
       <Field label="Biyografi" id="bio" error={err("bio")} hint="20–600 karakter. İletişim bilgisi, fiyat veya ücretli hizmet çağrışımı içeremez.">
-        <Textarea id="bio" rows={5} {...register("bio")} aria-invalid={Boolean(err("bio"))} />
+        <Textarea id="bio" rows={5} {...register("bio")} aria-invalid={Boolean(err("bio"))} aria-describedby={err("bio") ? "bio-error" : undefined} />
       </Field>
 
       {findings.length ? (
@@ -205,10 +208,10 @@ export function ProfileForm({
 
 function Field({ label, id, error, hint, children }: { label: string; id: string; error?: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-1.5">
+    <div className="grid gap-1.5" data-field={id}>
       <Label htmlFor={id}>{label}</Label>
       {children}
-      {error ? <p className="text-sm text-destructive">{error}</p> : hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+      {error ? <p id={`${id}-error`} className="text-sm text-destructive">{error}</p> : hint ? <p id={`${id}-hint`} className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }

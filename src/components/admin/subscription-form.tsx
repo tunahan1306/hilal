@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ActionForm } from "./action-form";
+import { ActionForm, FieldError } from "./action-form";
 
 export function SubscriptionForm({
   action,
@@ -26,7 +26,7 @@ export function SubscriptionForm({
   const eligible = plans.find((p) => p.id === planId)?.sponsoredEligible ?? false;
   return (
     <ActionForm action={action} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6 lg:items-end">
-      {({ pending }) => (
+      {({ pending, errors }) => (
         <>
           <div className="grid gap-1.5 lg:col-span-3">
             <Label htmlFor="s-profile">Profil</Label>
@@ -34,6 +34,7 @@ export function SubscriptionForm({
               <SelectTrigger id="s-profile" className="w-full"><SelectValue placeholder="Profil seçin" /></SelectTrigger>
               <SelectContent className="max-h-80">{profiles.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
             </Select>
+            <FieldError errors={errors} name="profileId" />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="s-plan">Paket</Label>
@@ -45,10 +46,12 @@ export function SubscriptionForm({
           <div className="grid gap-1.5">
             <Label htmlFor="s-start">Başlangıç</Label>
             <Input id="s-start" name="startsAt" type="date" defaultValue={today} />
+            <FieldError errors={errors} name="startsAt" />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="s-months">Süre (ay)</Label>
             <Input id="s-months" name="months" type="number" min={1} max={24} defaultValue={1} />
+            <FieldError errors={errors} name="months" />
           </div>
           <div className="flex flex-wrap items-center gap-4 text-sm sm:col-span-2 lg:col-span-5">
             <Label className="flex items-center gap-2 font-normal"><Checkbox name="autoRenew" /> Otomatik yenileme (kayıt amaçlı)</Label>

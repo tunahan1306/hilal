@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 import Link from "next/link";
 import { ArrowUpRight, LogOut } from "lucide-react";
 import { AdminNav } from "@/components/admin/admin-nav";
@@ -36,7 +36,9 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-hairline bg-background/90 px-4 backdrop-blur lg:px-6">
-          <MobileAdminNav />
+          <Suspense fallback={<MobileAdminNav demo={isDemoMode()} />}>
+            <MobileNavWithBadges />
+          </Suspense>
           <Logo href="/admin" className="lg:hidden" />
           <Suspense fallback={<Skeleton className="hidden h-8 w-64 md:block" />}>
             <Palette />
@@ -59,20 +61,25 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
   );
 }
 
-async function NavWithBadges() {
+/** Masaüstü ve mobil menü aynı istekte tek sorgu setini paylaşır. */
+const navBadges = cache(async () => {
   await requireAdmin();
   const repo = getRepository();
   const [reports, profiles, privacy, contact] = await Promise.all([repo.listReports(), repo.listProfiles(), repo.listPrivacyRequests(), repo.countUnreadContactMessages()]);
-  return (
-    <AdminNav
-      badges={{
-        "/admin/sikayetler": reports.filter((r) => r.status === "open" || r.status === "appealed").length,
-        "/admin/profiller": profiles.filter((p) => p.status === "in_review").length,
-        "/admin/talepler": privacy.filter((p) => p.status === "received").length,
-        "/admin/iletisim": contact,
-      }}
-    />
-  );
+  return {
+    "/admin/sikayetler": reports.filter((r) => r.status === "open" || r.status === "appealed").length,
+    "/admin/profiller": profiles.filter((p) => p.status === "in_review").length,
+    "/admin/talepler": privacy.filter((p) => p.status === "received").length,
+    "/admin/iletisim": contact,
+  };
+});
+
+async function NavWithBadges() {
+  return <AdminNav badges={await navBadges()} />;
+}
+
+async function MobileNavWithBadges() {
+  return <MobileAdminNav badges={await navBadges()} demo={isDemoMode()} />;
 }
 
 async function Palette() {

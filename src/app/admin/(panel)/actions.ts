@@ -89,7 +89,9 @@ export async function profileStatusAction(id: string, op: "review" | "publish" |
     switch (op) {
       case "review": await profiles.submitForReview(admin, id); return "Profil incelemeye gönderildi.";
       case "publish": await profiles.publishProfile(admin, id); return "Profil yayınlandı.";
-      case "unpublish": await profiles.unpublishProfile(admin, id, reason || "Yönetici kararı"); return "Profil yayından kaldırıldı.";
+      case "unpublish":
+        if ((reason ?? "").trim().length < 5) throw new DomainError("Yayından kaldırma gerekçesi girin (en az 5 karakter).");
+        await profiles.unpublishProfile(admin, id, reason!.trim()); return "Profil yayından kaldırıldı.";
       case "archive": await profiles.archiveProfile(admin, id); return "Profil arşivlendi.";
       case "draft": await profiles.restoreToDraft(admin, id); return "Profil taslağa alındı.";
     }
@@ -98,6 +100,7 @@ export async function profileStatusAction(id: string, op: "review" | "publish" |
 
 export async function moderateProfileAction(id: string, decision: "approved" | "rejected", note: string): Promise<ActionResult> {
   return run(async (admin) => {
+    if (decision === "rejected" && note.trim().length < 5) throw new DomainError("Red gerekçesi girin (en az 5 karakter).");
     await profiles.setModeration(admin, id, decision, note.trim() || null);
     return decision === "approved" ? "Moderasyon onaylandı." : "Profil reddedildi.";
   });
@@ -207,6 +210,7 @@ export async function createSubscriptionAction(_p: ActionResult, fd: FormData): 
 
 export async function subscriptionAction(id: string, op: "renew" | "cancel", value: string): Promise<ActionResult> {
   return run(async (admin) => {
+    if (op !== "renew" && op !== "cancel") throw new DomainError("Geçersiz işlem.");
     if (op === "renew") {
       // "2", "2 ay" gibi girdileri kabul eder; geçersizse servis anlaşılır hata döndürür.
       await subscriptions.renewSubscription(admin, id, Number.parseInt(value.trim(), 10));
@@ -220,9 +224,10 @@ export async function subscriptionAction(id: string, op: "renew" | "cancel", val
 // ---------------------------------------------------------------------------
 // KVKK, SEO, ilgi alanları, ayarlar
 // ---------------------------------------------------------------------------
-export async function privacyStatusAction(id: string, status: PrivacyRequestStatus): Promise<ActionResult> {
+export async function privacyStatusAction(id: string, status: PrivacyRequestStatus, reason = ""): Promise<ActionResult> {
   return run(async (admin) => {
-    await updatePrivacyRequestStatus(admin, id, status);
+    if (status === "rejected" && reason.trim().length < 10) throw new DomainError("Ret gerekçesi girin (en az 10 karakter).");
+    await updatePrivacyRequestStatus(admin, id, status, status === "rejected" ? reason.trim().slice(0, 1000) : undefined);
     return "Başvuru durumu güncellendi.";
   }, { invalidate: false });
 }
@@ -260,7 +265,9 @@ export async function seoPageAction(_p: ActionResult, fd: FormData): Promise<Act
 
 export async function interestAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   return run(async (admin) => {
-    const name = z.string().trim().min(2).max(40).parse(str(fd, "name"));
+    const { name } = z
+      .object({ name: z.string().trim().min(2, "Ad en az 2 karakter olmalı").max(40, "Ad en fazla 40 karakter olabilir") })
+      .parse({ name: str(fd, "name") });
     const i = await getRepository().createInterest({ name, slug: slugifyTr(name), description: str(fd, "description").trim() || null });
     await audit(admin, "interest.create", "interest", i.id, { name });
     invalidatePublic("interests");
@@ -280,7 +287,11 @@ export async function deleteInterestAction(id: string): Promise<ActionResult> {
 export async function settingsAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   return run(async (admin) => {
     const input = z
-      .object({ siteName: z.string().trim().min(2).max(60), supportEmail: z.email(), reportsEnabled: z.boolean() })
+      .object({
+        siteName: z.string().trim().min(2, "Site adı en az 2 karakter olmalı").max(60, "Site adı en fazla 60 karakter olabilir"),
+        supportEmail: z.email("Geçerli bir e-posta girin"),
+        reportsEnabled: z.boolean(),
+      })
       .parse({ siteName: str(fd, "siteName"), supportEmail: str(fd, "supportEmail"), reportsEnabled: fd.get("reportsEnabled") === "on" });
     await getRepository().updateSiteSettings(input);
     await audit(admin, "settings.update", "site_settings", null, input);

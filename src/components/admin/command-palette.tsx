@@ -14,12 +14,11 @@ const ACTIONS: Command[] = [
   { id: "new-profile", label: "Yeni profil oluştur", href: "/admin/profiller/yeni", icon: Plus, hint: "N" },
   { id: "review-queue", label: "İnceleme bekleyen profiller", href: "/admin/profiller?durum=in_review" },
   { id: "open-reports", label: "Açık şikâyetler", href: "/admin/sikayetler" },
-  { id: "media-pending", label: "Onay bekleyen medya", href: "/admin/medya?durum=pending" },
 ];
 
 /**
  * Komut paleti (⌘K / Ctrl+K) ve klavye kısayolları:
- * - "g" ardından p/r/m/s: pano, profiller, medya, şikâyetler
+ * - "g" ardından p/r/s/i: pano, profiller, şikâyetler, iletişim
  * - "n": yeni profil
  * Metin alanlarında yazarken kısayollar devre dışıdır.
  */
@@ -52,7 +51,7 @@ export function CommandPalette({ profiles }: { profiles: { id: string; name: str
         gPressed.current = Date.now();
         return;
       }
-      const map: Record<string, string> = { p: "/admin", r: "/admin/profiller", m: "/admin/medya", s: "/admin/sikayetler" };
+      const map: Record<string, string> = { p: "/admin", r: "/admin/profiller", s: "/admin/sikayetler", i: "/admin/iletisim" };
       if (Date.now() - gPressed.current < 900 && map[e.key]) {
         gPressed.current = 0;
         router.push(map[e.key]);

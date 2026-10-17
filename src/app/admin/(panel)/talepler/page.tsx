@@ -44,7 +44,7 @@ export default async function PrivacyRequestsPage() {
                   <div className="mt-4 flex flex-wrap gap-2">
                     {r.status === "received" ? <ActionButton action={privacyStatusAction.bind(null, r.id, "in_progress")} size="sm" variant="outline">İşleme al</ActionButton> : null}
                     <ActionButton action={privacyStatusAction.bind(null, r.id, "completed")} size="sm" confirm={{ title: "Talep tamamlandı mı?", description: "Profil kaldırma/silme gibi gerekli işlemleri profil sayfasından yaptığınızı ve başvuru sahibine yanıt verdiğinizi onaylayın." }}>Tamamlandı</ActionButton>
-                    <ActionButton action={privacyStatusAction.bind(null, r.id, "rejected")} size="sm" variant="ghost" confirm={{ title: "Talep reddedilsin mi?", description: "Ret gerekçesi başvuru sahibine yazılı olarak bildirilmelidir.", destructive: true }}>Reddet</ActionButton>
+                    <ActionButton action={privacyStatusAction.bind(null, r.id, "rejected")} size="sm" variant="ghost" confirm={{ title: "Talep reddedilsin mi?", description: "Ret gerekçesi başvuru sahibine yazılı olarak bildirilmelidir.", prompt: "Ret gerekçesi (kayda geçer)", destructive: true, minLength: 10 }}>Reddet</ActionButton>
                   </div>
                 ) : null}
               </li>

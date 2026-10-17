@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 type Props = Omit<React.ComponentProps<typeof Button>, "onClick" | "action"> & {
   action: (input: string) => Promise<ActionResult>;
   /** Onay penceresi; `prompt` verilirse kullanıcıdan metin (gerekçe) istenir */
-  confirm?: { title: string; description?: string; prompt?: string; confirmLabel?: string; destructive?: boolean };
+  confirm?: { title: string; description?: string; prompt?: string; confirmLabel?: string; destructive?: boolean; /** Gerekçe zorunluysa en az karakter sayısı */ minLength?: number };
 };
 
 export function ActionButton({ action, confirm, children, ...props }: Props) {
@@ -52,12 +52,13 @@ export function ActionButton({ action, confirm, children, ...props }: Props) {
         {confirm.prompt ? (
           <div className="grid gap-1.5">
             <Label htmlFor="ab-text">{confirm.prompt}</Label>
-            <Textarea id="ab-text" value={text} onChange={(e) => setText(e.target.value)} rows={3} />
+            <Textarea id="ab-text" value={text} onChange={(e) => setText(e.target.value)} rows={3} required={Boolean(confirm.minLength)} aria-describedby={confirm.minLength ? "ab-text-hint" : undefined} />
+            {confirm.minLength ? <p id="ab-text-hint" className="text-xs text-muted-foreground">Zorunlu · en az {confirm.minLength} karakter ({text.trim().length}/{confirm.minLength})</p> : null}
           </div>
         ) : null}
         <DialogFooter>
           <DialogClose asChild><Button variant="outline">Vazgeç</Button></DialogClose>
-          <Button variant={confirm.destructive ? "destructive" : "default"} disabled={pending} onClick={() => exec(text)}>
+          <Button variant={confirm.destructive ? "destructive" : "default"} disabled={pending || (confirm.minLength ? text.trim().length < confirm.minLength : false)} onClick={() => exec(text)}>
             {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
             {confirm.confirmLabel ?? "Onayla"}
           </Button>

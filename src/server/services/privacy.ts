@@ -31,11 +31,11 @@ export async function submitPrivacyRequest(raw: unknown, fingerprint: string): P
   return request;
 }
 
-export async function updatePrivacyRequestStatus(actor: Admin, id: string, status: PrivacyRequest["status"]) {
+export async function updatePrivacyRequestStatus(actor: Admin, id: string, status: PrivacyRequest["status"], reason?: string) {
   const updated = await getRepository().updatePrivacyRequest(id, {
     status,
     completedAt: status === "completed" || status === "rejected" ? new Date().toISOString() : null,
   });
-  await audit(actor, "privacy_request.status", "privacy_request", id, { status });
+  await audit(actor, "privacy_request.status", "privacy_request", id, reason ? { status, reason } : { status });
   return updated;
 }

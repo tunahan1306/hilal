@@ -6,7 +6,7 @@ const TONES = {
   success: "bg-success/12 text-success",
   warning: "bg-warning/15 text-warning",
   danger: "bg-destructive/10 text-destructive",
-  brand: "bg-brand-soft text-brand",
+  brand: "bg-brand-soft text-brand dark:text-foreground",
 } as const;
 
 export function StatusBadge({ tone = "neutral", children, className }: { tone?: keyof typeof TONES; children: React.ReactNode; className?: string }) {
