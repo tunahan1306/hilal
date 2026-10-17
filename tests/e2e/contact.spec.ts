@@ -6,8 +6,8 @@ async function fillContact(page: Page, subject: string) {
   await page.getByText("Teknik destek", { exact: true }).click();
   await page.getByLabel("Ad soyad").fill("E2E Test Kişi");
   await page.getByLabel("E-posta").fill("e2e@test.local");
-  await page.getByLabel("Konu").fill(subject);
-  await page.getByLabel("Mesaj").fill("Sentetik uçtan uca test mesajı; gerçek bir talep değildir.");
+  await page.getByLabel("Konu", { exact: true }).fill(subject);
+  await page.getByLabel("Mesaj", { exact: true }).fill("Sentetik uçtan uca test mesajı; gerçek bir talep değildir.");
   await page.getByLabel(/Aydınlatma metnini okudum/).check();
 }
 
@@ -37,10 +37,10 @@ test.describe("iletişim sayfası", () => {
   test("HTML içeren mesaj reddedilir, yazılanlar korunur", async ({ page }) => {
     await page.goto("/iletisim");
     await fillContact(page, "XSS denemesi");
-    await page.getByLabel("Mesaj").fill("<img src=x onerror=alert(1)> bu bir deneme mesajıdır");
+    await page.getByLabel("Mesaj", { exact: true }).fill("<img src=x onerror=alert(1)> bu bir deneme mesajıdır");
     await page.getByRole("button", { name: "Mesajı gönder" }).click();
     await expect(page.getByText("HTML karakterleri (< >) kullanılamaz")).toBeVisible();
-    await expect(page.getByLabel("Konu")).toHaveValue("XSS denemesi");
+    await expect(page.getByLabel("Konu", { exact: true })).toHaveValue("XSS denemesi");
   });
 
   test("gönderim kaydedilir ve yönetim panelinde okunup durum değiştirilir", async ({ page }) => {
@@ -55,12 +55,13 @@ test.describe("iletişim sayfası", () => {
     await login(page);
     await expect(page.getByRole("link", { name: /İletişim talepleri/ }).first()).toBeVisible();
     await page.goto("/admin/iletisim?okunmamis=1");
-    const row = page.getByTestId("contact-row").filter({ hasText: subject });
+    const row = page.getByTestId("contact-row").filter({ hasText: subject, visible: true });
     await expect(row).toBeVisible();
     await expect(row.getByText("Okunmadı")).toBeAttached();
     await row.getByRole("link", { name: subject }).click();
     await expect(page.getByRole("heading", { level: 1, name: subject })).toBeVisible();
-    await expect(page.getByText("e2e@test.local")).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("link", { name: "e2e@test.local" })).toBeVisible();
     await expect(page.getByText("Okundu", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Yanıtlandı" }).click();
@@ -69,9 +70,9 @@ test.describe("iletişim sayfası", () => {
     await expect(page.getByText("Durum değişti: Yanıtlandı")).toBeVisible();
 
     await page.goto("/admin/iletisim?okunmamis=1");
-    await expect(page.getByTestId("contact-row").filter({ hasText: subject })).toHaveCount(0);
+    await expect(page.getByTestId("contact-row").filter({ hasText: subject, visible: true })).toHaveCount(0);
     await page.goto(`/admin/iletisim?q=${encodeURIComponent(subject)}&durum=answered`);
-    await expect(page.getByTestId("contact-row").filter({ hasText: subject })).toBeVisible();
+    await expect(page.getByTestId("contact-row").filter({ hasText: subject, visible: true })).toBeVisible();
   });
 
   test("oturumsuz yönetim sayfası girişe yönlendirir", async ({ browser }) => {
