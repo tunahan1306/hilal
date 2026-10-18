@@ -273,6 +273,14 @@ export async function seoPageAction(_p: ActionResult, fd: FormData): Promise<Act
   });
 }
 
+export async function deleteSeoPageAction(id: string, path: string): Promise<ActionResult> {
+  return run(async (admin) => {
+    await getRepository().deleteSeoPage(id);
+    await audit(admin, "seo.delete", "seo_page", path);
+    return "SEO ayarı silindi; sayfa otomatik kurallara döndü.";
+  });
+}
+
 export async function interestAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   return run(async (admin) => {
     const { name } = z

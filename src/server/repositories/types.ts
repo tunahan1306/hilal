@@ -144,6 +144,7 @@ export interface Repository {
   listSeoPages(): Promise<SeoPage[]>;
   getSeoPage(path: string): Promise<SeoPage | null>;
   upsertSeoPage(input: Omit<SeoPage, "id" | "updatedAt">): Promise<SeoPage>;
+  deleteSeoPage(id: string): Promise<void>;
   getSiteSettings(): Promise<SiteSettings>;
   updateSiteSettings(patch: Partial<SiteSettings>): Promise<SiteSettings>;
 

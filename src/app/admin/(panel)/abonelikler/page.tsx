@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ActionButton } from "@/components/admin/action-button";
+import { FilterChips } from "@/components/admin/filter-chips";
 import { PageHeader } from "@/components/admin/page-header";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { SubscriptionForm } from "@/components/admin/subscription-form";
@@ -24,7 +25,9 @@ export default async function SubscriptionsPage({ searchParams }: PageProps<"/ad
   const profileFilter = typeof sp.profil === "string" ? sp.profil : undefined;
   const nameOf = new Map(profiles.map((p) => [p.id, p.nickname]));
   const planOf = new Map(plans.map((p) => [p.id, p]));
-  const rows = subs.filter((s) => (!filterSoon || isExpiringSoon(s, now)) && (!profileFilter || s.profileId === profileFilter));
+  const STATUSES = ["active", "scheduled", "expired", "cancelled"] as const;
+  const statusFilter = STATUSES.find((x) => x === sp.durum);
+  const rows = subs.filter((s) => (!filterSoon || isExpiringSoon(s, now)) && (!profileFilter || s.profileId === profileFilter) && (!statusFilter || effectiveStatus(s, now) === statusFilter));
 
   return (
     <>
@@ -43,12 +46,17 @@ export default async function SubscriptionsPage({ searchParams }: PageProps<"/ad
           today={now.toISOString().slice(0, 10)}
         />
       </section>
+      <FilterChips
+        label="Duruma göre filtrele"
+        active={statusFilter}
+        items={[undefined, ...STATUSES].map((st) => ({ key: st, label: st ? SUBSCRIPTION_STATUS_LABELS[st] : "Tümü", href: st ? `/admin/abonelikler?durum=${st}` : "/admin/abonelikler", count: st ? subs.filter((x) => effectiveStatus(x, now) === st).length : subs.length }))}
+      />
       <div className="overflow-x-auto rounded-lg border border-hairline">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Profil</TableHead><TableHead>Paket</TableHead><TableHead>Başlangıç</TableHead><TableHead>Bitiş</TableHead>
-              <TableHead>Durum</TableHead><TableHead>Yenileme</TableHead><TableHead className="text-right">İşlem</TableHead>
+              <TableHead>Profil</TableHead><TableHead>Paket</TableHead><TableHead className="hidden md:table-cell">Başlangıç</TableHead><TableHead className="hidden sm:table-cell">Bitiş</TableHead>
+              <TableHead>Durum</TableHead><TableHead className="hidden md:table-cell">Yenileme</TableHead><TableHead className="text-right">İşlem</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -58,13 +66,13 @@ export default async function SubscriptionsPage({ searchParams }: PageProps<"/ad
                 <TableRow key={s.id} data-testid="subscription-row">
                   <TableCell><Link prefetch={false} href={`/admin/profiller/${s.profileId}`} className="font-medium hover:underline">{nameOf.get(s.profileId) ?? "—"}</Link></TableCell>
                   <TableCell>{planOf.get(s.planId)?.name}{s.sponsored ? <StatusBadge tone="brand" className="ml-2">Sponsorlu</StatusBadge> : null}</TableCell>
-                  <TableCell className="whitespace-nowrap">{formatDate(s.startsAt, { dateStyle: "medium" })}</TableCell>
-                  <TableCell className="whitespace-nowrap">
+                  <TableCell className="hidden whitespace-nowrap md:table-cell">{formatDate(s.startsAt, { dateStyle: "medium" })}</TableCell>
+                  <TableCell className="hidden whitespace-nowrap sm:table-cell">
                     {formatDate(s.endsAt, { dateStyle: "medium" })}
                     {isExpiringSoon(s, now) ? <StatusBadge tone="warning" className="ml-2">Yakında</StatusBadge> : null}
                   </TableCell>
                   <TableCell><StatusBadge tone={TONE[st]}>{SUBSCRIPTION_STATUS_LABELS[st]}</StatusBadge></TableCell>
-                  <TableCell className="text-muted-foreground">{s.autoRenew ? "Otomatik (kayıt)" : "Manuel"}</TableCell>
+                  <TableCell className="hidden text-muted-foreground md:table-cell">{s.autoRenew ? "Otomatik (kayıt)" : "Manuel"}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       {st !== "cancelled" ? (

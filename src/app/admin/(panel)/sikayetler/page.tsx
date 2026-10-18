@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { FilterChips } from "@/components/admin/filter-chips";
 import { PageHeader } from "@/components/admin/page-header";
 import { REPORT_STATUS_LABELS, REPORT_STATUS_TONE, StatusBadge } from "@/components/admin/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -22,14 +23,11 @@ export default async function ReportsPage({ searchParams }: PageProps<"/admin/si
   return (
     <>
       <PageHeader title="Şikâyetler" description="Kritik kategorilerde profil otomatik olarak yayından kaldırılır; karar ve itirazlar kayıt altındadır." />
-      <nav aria-label="Duruma göre filtrele" className="mb-4 flex flex-wrap gap-2">
-        {[undefined, ...order].map((st) => (
-          <Link key={st ?? "all"} href={st ? `/admin/sikayetler?durum=${st}` : "/admin/sikayetler"} prefetch={false} aria-current={filter === st ? "page" : undefined}
-            className="inline-flex min-h-9 items-center rounded-md border border-hairline px-3 text-sm aria-[current=page]:border-foreground aria-[current=page]:font-medium">
-            {st ? REPORT_STATUS_LABELS[st] : "Tümü"} <span className="ml-1.5 tabular-nums text-muted-foreground">{st ? reports.filter((r) => r.status === st).length : reports.length}</span>
-          </Link>
-        ))}
-      </nav>
+      <FilterChips
+        label="Duruma göre filtrele"
+        active={filter}
+        items={[undefined, ...order].map((st) => ({ key: st, label: st ? REPORT_STATUS_LABELS[st] : "Tümü", href: st ? `/admin/sikayetler?durum=${st}` : "/admin/sikayetler", count: st ? reports.filter((r) => r.status === st).length : reports.length }))}
+      />
       <div className="overflow-x-auto rounded-lg border border-hairline">
         <Table>
           <TableHeader>

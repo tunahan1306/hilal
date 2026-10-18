@@ -835,6 +835,9 @@ export function createSupabaseRepository(): Repository {
       return toContact(check(await service().from("contact_messages").update(row).eq("id", id).select().single()) as Row);
     },
 
+    async deleteSeoPage(id) {
+      check(await service().from("seo_pages").delete().eq("id", id));
+    },
     async listSeoPages() {
       return (check(await anon().from("seo_pages").select("*").order("path")) as Row[]).map(toSeo);
     },

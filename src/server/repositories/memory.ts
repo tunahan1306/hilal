@@ -373,6 +373,10 @@ export function createMemoryRepository(): Repository {
       return clone(m);
     },
 
+    async deleteSeoPage(id) {
+      const s = store();
+      s.seo = s.seo.filter((x) => x.id !== id);
+    },
     async listSeoPages() {
       return clone(store().seo).sort((a, b) => a.path.localeCompare(b.path));
     },

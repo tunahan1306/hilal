@@ -149,7 +149,7 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
                   Arşivle
                 </ActionButton>
               ) : null}
-              {canTransition(s, "draft") ? <ActionButton action={profileStatusAction.bind(null, id, "draft")} variant="ghost">Taslağa al</ActionButton> : null}
+              {canTransition(s, "draft") ? <ActionButton action={profileStatusAction.bind(null, id, "draft")} variant="ghost" confirm={{ title: "Profil taslağa alınsın mı?", description: "Taslaktaki profil sitede görünmez; yeniden yayınlamak için ön koşullar tekrar kontrol edilir.", confirmLabel: "Taslağa al" }}>Taslağa al</ActionButton> : null}
             </div>
             {!readiness.ready && canTransition(s, "published") ? <p className="text-xs text-muted-foreground">Eksik koşullar tamamlandığında yayınlama etkinleşir.</p> : null}
           </section>

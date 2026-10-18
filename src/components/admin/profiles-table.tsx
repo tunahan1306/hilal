@@ -61,9 +61,10 @@ const columns = helper.columns([
       </Link>
     ),
   }),
-  helper.accessor("location", { header: "Konum", enableSorting: false, cell: ({ getValue }) => <span className="text-muted-foreground">{getValue()}</span> }),
+  helper.accessor("location", { header: "Konum", meta: { desktopOnly: true }, enableSorting: false, cell: ({ getValue }) => <span className="text-muted-foreground">{getValue()}</span> }),
   helper.accessor("age", {
     header: ({ column }) => <SortHeader label="Yaş" onClick={() => column.toggleSorting()} />,
+    meta: { desktopOnly: true },
     cell: ({ getValue }) => <span className="tabular-nums">{getValue()}</span>,
   }),
   helper.accessor("status", {
@@ -71,7 +72,7 @@ const columns = helper.columns([
     cell: ({ row }) => <StatusBadge tone={PROFILE_STATUS_TONE[row.original.status]}>{PROFILE_STATUS_LABELS[row.original.status]}</StatusBadge>,
   }),
   helper.accessor("moderation", {
-    header: "Moderasyon",
+    header: "Moderasyon", meta: { desktopOnly: true },
     cell: ({ row }) => (
       <StatusBadge tone={row.original.moderation === "approved" ? "success" : row.original.moderation === "rejected" ? "danger" : "warning"}>
         {MOD_LABEL[row.original.moderation]}
@@ -83,11 +84,12 @@ const columns = helper.columns([
     cell: ({ row }) => (row.original.ready ? <StatusBadge tone="success">Tamam</StatusBadge> : <StatusBadge tone="warning">Eksik</StatusBadge>),
   }),
   helper.accessor("openReports", {
-    header: "Şikâyet",
+    header: "Şikâyet", meta: { desktopOnly: true },
     cell: ({ getValue }) => (getValue() ? <StatusBadge tone="danger">{getValue()}</StatusBadge> : <span className="text-muted-foreground">—</span>),
   }),
   helper.accessor("updatedAt", {
     header: ({ column }) => <SortHeader label="Güncelleme" onClick={() => column.toggleSorting()} />,
+    meta: { desktopOnly: true },
     cell: ({ row }) => <span className="whitespace-nowrap text-muted-foreground">{row.original.updatedLabel}</span>,
   }),
 ]);
@@ -129,7 +131,7 @@ export function ProfilesTable({ rows, initialStatus }: { rows: ProfileRow[]; ini
           <TableHeader>
             {table.getHeaderGroups().map((hg) => (
               <TableRow key={hg.id}>
-                {hg.headers.map((h) => <TableHead key={h.id}>{h.isPlaceholder ? null : <table.FlexRender header={h} />}</TableHead>)}
+                {hg.headers.map((h) => <TableHead key={h.id} className={mobileClass(h.column.columnDef.meta)}>{h.isPlaceholder ? null : <table.FlexRender header={h} />}</TableHead>)}
               </TableRow>
             ))}
           </TableHeader>
@@ -137,7 +139,7 @@ export function ProfilesTable({ rows, initialStatus }: { rows: ProfileRow[]; ini
             {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id} data-testid="profile-row">
-                  {row.getAllCells().map((cell) => <TableCell key={cell.id}><table.FlexRender cell={cell} /></TableCell>)}
+                  {row.getAllCells().map((cell) => <TableCell key={cell.id} className={mobileClass(cell.column.columnDef.meta)}><table.FlexRender cell={cell} /></TableCell>)}
                 </TableRow>
               ))
             ) : (
@@ -163,4 +165,9 @@ function SortHeader({ label, onClick }: { label: string; onClick: () => void }) 
       {label} <ArrowUpDown className="size-3" aria-hidden />
     </button>
   );
+}
+
+/** Mobilde yalnızca ad, durum ve yayın koşulları; ayrıntılar md ve üstünde (A-11). */
+function mobileClass(meta: unknown) {
+  return (meta as { desktopOnly?: boolean } | undefined)?.desktopOnly ? "hidden md:table-cell" : undefined;
 }

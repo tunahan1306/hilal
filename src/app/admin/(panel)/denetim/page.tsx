@@ -40,15 +40,15 @@ export default async function AuditPage({ searchParams }: PageProps<"/admin/dene
       <p className="mb-2 text-xs text-muted-foreground" role="status">{logs.length} kayıt</p>
       <div className="overflow-x-auto rounded-lg border border-hairline">
         <Table>
-          <TableHeader><TableRow><TableHead>Zaman</TableHead><TableHead>İşlem</TableHead><TableHead>Varlık</TableHead><TableHead>Yapan</TableHead><TableHead>Ayrıntı</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Zaman</TableHead><TableHead>İşlem</TableHead><TableHead className="hidden sm:table-cell">Varlık</TableHead><TableHead>Yapan</TableHead><TableHead className="hidden md:table-cell">Ayrıntı</TableHead></TableRow></TableHeader>
           <TableBody>
             {logs.length ? logs.map((l) => (
               <TableRow key={l.id}>
                 <TableCell className="whitespace-nowrap text-muted-foreground">{formatDate(l.createdAt, { dateStyle: "short", timeStyle: "medium" })}</TableCell>
                 <TableCell><code className="text-xs">{l.action}</code></TableCell>
-                <TableCell className="text-xs">{l.entityType}{l.entityId ? ` · ${l.entityId.slice(0, 12)}` : ""}</TableCell>
+                <TableCell className="hidden text-xs sm:table-cell">{l.entityType}{l.entityId ? ` · ${l.entityId.slice(0, 12)}` : ""}</TableCell>
                 <TableCell className="text-xs">{l.actorId ? l.actorId.slice(0, 12) : "sistem / ziyaretçi"}</TableCell>
-                <TableCell className="max-w-xs truncate font-mono text-xs text-muted-foreground">{JSON.stringify(l.metadata)}</TableCell>
+                <TableCell className="hidden max-w-xs truncate font-mono text-xs text-muted-foreground md:table-cell">{JSON.stringify(l.metadata)}</TableCell>
               </TableRow>
             )) : <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">Kayıt yok.</TableCell></TableRow>}
           </TableBody>

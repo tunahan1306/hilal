@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ActionButton } from "@/components/admin/action-button";
+import { FilterChips } from "@/components/admin/filter-chips";
 import { PageHeader } from "@/components/admin/page-header";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { PRIVACY_REQUEST_LABELS } from "@/domain/types";
@@ -15,13 +16,21 @@ const STATUS = { received: "Alındı", in_progress: "İşlemde", completed: "Tam
 const TONE = { received: "warning", in_progress: "brand", completed: "success", rejected: "neutral" } as const;
 const REL = { self: "Profil sahibi", representative: "Yasal temsilci", other: "Diğer" } as const;
 
-export default async function PrivacyRequestsPage() {
+export default async function PrivacyRequestsPage({ searchParams }: PageProps<"/admin/talepler">) {
   await requireAdmin();
-  const requests = await getRepository().listPrivacyRequests();
+  const durum = (await searchParams).durum;
+  const filter = (Object.keys(STATUS) as (keyof typeof STATUS)[]).find((k) => k === durum);
+  const all = await getRepository().listPrivacyRequests();
+  const requests = all.filter((r) => !filter || r.status === filter);
   const now = new Date().getTime();
   return (
     <>
       <PageHeader title="KVKK ve kaldırma talepleri" description="KVKK m.13 uyarınca başvurular en geç 30 gün içinde sonuçlandırılmalıdır. Kimlik doğrulaması yapılmadan kişisel veri paylaşılmaz." />
+      <FilterChips
+        label="Duruma göre filtrele"
+        active={filter}
+        items={[undefined, ...(Object.keys(STATUS) as (keyof typeof STATUS)[])].map((st) => ({ key: st, label: st ? STATUS[st] : "Tümü", href: st ? `/admin/talepler?durum=${st}` : "/admin/talepler", count: st ? all.filter((r) => r.status === st).length : all.length }))}
+      />
       {requests.length ? (
         <ul className="space-y-3">
           {requests.map((r) => {
