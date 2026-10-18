@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
-import { i18nPageMeta } from "@/i18n/metadata";
+import { legalPageMeta } from "@/i18n/metadata";
 import { getI18n } from "@/i18n/server";
 import { localizedPath } from "@/i18n/routes";
 import { LegalDraftNotice, ProsePage } from "@/components/site/prose-page";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { lang, m } = await getI18n();
-  const meta = i18nPageMeta(lang, "terms", undefined, m.legal.termsTitle, "Hilal kullanım koşulları: yalnızca 18 yaş ve üzeri, profil yayın kuralları, yasaklı içerik ve hesap/profil kaldırma süreçleri.");
-  // Hukuki metin yalnızca Türkçedir: diğer dillerdeki kopyalar Türkçe aslına canonical verir ve indekslenmez.
-  return lang === "tr" ? meta : { ...meta, alternates: { ...meta.alternates, canonical: localizedPath("tr", "terms") }, robots: { index: false, follow: true } };
+  return legalPageMeta(lang, "terms", m.legal.termsTitle, "Hilal kullanım koşulları: yalnızca 18 yaş ve üzeri, profil yayın kuralları, yasaklı içerik ve hesap/profil kaldırma süreçleri.");
 }
 
 export default async function TermsPage() {

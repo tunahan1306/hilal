@@ -5,6 +5,8 @@ import { PageHeader } from "@/components/admin/page-header";
 import { ProfilesTable, type ProfileRow } from "@/components/admin/profiles-table";
 import { Button } from "@/components/ui/button";
 import { ageOn } from "@/domain/age";
+import { countryOfPlate } from "@/domain/countries";
+import { isPublishable } from "@/domain/country-policy";
 import { evaluatePublishReadiness, isVerified } from "@/domain/publishing";
 import { formatDate } from "@/lib/site";
 import { requireAdmin } from "@/server/auth/session";
@@ -18,7 +20,7 @@ export default async function ProfilesPage({ searchParams }: PageProps<"/admin/p
   const repo = getRepository();
   const now = new Date();
   // Toplu okuma: profil sayısından bağımsız sabit sayıda sorgu.
-  const [profiles, reports, interests, allConsents, allVerifications, allImages, durum] = await Promise.all([
+  const [profiles, reports, interests, allConsents, allVerifications, allImages, durum, policies] = await Promise.all([
     repo.listProfiles(),
     repo.listReports(),
     repo.listInterests(),
@@ -26,6 +28,7 @@ export default async function ProfilesPage({ searchParams }: PageProps<"/admin/p
     repo.listAllVerifications(),
     repo.listAllMedia(),
     searchParams.then((s) => (typeof s.durum === "string" ? s.durum : undefined)),
+    repo.listCountryPolicies(),
   ]);
   const byProfile = <T extends { profileId: string }>(rows: T[]) => {
     const m = new Map<string, T[]>();
@@ -42,6 +45,8 @@ export default async function ProfilesPage({ searchParams }: PageProps<"/admin/p
       const own = reports.filter((r) => r.profileId === p.id);
       const readiness = evaluatePublishReadiness({
         profile: p, consents, verifications, media: images, reports: own, now,
+        countryPublishable: isPublishable(policies.find((c) => c.code === countryOfPlate(p.provincePlate)), now),
+        phoneInUseElsewhere: Boolean(p.whatsappPhone) && profiles.some((o) => o.id !== p.id && o.status === "published" && o.whatsappPhone === p.whatsappPhone),
         interestNames: interests.filter((i) => p.interestIds.includes(i.id)).map((i) => i.name),
       });
       return {

@@ -31,9 +31,26 @@ function localClient(): SupabaseClient {
   return createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 }
 
+/**
+ * Yerel test kararı: Türkiye bu yerel veritabanında geçici olarak yayına açılır. Gerçek bir hukuki
+ * onay DEĞİLDİR; yalnızca 127.0.0.1 Supabase'e yazılır. Kararlar silinemez, bu yüzden temizlikte
+ * "not_reviewed" kararı eklenerek varsayılan duruma dönülür.
+ */
+export async function setLocalCountryDecision(code: "tr" | "nl" | "de", status: "permitted" | "not_reviewed") {
+  const db = localClient();
+  const { error } = await db.from("country_publication_decisions").insert({
+    country_code: code, status, approver_name: "LOCAL E2E — gerçek onay değildir",
+    evidence_ref: status === "permitted" ? "LOCAL-E2E-ONLY" : null,
+    review_due: status === "permitted" ? new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10) : null,
+    note: "Yerel uçtan uca test", decided_by: "00000000-0000-4000-8000-00000000e2e0",
+  });
+  if (error) throw error;
+}
+
 export async function seedExampleFixtures() {
   const db = localClient();
   await cleanupExampleFixtures();
+  await setLocalCountryDecision("tr", "permitted");
   const { data: cities, error: ce } = await db.from("cities").select("id, plate").in("plate", [...new Set(FIXTURES.map((f) => f.plate))]);
   if (ce) throw ce;
   const cityId = new Map(cities!.map((c) => [c.plate as number, c.id as string]));
@@ -66,4 +83,6 @@ export async function cleanupExampleFixtures() {
   await db.from("example_profiles").delete().like("slug", `${FIXTURE_PREFIX}%`);
   await db.from("profiles").delete().like("slug", `${FIXTURE_PREFIX}%`);
   await db.storage.from("media-public").remove(FIXTURES.map((f) => `${slugOf(f.key)}.webp`));
+  const { data } = await db.from("countries").select("publication_status").eq("code", "tr").single();
+  if (data?.publication_status === "permitted") await setLocalCountryDecision("tr", "not_reviewed");
 }

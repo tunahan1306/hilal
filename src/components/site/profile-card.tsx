@@ -28,7 +28,8 @@ export function ProfileCard({
 }) {
   const { lang, m } = useI18n();
   const image = profile.images[0];
-  const whatsapp = whatsAppHref(profile.whatsappPhone);
+  // Kurgusal örnek kayıt gerçek bir kişiye iletişim bağlantısı taşıyamaz (veritabanı da numarayı vermez).
+  const whatsapp = profile.isExample ? null : whatsAppHref(profile.whatsappPhone);
   const location = profile.district ? `${profile.district.name}, ${profile.province.name}` : profile.province.name;
   return (
     <article className={cn("group relative flex flex-col", className)}>
@@ -39,7 +40,9 @@ export function ProfileCard({
             alt={image.alt || fmt(m.card.photoAlt, { name: profile.nickname })}
             fill
             sizes={sizes}
-            priority={priority}
+            // Next 16: `priority` = <head> önyüklemesi; kartlar akışla (Suspense) geldiği için etkisizdi.
+            // Görünür ilk kartlar için doğrudan yüksek öncelikli, ertelenmeyen yükleme.
+            {...(priority ? { loading: "eager" as const, fetchPriority: "high" as const } : {})}
             className="object-cover object-[50%_30%] transition-transform duration-700 ease-[var(--ease-out-soft)] group-hover:scale-[1.025] motion-reduce:transform-none"
           />
         ) : profile.isExample ? (
@@ -50,8 +53,9 @@ export function ProfileCard({
       </div>
       <div className="pt-3">
         <p className="eyebrow flex flex-wrap items-center gap-x-2 text-muted-foreground" data-testid="card-location">
+          {profile.isExample ? <span className="rounded-xs border border-current px-1.5 text-foreground" data-testid="example-badge">{m.common.exampleBadge}</span> : null}
           {profile.sponsored ? <span className="text-brand">{m.card.sponsored}</span> : null}
-          {profile.sponsored ? <span aria-hidden>·</span> : null}
+          {profile.sponsored || profile.isExample ? <span aria-hidden>·</span> : null}
           <span className="truncate">{location}</span>
         </p>
         <h3 className="mt-1.5 flex items-baseline gap-2 text-[1.3125rem] leading-tight">

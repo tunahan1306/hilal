@@ -2,7 +2,8 @@ import "server-only";
 import type { ProfileFilters } from "@/domain/filters";
 import { getProvince, listProvinces, listDistricts } from "@/domain/locations";
 import { toPublicProfile } from "@/domain/projection";
-import { countryOfPlate } from "@/domain/countries";
+import { countryOfPlate, type CountryCode } from "@/domain/countries";
+import { defaultPolicies, isPublishable, type CountryPolicy } from "@/domain/country-policy";
 import { sideDistricts } from "@/domain/istanbul";
 import { effectiveStatus, isExpiringSoon } from "@/domain/subscriptions";
 import type { Profile, PublicProfile } from "@/domain/types";
@@ -37,8 +38,18 @@ function must<T>(v: T | undefined | null, what: string): T {
 
 const clone = <T>(v: T): T => structuredClone(v);
 
+function countryPolicies(): CountryPolicy[] {
+  const decisions = store().countryDecisions;
+  return defaultPolicies().map((base) => {
+    const last = decisions.filter((d) => d.countryCode === base.code).sort((a, b) => b.decidedAt.localeCompare(a.decidedAt))[0];
+    return last ? { code: base.code, status: last.status, reviewDue: last.reviewDue, decisionId: last.id } : base;
+  });
+}
+
 function project(p: Profile, now: Date): PublicProfile | null {
   const s = store();
+  const policies = countryPolicies();
+  const phoneShared = Boolean(p.whatsappPhone) && s.profiles.some((o) => o.id !== p.id && o.status === "published" && o.whatsappPhone === p.whatsappPhone);
   const subs = s.subscriptions.filter((x) => x.profileId === p.id && effectiveStatus(x, now) === "active");
   const sub = subs.sort((a, b) => b.endsAt.localeCompare(a.endsAt))[0];
   return toPublicProfile({
@@ -46,6 +57,9 @@ function project(p: Profile, now: Date): PublicProfile | null {
     media: s.media.filter((i) => i.profileId === p.id),
     interests: s.interests,
     verifications: s.verifications.filter((v) => v.profileId === p.id),
+    consents: s.consents.filter((c) => c.profileId === p.id),
+    countryPublishable: isPublishable(policies.find((x) => x.code === countryOfPlate(p.provincePlate)), now),
+    phoneShared,
     subscription: sub,
     plan: sub ? s.plans.find((pl) => pl.id === sub.planId) : s.plans.find((pl) => pl.code === "basic"),
     now,
@@ -67,6 +81,20 @@ function sortListing(a: PublicProfile, b: PublicProfile): number {
 export function createMemoryRepository(): Repository {
   return {
     kind: "memory",
+    async listCountryPolicies() {
+      return clone(countryPolicies());
+    },
+    async listCountryDecisions(country?: CountryCode) {
+      return clone(store().countryDecisions.filter((d) => !country || d.countryCode === country).sort((a, b) => b.decidedAt.localeCompare(a.decidedAt)));
+    },
+    async addCountryDecision(input) {
+      const s = store();
+      const row = { ...input, id: nextId("cdec"), decidedAt: new Date().toISOString() };
+      s.countryDecisions.push(row);
+      // Veritabanında bu kaydı apply_country_decision tetikleyicisi yazar.
+      s.audit.push({ id: nextId("aud"), actorId: input.decidedBy, action: "country.publication_decision", entityType: "country", entityId: input.countryCode, metadata: { decision_id: row.id, status: row.status, review_due: row.reviewDue, approver_name: row.approverName }, createdAt: row.decidedAt });
+      return clone(row);
+    },
     async getLocations() { const provinces = listProvinces(); return { provinces, districts: provinces.flatMap((p) => listDistricts(p.plate)) }; },
 
     async searchPublicProfiles(filters: ProfileFilters, { limit, offset, cursor }) {

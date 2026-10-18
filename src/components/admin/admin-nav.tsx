@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BarChart3, ClipboardList, CreditCard, Flag, Inbox, LayoutDashboard, Search, Settings, ShieldCheck, Tags, Users, type LucideIcon,
-} from "lucide-react";
+  BarChart3, ClipboardList, CreditCard, Flag, Inbox, LayoutDashboard, Search, Settings, ShieldCheck, Tags, Users, type LucideIcon, Globe2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; shortcut?: string };
 export const ADMIN_NAV_GROUPS: { title: string; items: NavItem[] }[] = [
-  { title: "Genel", items: [{ href: "/admin", label: "Gösterge paneli", icon: LayoutDashboard, shortcut: "G P" }] },
+  { title: "Genel", items: [{ href: "/admin", label: "Gösterge paneli", icon: LayoutDashboard, shortcut: "G P" }, { href: "/admin/ulkeler", label: "Ülkeler ve yayın", icon: Globe2 }] },
   {
     title: "İçerik",
     items: [

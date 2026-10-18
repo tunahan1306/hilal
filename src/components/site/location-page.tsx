@@ -7,6 +7,7 @@ import type { District, Province } from "@/domain/locations";
 import { fmt, formatNumberIntl } from "@/i18n/config";
 import { getI18n } from "@/i18n/server";
 import { localizedPath } from "@/i18n/routes";
+import { isCountryPublishable } from "@/server/queries/country-policy";
 import { getLocationDirectory } from "@/server/queries/locations";
 import { seoKey } from "@/server/queries/location-seo";
 import { getLocationCounts, getLocationSummary, getSeoPage, istanbulSideCounts } from "@/server/queries/public";
@@ -22,9 +23,9 @@ export async function LocationPage({ province, district, searchParams }: { provi
   const level = m.places.levels[province.country];
   const regionPath = localizedPath(lang, "location", { country: province.country, region: province.slug });
   const path = district ? localizedPath(lang, "location", { country: province.country, region: province.slug, locality: district.slug }) : regionPath;
-  const [summary, seoRow, counts, params] = await Promise.all([getLocationSummary(province.slug, district?.slug), getSeoPage(seoKey(province, district)), getLocationCounts(), searchParams]);
+  const [summary, seoRow, counts, params, open] = await Promise.all([getLocationSummary(province.slug, district?.slug), getSeoPage(seoKey(province, district)), getLocationCounts(), searchParams, isCountryPublishable(province.country)]);
   const seo = lang === "tr" ? seoRow : null;
-  const showSides = province.slug === ISTANBUL_SLUG && !district;
+  const showSides = open && province.slug === ISTANBUL_SLUG && !district;
   const side = showSides ? parseFilters(params).yaka : undefined;
   const total = side ? istanbulSideCounts(counts)[side] : summary.total;
   const sideDistricts = side ? (ISTANBUL_SIDES[side].districts as readonly string[]) : undefined;
@@ -54,7 +55,7 @@ export async function LocationPage({ province, district, searchParams }: { provi
             </div>
           ) : null}
           <p className="mt-5 max-w-[56ch] text-lede text-muted-foreground">
-            {seo?.intro ?? (total > 0 ? fmt(m.places.introHas, { place, n: total }) : fmt(m.places.introNone, { place }))}
+            {!open ? fmt(m.places.introNone, { place }) : seo?.intro ?? (total > 0 ? fmt(m.places.introHas, { place, n: total }) : fmt(m.places.introNone, { place }))}
           </p>
         </div>
         <dl className="grid grid-cols-2 border-t border-hairline lg:col-span-4 lg:col-start-9 lg:border-t-0">
@@ -63,9 +64,13 @@ export async function LocationPage({ province, district, searchParams }: { provi
         </dl>
       </header>
 
-      <Suspense fallback={<ProfileListingSkeleton />}>
-        <LocationResults province={province} district={district} searchParams={searchParams} />
-      </Suspense>
+      {open ? (
+        <Suspense fallback={<ProfileListingSkeleton />}>
+          <LocationResults province={province} district={district} searchParams={searchParams} />
+        </Suspense>
+      ) : (
+        <CountryClosedNotice title={m.places.countryClosedTitle} text={m.places.countryClosedText} />
+      )}
 
       {!district && listedDistricts.length ? (
         <section className="mt-12 grid gap-6 border-t border-hairline pt-10 lg:grid-cols-12" aria-labelledby="ilce-baslik">
@@ -97,6 +102,16 @@ async function LocationResults({ province, district, searchParams }: { province:
   const raw = parseFilters(await searchParams);
   const filters = { ...raw, ulke: undefined, il: province.slug, ilce: district?.slug };
   return <ProfileListing filters={filters} mode={{ type: "location", country: province.country, il: province.slug }} />;
+}
+
+/** Yayın kararı olmayan ülke: profil listesi yerine bilgi notu (sunucuda belirlenir; veritabanı da göstermez). */
+export function CountryClosedNotice({ title, text }: { title: string; text: string }) {
+  return (
+    <section role="status" className="border border-hairline bg-muted/50 p-6 sm:p-8">
+      <h2 className="font-display text-display-sm">{title}</h2>
+      <p className="mt-3 max-w-[60ch] text-sm text-muted-foreground">{text}</p>
+    </section>
+  );
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

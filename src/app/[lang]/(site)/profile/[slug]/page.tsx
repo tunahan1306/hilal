@@ -83,7 +83,7 @@ async function ProfileContent({ params }: Pick<PageProps<"/[lang]/profile/[slug]
   const regionHref = localizedPath(lang, "location", { country, region: profile.province.slug });
   const profileHref = localizedPath(lang, "profile", { slug: profile.slug });
   const place = profile.district ? `${profile.district.name}, ${profile.province.name}` : profile.province.name;
-  const whatsapp = whatsAppHref(profile.whatsappPhone);
+  const whatsapp = profile.isExample ? null : whatsAppHref(profile.whatsappPhone);
   const media = mediaOf(profile);
   const cover = profile.images[0];
   const imageCount = profile.images.length;
@@ -122,7 +122,7 @@ async function ProfileContent({ params }: Pick<PageProps<"/[lang]/profile/[slug]
             {profile.isExample && !cover ? <div className="flex aspect-[4/5] flex-col items-center justify-center gap-5 bg-muted"><span className="font-display text-9xl text-brand" aria-hidden>{profile.nickname.charAt(0)}</span></div> : null}
             {cover ? (
               <OpenMediaButton index={0} label={m.profile.openCover} className="group relative hidden aspect-[4/5] w-full overflow-hidden rounded-xs bg-muted md:block">
-                <Image src={cover.url} alt={cover.alt || fmt(m.profile.coverAlt, { name: profile.nickname })} fill priority sizes="(min-width: 1376px) 760px, (min-width: 1024px) 56vw, 92vw" className="object-cover object-[50%_30%]" />
+                <Image src={cover.url} alt={cover.alt || fmt(m.profile.coverAlt, { name: profile.nickname })} fill loading="eager" fetchPriority="high" sizes="(min-width: 1376px) 760px, (min-width: 1024px) 56vw, 92vw" className="object-cover object-[50%_30%]" />
                 <span className="absolute bottom-4 right-4 inline-flex items-center gap-2 rounded-xs bg-background/88 px-3 py-1.5 text-xs backdrop-blur transition-opacity group-hover:opacity-100 lg:opacity-0">
                   <Expand className="size-3.5" aria-hidden /> {m.profile.fullscreen}
                 </span>
@@ -134,6 +134,7 @@ async function ProfileContent({ params }: Pick<PageProps<"/[lang]/profile/[slug]
             <div className="lg:sticky lg:top-24">
               <p className="eyebrow flex flex-wrap items-center gap-x-3 gap-y-2 text-muted-foreground">
                 <AgeBadge label={m.common.adultsOnly} />
+                {profile.isExample ? <span className="rounded-xs border border-current px-1.5 text-foreground" data-testid="profile-example-badge">{m.common.exampleBadge}</span> : null}
                 {profile.sponsored ? <span className="text-brand">{m.profile.sponsored}</span> : null}
                 <span>{place}</span>
               </p>
@@ -143,7 +144,7 @@ async function ProfileContent({ params }: Pick<PageProps<"/[lang]/profile/[slug]
                 <span className="font-sans text-display-sm font-light tabular-nums text-muted-foreground">{profile.age}<span className="sr-only">{m.profile.ageSr}</span></span>
               </h1>
               <div className="mt-5">
-                {profile.isExample ? (<p className="border border-hairline bg-muted p-4 text-sm">{m.profile.notVerified}</p>) : profile.verified ? (
+                {profile.isExample ? (<div className="border border-hairline bg-muted p-4 text-sm"><p className="font-medium">{m.profile.exampleNotice}</p><p className="mt-1 text-muted-foreground">{m.profile.notVerified}</p></div>) : profile.verified ? (
                   <VerifiedMark withLabel />
                 ) : (
                   <p className="text-sm text-muted-foreground">{m.profile.ageVerifiedOnly}</p>

@@ -15,6 +15,7 @@ import { DomainError } from "@/server/services/errors";
 import * as profiles from "@/server/services/profiles";
 import * as moderation from "@/server/services/moderation";
 import * as subscriptions from "@/server/services/subscriptions";
+import { recordCountryDecision } from "@/server/services/countries";
 import { updatePrivacyRequestStatus } from "@/server/services/privacy";
 import { deleteContactMessage, markContactMessageUnread, updateContactMessageStatus } from "@/server/services/contact";
 
@@ -314,5 +315,22 @@ export async function settingsAction(_p: ActionResult, fd: FormData): Promise<Ac
     await getRepository().updateSiteSettings(input);
     await audit(admin, "settings.update", "site_settings", null, input);
     return "Ayarlar kaydedildi.";
+  });
+}
+
+/** Ülke yayın kararı (yalnızca sahip; hassas işlem: ülke kodu yeniden yazılarak onaylanır). */
+export async function countryDecisionAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  return run(async (admin) => {
+    const d = await recordCountryDecision(admin, {
+      countryCode: str(fd, "countryCode") as "tr",
+      status: str(fd, "status") as "not_reviewed",
+      approverName: str(fd, "approverName"),
+      evidenceRef: str(fd, "evidenceRef"),
+      reviewDue: str(fd, "reviewDue"),
+      restrictions: str(fd, "restrictions"),
+      note: str(fd, "note"),
+      confirm: str(fd, "confirm"),
+    });
+    return `${d.countryCode.toUpperCase()} için karar kaydedildi.`;
   });
 }

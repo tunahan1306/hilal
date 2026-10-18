@@ -10,5 +10,10 @@
   "buildCommand": "npm run build -- --webpack",
   "regions": [
     "fra1"
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "feature/hilal-global-v2": false
+    }
+  }
 }

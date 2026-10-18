@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { countryOfPlate, plateRange } from "@/domain/countries";
+import { COUNTRY_CODES, countryOfPlate, isCountry, plateRange, type CountryCode } from "@/domain/countries";
+import { defaultPolicies, PUBLICATION_STATUSES, type CountryDecision, type CountryPolicy, type PublicationStatus } from "@/domain/country-policy";
 import { sideDistricts } from "@/domain/istanbul";
 import { effectiveStatus, isExpiringSoon } from "@/domain/subscriptions";
 import type {
@@ -320,7 +321,8 @@ async function hydratePublic(rows: Row[]): Promise<PublicProfile[]> {
       slug: r.slug as string,
       nickname: r.nickname as string,
       isExample: Boolean(r.is_example),
-      whatsappPhone: (r.whatsapp_phone as string) ?? null,
+      // Kurgusal kayıt iletişim numarası taşımaz (görünüm de null döndürür; ikinci savunma hattı).
+      whatsappPhone: r.is_example ? null : ((r.whatsapp_phone as string) ?? null),
       age: r.age as number,
       province: {
         plate: r.city_plate as number,
@@ -376,9 +378,51 @@ async function setInterests(profileId: string, interestIds: string[]): Promise<v
   }
 }
 
+function toDecision(r: Row): CountryDecision {
+  return {
+    id: String(r.id),
+    countryCode: String(r.country_code) as CountryCode,
+    status: String(r.status) as PublicationStatus,
+    approverName: String(r.approver_name),
+    evidenceRef: r.evidence_ref === null ? null : String(r.evidence_ref),
+    reviewDue: r.review_due === null ? null : String(r.review_due),
+    restrictions: r.restrictions === null ? null : String(r.restrictions),
+    note: r.note === null ? null : String(r.note),
+    decidedBy: String(r.decided_by),
+    decidedAt: String(r.decided_at),
+  };
+}
+
 export function createSupabaseRepository(): Repository {
   return {
     kind: "supabase",
+    async listCountryPolicies(): Promise<CountryPolicy[]> {
+      const rows = check(await anon().from("countries").select("code, publication_status, review_due, decision_id")) as Row[];
+      return defaultPolicies().map((base) => {
+        const r = rows.find((x) => x.code === base.code);
+        const status = String(r?.publication_status);
+        if (!r || !(PUBLICATION_STATUSES as readonly string[]).includes(status)) return base;
+        return { code: base.code, status: status as PublicationStatus, reviewDue: r.review_due === null ? null : String(r.review_due), decisionId: r.decision_id === null ? null : String(r.decision_id) };
+      });
+    },
+    async listCountryDecisions(country) {
+      let q = service().from("country_publication_decisions").select("*").order("decided_at", { ascending: false }).limit(200);
+      if (country) q = q.eq("country_code", country);
+      return (check(await q) as Row[]).map(toDecision).filter((d) => isCountry(d.countryCode) && COUNTRY_CODES.includes(d.countryCode));
+    },
+    async addCountryDecision(input) {
+      const row = check(await service().from("country_publication_decisions").insert({
+        country_code: input.countryCode,
+        status: input.status,
+        approver_name: input.approverName,
+        evidence_ref: input.evidenceRef,
+        review_due: input.reviewDue,
+        restrictions: input.restrictions,
+        note: input.note,
+        decided_by: input.decidedBy,
+      }).select("*").single()) as Row;
+      return toDecision(row);
+    },
     async getLocations() {
       const cities = check(await anon().from("cities").select("*").order("plate")) as Row[];
       const plates = new Map(cities.map((r) => [r.id, Number(r.plate)]));

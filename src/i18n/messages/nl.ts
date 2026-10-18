@@ -8,6 +8,7 @@ export const nl: DeepPartial<Messages> = {
     ogAdults: "Alleen voor volwassenen (18+)",
   },
   common: {
+    exampleBadge: "Fictief voorbeeld",
     home: "Home",
     breadcrumb: "Kruimelpad",
     skipToContent: "Naar de inhoud",
@@ -50,6 +51,7 @@ export const nl: DeepPartial<Messages> = {
     privacy: "Privacy",
   },
   home: {
+    noCountryOpen: "Publicatie van profielen is momenteel in geen enkel land open.",
     metaTitle: "Hilal — Sociaal ontdekken in Turkije en Europa",
     eyebrow: "Sociaal ontdekken · 18+",
     otherCity: "Op zoek naar een andere stad?",
@@ -85,6 +87,8 @@ export const nl: DeepPartial<Messages> = {
     sourcesNote: "Bevolkings- en indelingsgegevens zijn afkomstig uit onderstaande bronnen en voor deze site bewerkt (veldnamen, URL-slugs).",
   },
   places: {
+    countryClosedTitle: "Publicatie is in dit land nog niet open",
+    countryClosedText: "Voor dit land is nog geen publicatiebesluit genomen. De locatiegids is alleen ter informatie; er worden geen profielen getoond.",
     levels: {
       tr: { region: "Provincie", locality: "District", regions: "Provincies", localities: "Districten" },
       nl: { region: "Provincie", locality: "Gemeente", regions: "Provincies", localities: "Gemeenten" },
@@ -146,6 +150,7 @@ export const nl: DeepPartial<Messages> = {
   card: { sponsored: "Gesponsord", photoAlt: "Profielfoto van {name}", whatsappAria: "Contact met {name} via WhatsApp (nieuw tabblad)" },
   verified: { title: "Profiel met geverifieerde identiteit", label: "Identiteit geverifieerd" },
   profile: {
+    exampleNotice: "Dit is een fictief voorbeeld. Het vertegenwoordigt geen echte persoon, is niet geverifieerd en bevat geen contactgegevens.",
     notFound: "Profiel niet gevonden",
     openCover: "Omslagfoto schermvullend openen",
     coverAlt: "Omslagfoto van {name}",

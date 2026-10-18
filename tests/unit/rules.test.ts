@@ -23,6 +23,7 @@ function ctx(over: Partial<PublishContext> = {}, profile: Partial<Profile> = {})
     reports: [],
     interestNames: [],
     now,
+    countryPublishable: true,
     ...over,
   };
 }
@@ -51,6 +52,12 @@ describe("yayın ön koşulları", () => {
   it("moderasyon onayı ve içerik politikasını denetler", () => {
     expect(failed(ctx({}, { moderationStatus: "pending" }))).toEqual(["moderation_approved"]);
     expect(failed(ctx({}, { bio: "Saatlik görüşme için whatsapp 0532 111 22 33 yazın lütfen" }))).toEqual(["content_policy"]);
+  });
+  it("ülke yayın kararı yoksa engeller", () => {
+    expect(failed(ctx({ countryPublishable: false }))).toEqual(["country_permitted"]);
+  });
+  it("başka yayındaki profilin WhatsApp numarasını kullanan profili engeller", () => {
+    expect(failed(ctx({ phoneInUseElsewhere: true }))).toEqual(["contact_unique"]);
   });
   it("açık kritik şikâyet varken engeller", () => {
     const reports = [{ id: "r", profileId: "p1", category: "suspected_minor" as const, description: "", reporterEmail: null, status: "open" as const, resolution: null, reporterHash: "", createdAt: "", updatedAt: "" }];

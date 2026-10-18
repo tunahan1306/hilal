@@ -3,6 +3,7 @@ import { Users } from "lucide-react";
 import { hasActiveFilters, type ProfileFilters } from "@/domain/filters";
 import { getI18n } from "@/i18n/server";
 import { localizedPath } from "@/i18n/routes";
+import { getPublishableCountries } from "@/server/queries/country-policy";
 import { getLocationDirectory } from "@/server/queries/locations";
 import { Button } from "@/components/ui/button";
 import { discoverProfiles } from "@/server/queries/public";
@@ -13,13 +14,17 @@ import { ProfileGridSkeleton } from "./profile-grid";
 
 /** Keşfet ve konum sayfalarının ortak listeleme bölümü. */
 export async function ProfileListing({ filters, mode }: { filters: ProfileFilters; mode: FilterMode }) {
-  const [{ lang, m }, { getProvince, listDistricts, listProvinces }] = await Promise.all([getI18n(), getLocationDirectory()]);
-  filters = { ...filters, ilgi: [], sayfa: 1 };
+  const [{ lang, m }, { getProvince, listDistricts, listProvinces }, countries] = await Promise.all([getI18n(), getLocationDirectory(), getPublishableCountries()]);
+  // Kapalı ülke sorgusu (?ulke=de) yok sayılır: seçenek sunulmaz, sonuç zaten gösterilmez.
+  filters = { ...filters, ilgi: [], sayfa: 1, ulke: filters.ulke && countries.includes(filters.ulke) ? filters.ulke : undefined };
   const result = await discoverProfiles(filters);
   const province = filters.il ? getProvince(filters.il) : undefined;
-  const provinces = listProvinces().map(({ slug, name, country }) => ({ slug, name, country }));
+  // Yalnızca yayına açık ülkelerin bölgeleri sunulur (konum sayfasında bulunulan ülke de).
+  const provinces = listProvinces()
+    .filter((p) => countries.includes(p.country) || (mode.type === "location" && p.country === mode.country))
+    .map(({ slug, name, country }) => ({ slug, name, country }));
   const districts = province ? listDistricts(province.plate).map(({ slug, name }) => ({ slug, name })) : [];
-  const filterProps = { mode, filters, provinces, districts, total: result.total };
+  const filterProps = { mode, filters, provinces, districts, total: result.total, countries };
   const location = mode.type === "location";
   const regionHref = location ? localizedPath(lang, "location", { country: mode.country, region: mode.il }) : null;
 

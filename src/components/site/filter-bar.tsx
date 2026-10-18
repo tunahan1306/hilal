@@ -32,6 +32,8 @@ type Props = {
   provinces: Option[];
   districts: Option[];
   total: number;
+  /** Keşifte sunulan ülkeler: yalnızca yayına açık olanlar (sunucuda belirlenir). */
+  countries: CountryCode[];
 };
 
 /**
@@ -62,7 +64,7 @@ export function useFilterNavigation({ mode, filters, provinces }: Pick<Props, "m
   return { update, clear, pending };
 }
 
-function FilterFields({ mode, filters, provinces, districts, update, idPrefix }: Props & { update: (p: Partial<ProfileFilters>) => void; idPrefix: string }) {
+function FilterFields({ mode, filters, provinces, districts, countries, update, idPrefix }: Props & { update: (p: Partial<ProfileFilters>) => void; idPrefix: string }) {
   const { lang, m } = useI18n();
   const f = m.filters;
   const country = mode.type === "location" ? mode.country : filters.ulke;
@@ -76,7 +78,7 @@ function FilterFields({ mode, filters, provinces, districts, update, idPrefix }:
               <SelectTrigger id={`${idPrefix}-ulke`} className="w-full bg-paper"><SelectValue placeholder={f.allCountries} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL}>{f.allCountries}</SelectItem>
-                {COUNTRY_CODES.map((c) => <SelectItem key={c} value={c}>{countryName(c, lang)}</SelectItem>)}
+                {countries.map((c) => <SelectItem key={c} value={c}>{countryName(c, lang)}</SelectItem>)}
               </SelectContent>
             </Select>
           </Field>
@@ -88,7 +90,7 @@ function FilterFields({ mode, filters, provinces, districts, update, idPrefix }:
               {mode.type === "explore" ? <SelectItem value={ALL}>{f.allRegions}</SelectItem> : null}
               {country
                 ? regionOptions.map((p) => <SelectItem key={p.slug} value={p.slug}>{p.name}</SelectItem>)
-                : COUNTRY_CODES.map((c) => (
+                : COUNTRY_CODES.filter((c) => regionOptions.some((p) => p.country === c)).map((c) => (
                     <SelectGroup key={c}>
                       <SelectLabel>{countryName(c, lang)}</SelectLabel>
                       {regionOptions.filter((p) => p.country === c).map((p) => <SelectItem key={p.slug} value={p.slug}>{p.name}</SelectItem>)}

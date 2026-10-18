@@ -22,6 +22,10 @@ begin
   end;
 end $$;
 
+-- Sentetik test kararı: Türkiye bu test işlemi içinde yayına açık (gerçek bir hukuki onay değildir).
+insert into country_publication_decisions (country_code, status, approver_name, evidence_ref, review_due, decided_by)
+values ('tr', 'permitted', 'Sentetik Test', 'TEST-ONLY', current_date + 30, '00000000-0000-0000-0000-0000000000a1');
+
 -- 2) Ön koşullar tamamlanınca yayın başarılı olmalı
 insert into verification_records (profile_id, type, status, method) values
   ('00000000-0000-0000-0000-0000000000b1', 'age', 'approved', 'test');
@@ -251,6 +255,8 @@ begin
   end;
 end $$;
 reset role;
+
+\ir policies-country-gate.test.sql
 
 select 'ALL DB TESTS PASSED' as result;
 rollback;

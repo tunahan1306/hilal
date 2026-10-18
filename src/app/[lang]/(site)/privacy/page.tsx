@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { i18nPageMeta } from "@/i18n/metadata";
+import { legalPageMeta } from "@/i18n/metadata";
 import { getI18n } from "@/i18n/server";
 import { localizedPath } from "@/i18n/routes";
 import Link from "next/link";
@@ -7,9 +7,7 @@ import { LegalDraftNotice, ProsePage } from "@/components/site/prose-page";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { lang, m } = await getI18n();
-  const meta = i18nPageMeta(lang, "privacy", undefined, m.legal.privacyTitle, "6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında aydınlatma metni.");
-  // Hukuki metin yalnızca Türkçedir: diğer dillerdeki kopyalar Türkçe aslına canonical verir ve indekslenmez.
-  return lang === "tr" ? meta : { ...meta, alternates: { ...meta.alternates, canonical: localizedPath("tr", "privacy") }, robots: { index: false, follow: true } };
+  return legalPageMeta(lang, "privacy", m.legal.privacyTitle, "6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında aydınlatma metni.");
 }
 
 export default async function KvkkPage() {

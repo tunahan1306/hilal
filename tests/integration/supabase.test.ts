@@ -10,7 +10,8 @@ import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Admin } from "@/domain/types";
 import { getRepository } from "@/server/repositories";
-import { PublishBlockedError } from "@/server/services/errors";
+import { recordCountryDecision } from "@/server/services/countries";
+import { DomainError, PublishBlockedError } from "@/server/services/errors";
 import { submitReport } from "@/server/services/moderation";
 import * as profiles from "@/server/services/profiles";
 import { cancelSubscription, createSubscription } from "@/server/services/subscriptions";
@@ -32,9 +33,12 @@ describe.skipIf(!enabled)("Supabase repository (entegrasyon)", () => {
     const ins = await service!.from("admins").insert({ id: data.user.id, email, display_name: "IT", role: "owner" });
     if (ins.error) throw ins.error;
     admin = (await getRepository().getAdmin(data.user.id))!;
+    // Yerel test kararı (gerçek onay değildir): Türkiye bu testlerde yayına açıktır.
+    await recordCountryDecision(admin, { countryCode: "tr", status: "permitted", approverName: "Entegrasyon testi — gerçek onay değildir", evidenceRef: "LOCAL-IT-ONLY", reviewDue: new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10), restrictions: "", note: "", confirm: "tr" });
   });
 
   afterAll(async () => {
+    if (admin) await recordCountryDecision(admin, { countryCode: "tr", status: "not_reviewed", approverName: "Entegrasyon testi", evidenceRef: "", reviewDue: "", restrictions: "", note: "test sonu", confirm: "tr" }).catch(() => {});
     for (const id of created) await profiles.deleteProfilePermanently(admin, id, "entegrasyon temizliği").catch(() => {});
     if (admin) {
       const result = await service!.auth.admin.deleteUser(admin.id);
@@ -179,6 +183,50 @@ describe.skipIf(!enabled)("Supabase repository (entegrasyon)", () => {
     expect(await repo.getProfile(p.id)).toBeNull();
     expect((await fetch(pub!.images[0].url)).status).not.toBe(200);
     created.splice(created.indexOf(p.id), 1);
+  });
+
+  it("ülke kapısı: kapalı ülkede yayın engellenir; onay geri çekilince kamu görünümleri anında boşalır", async () => {
+    const repo = getRepository();
+    const prepare = async (over: Partial<typeof input>) => {
+      const p = await profiles.createProfile(admin, { ...input, ...over });
+      created.push(p.id);
+      await profiles.recordConsent(admin, p.id, "publication", "x");
+      await profiles.recordConsent(admin, p.id, "photo_rights", "x");
+      await profiles.recordVerification(admin, p.id, { type: "age", status: "approved", method: "x", note: null });
+      const png = await sharp({ create: { width: 50, height: 50, channels: 3, background: "#345678" } }).png().toBuffer();
+      const img = await profiles.uploadProfileImage(admin, p.id, png, "x");
+      await profiles.confirmImageRights(admin, p.id, img.id, true);
+      await profiles.setModeration(admin, p.id, "approved", null);
+      return p;
+    };
+    // NL (incelenmedi): servis ve veritabanı yayını reddeder.
+    const nl = await prepare({ provincePlate: 1008, districtSlug: "amsterdam" });
+    await expect(profiles.publishProfile(admin, nl.id)).rejects.toBeInstanceOf(PublishBlockedError);
+    const direct = await service!.from("profiles").update({ status: "published", published_at: new Date().toISOString() }).eq("id", nl.id);
+    expect(direct.error?.message).toMatch(/NL için yayın onayı yok/);
+
+    // TR açık: yayınlanır ve görünür; yayındaki profil kapalı ülkeye taşınamaz.
+    const tr = await prepare({});
+    await profiles.publishProfile(admin, tr.id);
+    expect(await repo.getPublicProfile(tr.slug)).not.toBeNull();
+    await expect(profiles.updateProfile(admin, tr.id, { ...input, provincePlate: 2002, districtSlug: null })).rejects.toBeInstanceOf(DomainError);
+
+    // Yetkisiz karar: moderatör reddedilir; anon karar tablosuna yazamaz ve ülke satırını değiştiremez.
+    await expect(recordCountryDecision({ ...admin, role: "moderator" }, { countryCode: "nl", status: "permitted", approverName: "X", evidenceRef: "R-1", reviewDue: "2099-01-01", restrictions: "", note: "", confirm: "nl" })).rejects.toThrow(/sahip/);
+    expect((await anon!.from("country_publication_decisions").insert({ country_code: "nl", status: "permitted", approver_name: "anon", evidence_ref: "x", review_due: "2099-01-01", decided_by: admin.id })).error).toBeTruthy();
+    expect((await anon!.from("country_publication_decisions").select("*")).data ?? []).toEqual([]);
+    await anon!.from("countries").update({ publication_status: "permitted" }).eq("code", "nl");
+    expect((await anon!.from("countries").select("publication_status").eq("code", "nl").single()).data?.publication_status).toBe("not_reviewed");
+
+    // Onay geri çekilir → profil, medya ve keşif görünümleri anında boş; durum "published" kalır.
+    await recordCountryDecision(admin, { countryCode: "tr", status: "not_reviewed", approverName: "Entegrasyon", evidenceRef: "", reviewDue: "", restrictions: "", note: "", confirm: "tr" });
+    expect(await repo.getPublicProfile(tr.slug)).toBeNull();
+    expect((await anon!.from("profiles_public").select("id").eq("id", tr.id)).data).toEqual([]);
+    expect((await anon!.from("profile_media_public").select("profile_id").eq("profile_id", tr.id)).data).toEqual([]);
+    expect((await repo.listPublicProfileSlugs()).some((x) => x.slug === tr.slug)).toBe(false);
+    expect((await repo.getProfile(tr.id))!.status).toBe("published");
+    await recordCountryDecision(admin, { countryCode: "tr", status: "permitted", approverName: "Entegrasyon testi — gerçek onay değildir", evidenceRef: "LOCAL-IT-ONLY", reviewDue: new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10), restrictions: "", note: "", confirm: "tr" });
+    expect(await repo.getPublicProfile(tr.slug)).not.toBeNull();
   });
 
   it("rıza geri alınınca profil yayından kalkar (tetikleyici + servis)", async () => {

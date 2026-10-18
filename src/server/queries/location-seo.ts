@@ -6,6 +6,7 @@ import { shouldIndexListing, truncate } from "@/domain/seo";
 import { fmt, type Locale } from "@/i18n/config";
 import { getMessages } from "@/i18n/messages";
 import { i18nAlternates, i18nOpenGraph } from "@/i18n/metadata";
+import { isCountryPublishable } from "./country-policy";
 import { getLocationSummary, getSeoPage } from "./public";
 
 /**
@@ -25,11 +26,12 @@ export async function locationMetadata(
   searchParams: Record<string, string | string[] | undefined>,
 ): Promise<Metadata> {
   const m = getMessages(lang);
-  const [summary, seoRow] = await Promise.all([getLocationSummary(province.slug, district?.slug), getSeoPage(seoKey(province, district))]);
+  const [summary, seoRow, open] = await Promise.all([getLocationSummary(province.slug, district?.slug), getSeoPage(seoKey(province, district)), isCountryPublishable(province.country)]);
   const seo = lang === "tr" ? seoRow : null;
   const filters = parseFilters(searchParams);
   const place = district ? `${district.name}, ${province.name}` : province.name;
-  const index = shouldIndexListing({
+  // Yayın kararı olmayan ülkenin sayfaları (elle konmuş SEO istisnası olsa bile) indekslenmez.
+  const index = open && shouldIndexListing({
     profileCount: summary.total,
     hasCuratedIntro: Boolean(seo?.intro),
     override: seoRow?.indexOverride ?? null,

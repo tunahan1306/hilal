@@ -14,14 +14,17 @@ test.afterAll(cleanupExampleFixtures);
 
 const wa = `https://wa.me/${FIXTURE_WHATSAPP}`;
 
-test("veritabanı örnek profilleri görsel ve izinli WhatsApp bağlantısıyla gösterilir", async ({ page, request }) => {
+test("kurgusal örnekler etiketli, iletişim bağlantısız ve doğrulanmamış olarak gösterilir", async ({ page, request }) => {
   const verified = await (await request.get("/api/discovery?dogrulanmis=1")).json();
   expect(verified.items.filter((p: { isExample?: boolean }) => p.isExample)).toEqual([]);
   await page.goto("/tr");
   await expect(page.getByRole("article").first()).toBeVisible();
   await page.goto("/tr/kesfet");
   await expect(page.getByRole("article")).toHaveCount(FIXTURES.length);
-  await expect(page.locator(`article a[href="${wa}"]`)).toHaveCount(FIXTURES.length);
+  // Kurgusal kayıt gerçek bir kişiye iletişim taşımaz; her kart görünür biçimde etiketlidir.
+  await expect(page.locator(`a[href^="https://wa.me/"]`)).toHaveCount(0);
+  await expect(page.getByTestId("example-badge")).toHaveCount(FIXTURES.length);
+  expect(JSON.stringify(await (await request.get("/api/discovery")).json())).not.toContain(FIXTURE_WHATSAPP);
   await page.goto("/tr/konum/tr/istanbul/atasehir");
   const card = page.getByRole("article").filter({ hasText: "Ece" });
   await expect(card).toBeVisible();
@@ -31,7 +34,9 @@ test("veritabanı örnek profilleri görsel ve izinli WhatsApp bağlantısıyla 
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Ece");
   await expect(page.getByText("Kimlik ve yaş doğrulaması yapılmadı.", { exact: true })).toBeVisible();
   await expect(page.getByText("Yaş belgeyle doğrulandı", { exact: false })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Ece ile WhatsApp üzerinden iletişim kur (yeni sekme)" })).toHaveAttribute("href", wa);
+  await expect(page.getByText("Bu kayıt kurgusal bir örnektir.", { exact: false })).toBeVisible();
+  await expect(page.getByTestId("profile-example-badge")).toBeVisible();
+  await expect(page.locator(`a[href="${wa}"]`)).toHaveCount(0);
   await expect.poll(() => page.locator("main img").first().evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
   expect(await (await request.get("/sitemap.xml")).text()).not.toContain("kurgu-kadin-");

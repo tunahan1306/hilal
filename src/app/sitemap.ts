@@ -1,9 +1,11 @@
 import type { MetadataRoute } from "next";
-import { COUNTRY_CODES } from "@/domain/countries";
+import { cacheLife, cacheTag } from "next/cache";
+import { publishableCountries } from "@/domain/country-policy";
 import { shouldIndexListing } from "@/domain/seo";
 import { LOCALES, X_DEFAULT_LOCALE, type Locale } from "@/i18n/config";
 import { localizedPath, type RouteKey, type RouteParams } from "@/i18n/routes";
 import { siteUrl } from "@/lib/site";
+import { TAGS } from "@/server/cache";
 import { getLocationDirectory } from "@/server/queries/locations";
 import { seoKey } from "@/server/queries/location-seo";
 import { getPublicProfileSlugs } from "@/server/queries/public";
@@ -15,6 +17,7 @@ import { getRepository } from "@/server/repositories";
  * Ana sayfa, keşif, bölge/yer ve profil sayfaları yaş kapısının arkasındadır: çerezsiz
  * tarayıcı `noindex` yaş onayı sayfasını görür (src/proxy.ts). Bunlar `SITEMAP_INCLUDE_GATED`
  * açılmadıkça sitemap'e girmez. Hukuki metinler yalnızca Türkçedir (diğer dillerde noindex).
+ * Yayın kararı olmayan ülkelerin konum sayfaları hiç listelenmez (sayfalar da noindex'tir).
  */
 const GATED_SITEMAP = process.env.SITEMAP_INCLUDE_GATED === "true";
 
@@ -28,14 +31,20 @@ function entries<K extends RouteKey>(route: K, params: K extends keyof RoutePara
   if (locales.includes(X_DEFAULT_LOCALE)) languages["x-default"] = `${base}${path(X_DEFAULT_LOCALE)}`;
   const { locales: _omit, ...rest } = opts;
   void _omit;
-  return locales.map((l) => ({ url: `${base}${path(l)}`, changeFrequency: "weekly", priority: 0.6, ...rest, alternates: { languages } }));
+  // Tek dilli sayfada (hukuki metinler) dil alternatifi bildirilmez.
+  return locales.map((l) => ({ url: `${base}${path(l)}`, changeFrequency: "weekly", priority: 0.6, ...rest, ...(locales.length > 1 ? { alternates: { languages } } : {}) }));
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   "use cache";
+  // Ülke kararı değişince yönetim işlemi bu etiketi geçersiz kılar; gözden geçirme tarihinin
+  // geçmesi en geç önbellek ömrü kadar sonra yansır (sayfaların kendisi istek anında karar verir).
+  cacheTag(TAGS.public);
+  cacheLife("minutes");
+  const open = publishableCountries(await getRepository().listCountryPolicies());
   const ungated: Entry[] = [
     ...entries("cities", undefined, { priority: 0.8 }),
-    ...COUNTRY_CODES.flatMap((country) => entries("location", { country }, { priority: 0.8 })),
+    ...open.flatMap((country) => entries("location", { country }, { priority: 0.8 })),
     ...entries("safety", undefined),
     ...entries("packages", undefined),
     ...entries("removal", undefined),
@@ -53,11 +62,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return shouldIndexListing({ profileCount: count, hasCuratedIntro: Boolean(seo?.intro), override: seo?.indexOverride ?? null });
   };
   const regions = listProvinces()
+    .filter((p) => open.includes(p.country))
     .filter((p) => indexable(seoKey(p), counts.find((c) => c.plate === p.plate && c.districtSlug === null)?.count ?? 0))
     .flatMap((p) => entries("location", { country: p.country, region: p.slug }, { changeFrequency: "daily", priority: 0.8 }));
   const localities = counts
     .filter((c) => c.districtSlug)
     .map((c) => ({ p: getProvinceByPlate(c.plate)!, slug: c.districtSlug!, count: c.count }))
+    .filter(({ p }) => open.includes(p.country))
     .filter(({ p, slug, count }) => indexable(seoKey(p, { plate: p.plate, slug, name: slug, population: 0 }), count))
     .flatMap(({ p, slug }) => entries("location", { country: p.country, region: p.slug, locality: slug }, { changeFrequency: "daily" }));
   const profiles = slugs.flatMap((s) => entries("profile", { slug: s.slug }, { lastModified: s.updatedAt, priority: 0.5 }));
