@@ -28,6 +28,45 @@ export function rateLimit(key: string, limit: number, windowMs: number, now = Da
   return b.count > limit ? { ok: false, retryAfterMs: b.resetAt - now } : { ok: true, retryAfterMs: 0 };
 }
 
+let sharedUnavailableLogged = false;
+
+/**
+ * Paylaşılan oran sınırı. Supabase varsa veritabanındaki atomik sayaç kullanılır
+ * (tüm sunucusuz instance'lar için tek sayaç); yoksa (demo/test) süreç içi sayaç.
+ * Veritabanı fonksiyonu yoksa (migration uygulanmamış) süreç içi sayaca düşülür ve
+ * bu durum bir kez loglanır — istek engellenmez ama koruma zayıflar.
+ */
+export async function sharedRateLimit(key: string, limit: number, windowMs: number, now = Date.now()): Promise<{ ok: boolean; retryAfterMs: number }> {
+  const { getRepository } = await import("./repositories");
+  const repo = getRepository();
+  if (repo.hitRateLimit) {
+    try {
+      const r = await repo.hitRateLimit(hashKey(key), limit, Math.max(1, Math.ceil(windowMs / 1000)));
+      return { ok: r.ok, retryAfterMs: r.retryAfterSeconds * 1000 };
+    } catch (e) {
+      if (!sharedUnavailableLogged) {
+        sharedUnavailableLogged = true;
+        const { logError } = await import("./log");
+        logError("rate-limit.shared-unavailable", e);
+      }
+    }
+  }
+  return rateLimit(key, limit, windowMs, now);
+}
+
+export async function clearSharedRateLimit(key: string): Promise<void> {
+  clearRateLimit(key);
+  const { getRepository } = await import("./repositories");
+  await getRepository().clearSharedRateLimit?.(hashKey(key)).catch(() => undefined);
+}
+
+/** Veritabanındaki anahtar: kapsam öneki + özet (e-posta gibi ham değerler saklanmaz). */
+function hashKey(key: string): string {
+  const i = key.indexOf(":");
+  const scope = i > 0 ? key.slice(0, i) : "k";
+  return `${scope}:${createHash("sha256").update(key).digest("hex").slice(0, 40)}`;
+}
+
 export function clearRateLimit(key: string): void {
   buckets.delete(key);
 }

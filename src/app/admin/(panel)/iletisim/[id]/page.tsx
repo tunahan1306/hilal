@@ -9,7 +9,7 @@ import { formatDate } from "@/lib/site";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
 import { openContactMessage } from "@/server/services/contact";
-import { contactStatusAction, contactUnreadAction } from "../../actions";
+import { contactDeleteAction, contactStatusAction, contactUnreadAction } from "../../actions";
 
 export const metadata: Metadata = { title: "İletişim talebi" };
 
@@ -18,6 +18,7 @@ const ACTION_LABELS: Record<string, string> = {
   "contact_message.read": "Okundu",
   "contact_message.unread": "Okunmadı olarak işaretlendi",
   "contact_message.status": "Durum değişti",
+  "contact_message.delete": "Silindi",
 };
 
 const TRANSITIONS: { to: ContactStatus; label: string; variant: "default" | "outline" | "ghost"; confirm?: { title: string; description: string; destructive?: boolean } }[] = [
@@ -62,6 +63,16 @@ export default async function ContactMessagePage({ params }: PageProps<"/admin/i
                 <ActionButton key={t.to} action={contactStatusAction.bind(null, message.id, t.to)} size="sm" variant={t.variant} confirm={t.confirm}>{t.label}</ActionButton>
               ))}
               <ActionButton action={contactUnreadAction.bind(null, message.id)} size="sm" variant="ghost">Okunmadı yap</ActionButton>
+            </div>
+            <div className="mt-4 border-t border-hairline pt-4">
+              <ActionButton
+                action={contactDeleteAction.bind(null, message.id)}
+                size="sm"
+                variant="destructive"
+                confirm={{ title: "Mesaj kalıcı olarak silinsin mi?", description: "KVKK silme talebi gibi durumlar için. Mesaj ve gönderen bilgileri geri getirilemez; denetim kaydında yalnızca kategori ve gerekçe tutulur.", prompt: "Silme gerekçesi", confirmLabel: "Kalıcı olarak sil", destructive: true, minLength: 5 }}
+              >
+                Kalıcı olarak sil
+              </ActionButton>
             </div>
           </section>
           <section className="rounded-lg border border-hairline p-4" aria-labelledby="gecmis-baslik">

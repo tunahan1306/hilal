@@ -353,6 +353,16 @@ export function createMemoryRepository(): Repository {
         .filter((m) => (!filter.status || m.status === filter.status) && (!filter.category || m.category === filter.category) && (!filter.unread || m.readAt === null))
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
     },
+    async deleteContactMessage(id) {
+      const s = store();
+      s.contact = s.contact.filter((m) => m.id !== id);
+    },
+    async deleteContactMessagesBefore(statuses, beforeIso) {
+      const s = store();
+      const before = s.contact.length;
+      s.contact = s.contact.filter((m) => !(statuses.includes(m.status) && m.updatedAt < beforeIso));
+      return before - s.contact.length;
+    },
     async getContactMessage(id) {
       const m = store().contact.find((x) => x.id === id);
       return m ? clone(m) : null;

@@ -2,7 +2,7 @@ import "server-only";
 import { privacyRequestSchema } from "@/domain/schemas";
 import type { Admin, PrivacyRequest } from "@/domain/types";
 import { getRepository } from "../repositories";
-import { rateLimit } from "../rate-limit";
+import { sharedRateLimit } from "../rate-limit";
 import { audit } from "./audit";
 import { DomainError, RateLimitedError } from "./errors";
 
@@ -12,7 +12,7 @@ export const PRIVACY_RESPONSE_DAYS = 30;
 export async function submitPrivacyRequest(raw: unknown, fingerprint: string): Promise<PrivacyRequest> {
   const input = privacyRequestSchema.parse(raw);
   if (input.website) throw new DomainError("Geçersiz istek");
-  if (!rateLimit(`privacy:${fingerprint}`, 3, 3_600_000).ok) throw new RateLimitedError();
+  if (!(await sharedRateLimit(`privacy:${fingerprint}`, 3, 3_600_000)).ok) throw new RateLimitedError();
   const repo = getRepository();
   let profileId: string | null = null;
   const slug = input.profileUrl?.match(/\/profil\/([a-z0-9-]+)/)?.[1];

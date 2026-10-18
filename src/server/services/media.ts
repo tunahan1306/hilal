@@ -319,6 +319,21 @@ export async function syncPublicMedia(profileId: string) {
   }
 }
 
+/**
+ * Günlük eşitleme (cron): herkese açık kopyası olan her profil için syncPublicMedia
+ * çalıştırılır. Veritabanında doğrudan yapılan durum değişiklikleri veya tetikleyicilerle
+ * yayından kalkan profillerin dosyaları da böylece herkese açık depodan silinir.
+ */
+export async function reconcilePublicMedia(): Promise<{ profiles: number; failed: number }> {
+  const all = await getRepository().listAllMedia();
+  const ids = [...new Set(all.filter((m) => m.publicUrl || m.publicPaths.length).map((m) => m.profileId))];
+  let failed = 0;
+  for (const id of ids) {
+    try { await syncPublicMedia(id); } catch { failed += 1; }
+  }
+  return { profiles: ids.length, failed };
+}
+
 /** Profil silinirken tüm medya dosyalarını (özel + herkese açık) kaldırır. */
 export async function purgeProfileMedia(profileId: string) {
   const storage = getStorage();

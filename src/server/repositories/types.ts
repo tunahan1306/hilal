@@ -121,6 +121,11 @@ export interface Repository {
   listPrivacyRequests(): Promise<PrivacyRequest[]>;
   updatePrivacyRequest(id: string, patch: Partial<Pick<PrivacyRequest, "status" | "completedAt" | "profileId">>): Promise<PrivacyRequest>;
 
+  /** Instance'lar arası paylaşılan oran sınırı (yalnızca Supabase; bellek deposunda tanımsız). */
+  hitRateLimit?(key: string, limit: number, windowSeconds: number): Promise<{ ok: boolean; retryAfterSeconds: number }>;
+  clearSharedRateLimit?(key: string): Promise<void>;
+  purgeRateLimits?(): Promise<number>;
+
   /** Adres şu anda kamuya açık (yayında + onaylı) bir medyaya mı ait? Görsel vekili için. */
   isPublishedMediaUrl(url: string): Promise<boolean>;
 
@@ -131,6 +136,9 @@ export interface Repository {
   listContactMessages(filter?: { status?: ContactStatus; category?: ContactCategory; unread?: boolean }): Promise<ContactMessage[]>;
   getContactMessage(id: string): Promise<ContactMessage | null>;
   updateContactMessage(id: string, patch: Partial<Pick<ContactMessage, "status" | "readAt">>): Promise<ContactMessage>;
+  deleteContactMessage(id: string): Promise<void>;
+  /** Saklama süresi dolan mesajları siler; silinen kayıt sayısını döndürür. */
+  deleteContactMessagesBefore(statuses: ContactStatus[], beforeIso: string): Promise<number>;
 
   // SEO ve ayarlar
   listSeoPages(): Promise<SeoPage[]>;

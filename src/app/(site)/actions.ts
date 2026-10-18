@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { invalidatePublic } from "@/server/cache";
+import { logError } from "@/server/log";
 import { clientFingerprint, rateLimit } from "@/server/rate-limit";
 import { getRepository } from "@/server/repositories";
 import { DomainError } from "@/server/services/errors";
@@ -17,7 +18,7 @@ function failure(e: unknown): FormState {
     return { ok: false, message: "Lütfen formdaki hataları düzeltin.", errors: z.flattenError(e).fieldErrors as Record<string, string[]> };
   }
   if (e instanceof DomainError) return { ok: false, message: e.message };
-  console.error(e);
+  logError("site.action", e);
   return { ok: false, message: "Beklenmeyen bir hata oluştu. Lütfen daha sonra tekrar deneyin." };
 }
 

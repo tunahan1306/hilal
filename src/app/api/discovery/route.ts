@@ -4,12 +4,12 @@ import { decodeCursor } from "@/domain/discovery-cursor";
 import { parseFilters } from "@/domain/filters";
 import { getLocationDirectory } from "@/server/queries/locations";
 import { discoverProfiles } from "@/server/queries/public";
-import { clientFingerprint, rateLimit } from "@/server/rate-limit";
+import { clientFingerprint, sharedRateLimit } from "@/server/rate-limit";
 export async function GET(request: NextRequest) {
   const headers = { "Cache-Control": "private, no-store" };
   if (request.cookies.get(AGE_COOKIE)?.value !== AGE_COOKIE_VALUE) return NextResponse.json({ error: "Yaş onayı gerekli." }, { status: 403, headers });
   // Toplu veri (ör. iletişim numarası) çekmeyi zorlaştırır; normal "daha fazla göster" kullanımının çok üstünde.
-  const limit = rateLimit(`discovery:${await clientFingerprint()}`, 60, 60_000);
+  const limit = await sharedRateLimit(`discovery:${await clientFingerprint()}`, 60, 60_000);
   if (!limit.ok) return NextResponse.json({ error: "Çok fazla istek." }, { status: 429, headers: { ...headers, "Retry-After": String(Math.ceil(limit.retryAfterMs / 1000)) } });
   const { getProvince, getDistrict } = await getLocationDirectory();
   const params = request.nextUrl.searchParams;

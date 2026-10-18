@@ -192,5 +192,35 @@ begin
 end $$;
 reset role;
 
+-- 10) Paylaşılan oran sınırı: atomik sayaç; anon/authenticated çağıramaz
+do $$
+declare a boolean; i int;
+begin
+  for i in 1..3 loop
+    select allowed into a from rate_limit_hit('test:key', 3, 60);
+    if not a then raise exception 'TEST FAILED: sınır altında istek reddedildi (%).', i; end if;
+  end loop;
+  select allowed into a from rate_limit_hit('test:key', 3, 60);
+  if a then raise exception 'TEST FAILED: sınır aşıldığı hâlde istek kabul edildi'; end if;
+  perform rate_limit_clear('test:key');
+  select allowed into a from rate_limit_hit('test:key', 3, 60);
+  if not a then raise exception 'TEST FAILED: temizlenen anahtar hâlâ engelli'; end if;
+end $$;
+set local role anon;
+do $$
+begin
+  begin
+    perform rate_limit_hit('anon:key', 1, 60);
+    raise exception 'TEST FAILED: anon oran sınırı fonksiyonunu çağırabildi';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform 1 from rate_limit_buckets limit 1;
+    raise exception 'TEST FAILED: anon rate_limit_buckets okuyabildi';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+
 select 'ALL DB TESTS PASSED' as result;
 rollback;

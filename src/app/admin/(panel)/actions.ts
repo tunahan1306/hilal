@@ -7,6 +7,7 @@ import { slugifyTr } from "@/domain/text";
 import type { Admin, ContactStatus, PrivacyRequestStatus } from "@/domain/types";
 import { CONTACT_STATUSES } from "@/domain/types";
 import { AuthorizationError, assertAdmin } from "@/server/auth/session";
+import { logError } from "@/server/log";
 import { invalidatePublic } from "@/server/cache";
 import { getRepository } from "@/server/repositories";
 import { audit } from "@/server/services/audit";
@@ -15,7 +16,7 @@ import * as profiles from "@/server/services/profiles";
 import * as moderation from "@/server/services/moderation";
 import * as subscriptions from "@/server/services/subscriptions";
 import { updatePrivacyRequestStatus } from "@/server/services/privacy";
-import { markContactMessageUnread, updateContactMessageStatus } from "@/server/services/contact";
+import { deleteContactMessage, markContactMessageUnread, updateContactMessageStatus } from "@/server/services/contact";
 
 export type ActionResult = { ok: boolean; message: string; errors?: Record<string, string[]>; data?: unknown } | null;
 
@@ -40,7 +41,7 @@ async function run(fn: (admin: Admin) => Promise<string | { message: string; dat
   } catch (e) {
     if (e instanceof z.ZodError) return { ok: false, message: "Formdaki hataları düzeltin.", errors: z.flattenError(e).fieldErrors as Record<string, string[]> };
     if (e instanceof DomainError) return { ok: false, message: e.message };
-    console.error(e);
+    logError("admin.action", e);
     return { ok: false, message: "Beklenmeyen bir hata oluştu." };
   }
 }
@@ -238,6 +239,15 @@ export async function contactStatusAction(id: string, status: ContactStatus): Pr
     await updateContactMessageStatus(admin, id, status);
     return "Mesaj durumu güncellendi.";
   }, { invalidate: false });
+}
+
+export async function contactDeleteAction(id: string, reason: string): Promise<ActionResult> {
+  const res = await run(async (admin) => {
+    await deleteContactMessage(admin, id, reason);
+    return "Mesaj kalıcı olarak silindi.";
+  }, { invalidate: false });
+  if (res?.ok) redirect("/admin/iletisim");
+  return res;
 }
 
 export async function contactUnreadAction(id: string): Promise<ActionResult> {
