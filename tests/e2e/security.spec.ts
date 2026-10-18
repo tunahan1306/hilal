@@ -99,6 +99,9 @@ test.describe("iletişim formu kötüye kullanım", () => {
     let limited = false;
     for (let i = 0; i < 4 && !limited; i++) {
       await submitContact(page, `Sınır ${i} ${Date.now()}`);
+      // Sunucu yanıtını bekle: başarı mesajı ya da form uyarısı
+      const outcome = page.getByRole("status").filter({ hasText: "Mesajınız alındı" }).or(page.locator('form [role="alert"]'));
+      await expect(outcome.first()).toBeVisible();
       const alert = page.locator('form [role="alert"]');
       limited = (await alert.count()) > 0 && /Çok fazla istek/.test(await alert.innerText());
     }

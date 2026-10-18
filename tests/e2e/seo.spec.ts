@@ -53,6 +53,7 @@ test.describe("SEO doğrulama", () => {
     expect(new URL((await page.locator('link[rel="canonical"]').getAttribute("href"))!).pathname).toBe("/");
     for (const path of ["/", "/sehir/istanbul", "/guvenlik"]) {
       await page.goto(path);
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible(); // JSON-LD akışla gelen içeriktedir
       const blocks = await page.locator('script[type="application/ld+json"]').allTextContents();
       expect(blocks.length, path).toBeGreaterThan(0);
       for (const b of blocks) expect(() => JSON.parse(b), path).not.toThrow();
