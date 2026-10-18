@@ -153,6 +153,9 @@
   }
   h1, h2, h3 {
     text-wrap: balance;
+    /* Almanca/Hollandaca uzun bileşik sözcükler dar ekranda taşmasın: dile göre heceleme (html lang). */
+    hyphens: auto;
+    overflow-wrap: break-word;
   }
   p {
     text-wrap: pretty;

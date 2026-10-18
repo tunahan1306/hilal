@@ -1,16 +1,19 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { breadcrumbJsonLd } from "@/domain/seo";
+import { getI18n } from "@/i18n/server";
+import { localizedPath } from "@/i18n/routes";
 import { siteUrl } from "@/lib/site";
 import { JsonLd } from "./json-ld";
 
 export type Crumb = { name: string; href: string };
 
-export function Breadcrumbs({ items }: { items: Crumb[] }) {
-  const all = [{ name: "Ana sayfa", href: "/" }, ...items];
+export async function Breadcrumbs({ items }: { items: Crumb[] }) {
+  const { lang, m } = await getI18n();
+  const all = [{ name: m.common.home, href: localizedPath(lang, "home") }, ...items];
   return (
     <>
-      <nav aria-label="Konum" className="text-[0.8125rem] text-muted-foreground">
+      <nav aria-label={m.common.breadcrumb} className="text-[0.8125rem] text-muted-foreground">
         <ol className="flex flex-wrap items-center gap-1">
           {all.map((c, i) => {
             const last = i === all.length - 1;
@@ -31,4 +34,3 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
     </>
   );
 }
-

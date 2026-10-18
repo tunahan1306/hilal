@@ -1,4 +1,4 @@
-import type { CardProfile } from "@/domain/types";
+import { toCardProfile, type CardProfile } from "@/domain/types";
 import { cn } from "@/lib/utils";
 import { ProfileCard } from "./profile-card";
 
@@ -15,7 +15,7 @@ export function ProfileGrid({ profiles, priorityCount = 0, columns = 4, classNam
       {profiles.map((p, i) => (
         <li key={p.id} className="flex">
           <ProfileCard
-            profile={p}
+            profile={toCardProfile(p)}
             priority={i < priorityCount}
             className="w-full"
             sizes={columns === 3 ? "(min-width: 1280px) 340px, (min-width: 640px) 30vw, 46vw" : undefined}

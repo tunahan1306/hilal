@@ -1,7 +1,12 @@
+"use client";
+
 import Image from "next/image";
 import { MessageCircle } from "lucide-react";
 import { whatsAppHref } from "@/domain/whatsapp";
 import type { CardProfile } from "@/domain/types";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
+import { localizedPath } from "@/i18n/routes";
 import { cn } from "@/lib/utils";
 import { VerifiedMark } from "./verified-mark";
 
@@ -21,6 +26,7 @@ export function ProfileCard({
   sizes?: string;
   className?: string;
 }) {
+  const { lang, m } = useI18n();
   const image = profile.images[0];
   const whatsapp = whatsAppHref(profile.whatsappPhone);
   const location = profile.district ? `${profile.district.name}, ${profile.province.name}` : profile.province.name;
@@ -30,7 +36,7 @@ export function ProfileCard({
         {image ? (
           <Image
             src={image.url}
-            alt={image.alt || `${profile.nickname} profil fotoğrafı`}
+            alt={image.alt || fmt(m.card.photoAlt, { name: profile.nickname })}
             fill
             sizes={sizes}
             priority={priority}
@@ -44,13 +50,13 @@ export function ProfileCard({
       </div>
       <div className="pt-3">
         <p className="eyebrow flex flex-wrap items-center gap-x-2 text-muted-foreground" data-testid="card-location">
-          {profile.sponsored ? <span className="text-brand">Sponsorlu</span> : null}
+          {profile.sponsored ? <span className="text-brand">{m.card.sponsored}</span> : null}
           {profile.sponsored ? <span aria-hidden>·</span> : null}
           <span className="truncate">{location}</span>
         </p>
         <h3 className="mt-1.5 flex items-baseline gap-2 text-[1.3125rem] leading-tight">
           <a
-            href={`/profil/${profile.slug}`}
+            href={localizedPath(lang, "profile", { slug: profile.slug })}
             className="font-display truncate underline-offset-[5px] decoration-1 after:absolute after:inset-0 group-hover:underline focus-visible:after:outline-2 focus-visible:after:outline-ring focus-visible:after:outline-offset-4"
           >
             {profile.nickname}
@@ -58,7 +64,7 @@ export function ProfileCard({
           <span className="shrink-0 font-sans text-sm tabular-nums text-muted-foreground">{profile.age}</span>
           {profile.verified ? <VerifiedMark className="shrink-0 self-center" /> : null}
         </h3>
-        {whatsapp ? <a href={whatsapp} target="_blank" rel="noopener noreferrer nofollow" aria-label={`${profile.nickname} WhatsApp iletişim (yeni sekme)`} className="relative z-10 mt-3 inline-flex min-h-11 items-center gap-2 rounded-md bg-emerald-700 px-3 text-sm font-medium text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"><MessageCircle className="size-4" aria-hidden /> WhatsApp</a> : null}
+        {whatsapp ? <a href={whatsapp} target="_blank" rel="noopener noreferrer nofollow" aria-label={fmt(m.card.whatsappAria, { name: profile.nickname })} className="relative z-10 mt-3 inline-flex min-h-11 items-center gap-2 rounded-md bg-emerald-700 px-3 text-sm font-medium text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"><MessageCircle className="size-4" aria-hidden /> WhatsApp</a> : null}
 
       </div>
     </article>

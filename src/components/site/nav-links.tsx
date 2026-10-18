@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-type Item = { href: string; label: string };
+type Item = { href: string; label: string; alsoActive?: string };
 const base = "relative inline-flex h-9 items-center text-sm text-muted-foreground transition-colors hover:text-foreground";
 
 export function NavLinks({ items }: { items: readonly Item[] }) {
@@ -12,7 +12,7 @@ export function NavLinks({ items }: { items: readonly Item[] }) {
   return (
     <ul className="flex items-center gap-6">
       {items.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(`${item.href}/`) || (item.href === "/sehirler" && pathname.startsWith("/sehir/"));
+        const active = pathname === item.href || pathname.startsWith(`${item.href}/`) || Boolean(item.alsoActive && pathname.startsWith(item.alsoActive));
         return (
           <li key={item.href}>
             <Link

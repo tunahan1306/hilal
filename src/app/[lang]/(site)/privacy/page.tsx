@@ -1,0 +1,42 @@
+import type { Metadata } from "next";
+import { i18nPageMeta } from "@/i18n/metadata";
+import { getI18n } from "@/i18n/server";
+import { localizedPath } from "@/i18n/routes";
+import Link from "next/link";
+import { LegalDraftNotice, ProsePage } from "@/components/site/prose-page";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { lang, m } = await getI18n();
+  const meta = i18nPageMeta(lang, "privacy", undefined, m.legal.privacyTitle, "6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında aydınlatma metni.");
+  // Hukuki metin yalnızca Türkçedir: diğer dillerdeki kopyalar Türkçe aslına canonical verir ve indekslenmez.
+  return lang === "tr" ? meta : { ...meta, alternates: { ...meta.alternates, canonical: localizedPath("tr", "privacy") }, robots: { index: false, follow: true } };
+}
+
+export default async function KvkkPage() {
+  const { lang, m } = await getI18n();
+  return (
+    <ProsePage eyebrow={m.footer.legal} title={m.legal.privacyTitle} path={localizedPath(lang, "privacy")} notice={<LegalDraftNotice />} contentLang="tr">
+      <h2>Veri sorumlusu</h2>
+      <p>[Şirket unvanı, MERSİS no, adres ve VERBİS kayıt bilgileri hukuk incelemesi sonrasında eklenecektir.]</p>
+      <h2>İşlenen kişisel veriler</h2>
+      <ul>
+        <li><strong>Profil sahipleri:</strong> takma ad, doğum tarihi (yalnızca yaş doğrulaması için; kamuya yaş olarak yansır), il/ilçe, biyografi, isteğe bağlı WhatsApp numarası ve paylaşım izni tarihi, ilgi alanları, fotoğraflar, rıza ve doğrulama kayıtları.</li>
+        <li><strong>Ziyaretçiler:</strong> şikâyet, başvuru ve <Link href={localizedPath(lang, "contact")} className="text-brand underline underline-offset-4">iletişim</Link> formlarında paylaşılan bilgiler (iletişim formunda ad soyad, e-posta, konu ve mesaj; yalnızca talebin yanıtlanması amacıyla); kötüye kullanımı önlemek için IP adresinin geri döndürülemez özeti (ham IP saklanmaz).</li>
+        <li><strong>Yöneticiler:</strong> e-posta, oturum ve işlem kayıtları.</li>
+      </ul>
+      <h2>İşleme amaçları ve hukuki sebepler</h2>
+      <p>Profillerin yayınlanması açık rızaya; yaş doğrulaması, şikâyet yönetimi ve 5651 sayılı Kanun kapsamındaki yükümlülükler hukuki yükümlülük ve meşru menfaate dayanır. [Hukuki sebeplerin m.5 ve m.6 kapsamında kesinleştirilmesi gerekir.]</p>
+      <h2>Saklama süreleri</h2>
+      <ul>
+        <li>Yaş/kimlik doğrulama belgeleri: doğrulamadan sonra en fazla 30 gün (yapılandırılabilir), ardından otomatik silinir; yalnızca doğrulama sonucu saklanır.</li>
+        <li>Profil verileri: rızanın geri alınmasına veya silme talebine kadar.</li>
+        <li>İletişim formu mesajları: [süre hukuk incelemesi ile belirlenecek].</li>
+        <li>Denetim kayıtları: [süre hukuk incelemesi ile belirlenecek].</li>
+      </ul>
+      <h2>Haklarınız (KVKK m.11)</h2>
+      <p>Verilerinize erişme, düzeltme, silme, işlemeye itiraz etme ve diğer haklarınızı <Link href={localizedPath(lang, "removal")} className="text-brand underline underline-offset-4">başvuru formu</Link> ile kullanabilirsiniz. Başvurular en geç 30 gün içinde sonuçlandırılır.</p>
+      <h2>Yurt dışına aktarım</h2>
+      <p>Altyapı sağlayıcılarımızın (barındırma, veritabanı) sunucuları yurt dışında bulunabilir. [KVKK m.9 kapsamındaki aktarım dayanağı hukuk incelemesi ile belirlenmelidir.]</p>
+    </ProsePage>
+  );
+}

@@ -21,7 +21,7 @@ test.beforeAll(() => {
 });
 
 async function submit(page: Page, subject: string) {
-  await page.goto("/iletisim");
+  await page.goto("/tr/iletisim");
   await page.getByLabel("Ad soyad").fill("Supabase E2E");
   await page.getByLabel("E-posta").fill("sb-e2e@test.local");
   await page.getByLabel("Konu", { exact: true }).fill(subject);

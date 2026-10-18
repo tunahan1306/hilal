@@ -222,5 +222,35 @@ begin
 end $$;
 reset role;
 
+-- 11) Çok ülkeli konum dizini: sayılar, ülke kodu üretimi ve anon okuma
+do $$
+declare n int;
+begin
+  select count(*) into n from cities where country_code = 'tr'; if n <> 81 then raise exception 'TEST FAILED: TR il sayısı %', n; end if;
+  select count(*) into n from cities where country_code = 'nl'; if n <> 12 then raise exception 'TEST FAILED: NL eyalet sayısı %', n; end if;
+  select count(*) into n from cities where country_code = 'de'; if n <> 16 then raise exception 'TEST FAILED: DE eyalet sayısı %', n; end if;
+  select count(*) into n from districts d join cities c on c.id = d.city_id where c.country_code = 'tr'; if n <> 973 then raise exception 'TEST FAILED: TR ilçe sayısı %', n; end if;
+  select count(*) into n from districts d join cities c on c.id = d.city_id where c.country_code = 'nl'; if n <> 342 then raise exception 'TEST FAILED: NL belediye sayısı %', n; end if;
+  select count(*) into n from districts d join cities c on c.id = d.city_id where c.country_code = 'de'; if n <> 400 then raise exception 'TEST FAILED: DE Kreis sayısı %', n; end if;
+  if (select country_code from cities where slug = 'istanbul') <> 'tr' then raise exception 'TEST FAILED: istanbul ülke kodu'; end if;
+  begin
+    insert into cities (plate, name, slug, region) values (500, 'Geçersiz', 'gecersiz-plaka', 'x');
+    raise exception 'TEST FAILED: ülke aralığı dışındaki plaka kabul edildi';
+  exception when check_violation then null;
+  end;
+end $$;
+set local role anon;
+do $$
+declare n int;
+begin
+  select count(*) into n from countries; if n <> 3 then raise exception 'TEST FAILED: anon ülke listesi %', n; end if;
+  begin
+    insert into countries (code, plate_min, plate_max, name_tr, name_en, name_nl, name_de) values ('fr', 3000, 3999, 'a', 'b', 'c', 'd');
+    raise exception 'TEST FAILED: anon ülke ekleyebildi';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+
 select 'ALL DB TESTS PASSED' as result;
 rollback;

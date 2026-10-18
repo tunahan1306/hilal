@@ -13,11 +13,11 @@ async function fillContact(page: Page, subject: string) {
 
 test.describe("iletişim sayfası", () => {
   test("başlık, açıklama ve bağlantılar görünür; ciddi a11y ihlali yok", async ({ page }) => {
-    await page.goto("/iletisim");
+    await page.goto("/tr/iletisim");
     await expect(page.getByRole("heading", { level: 1, name: "İletişim" })).toBeVisible();
     await expect(page.getByText("Sorularınız, önerileriniz ve platformla ilgili talepleriniz için bizimle iletişime geçebilirsiniz.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "KVKK aydınlatma metni" })).toHaveAttribute("href", "/kvkk");
-    await expect(page.locator("footer").getByRole("link", { name: "İletişim" })).toHaveAttribute("href", "/iletisim");
+    await expect(page.getByRole("link", { name: "KVKK aydınlatma metni" })).toHaveAttribute("href", "/tr/kvkk");
+    await expect(page.locator("footer").getByRole("link", { name: "İletişim" })).toHaveAttribute("href", "/tr/iletisim");
     // Yapılandırılmamış iletişim e-postası uydurulmaz
     await expect(page.getByText("@example.com")).toHaveCount(0);
     const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
@@ -25,7 +25,7 @@ test.describe("iletişim sayfası", () => {
   });
 
   test("istemci doğrulaması boş formu göndermez ve hataları gösterir", async ({ page }) => {
-    await page.goto("/iletisim");
+    await page.goto("/tr/iletisim");
     await page.getByRole("button", { name: "Mesajı gönder" }).click();
     await expect(page.getByText("Ad soyad en az 2 karakter olmalı")).toBeVisible();
     await expect(page.getByText("Geçerli bir e-posta girin")).toBeVisible();
@@ -35,7 +35,7 @@ test.describe("iletişim sayfası", () => {
   });
 
   test("HTML içeren mesaj reddedilir, yazılanlar korunur", async ({ page }) => {
-    await page.goto("/iletisim");
+    await page.goto("/tr/iletisim");
     await fillContact(page, "XSS denemesi");
     await page.getByLabel("Mesaj", { exact: true }).fill("<img src=x onerror=alert(1)> bu bir deneme mesajıdır");
     await page.getByRole("button", { name: "Mesajı gönder" }).click();
@@ -45,7 +45,7 @@ test.describe("iletişim sayfası", () => {
 
   test("gönderim kaydedilir ve yönetim panelinde okunup durum değiştirilir", async ({ page }) => {
     const subject = `E2E konu ${Date.now()}`;
-    await page.goto("/iletisim?konu=support");
+    await page.goto("/tr/iletisim?konu=support");
     await expect(page.getByLabel("Teknik destek")).toBeChecked();
     await fillContact(page, subject);
     await page.waitForTimeout(2_100); // bot süzgeci: en kısa doldurma süresi

@@ -40,6 +40,8 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["sharp"],
   experimental: {
     serverActions: { bodySizeLimit: "6mb" },
+    // İki kök layout var (app/[lang] ve app/admin); eşleşmeyen adresler için tek 404 sayfası.
+    globalNotFound: true,
   },
   images: {
     loader: "custom",

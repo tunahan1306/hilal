@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { canTransition, evaluatePublishReadiness, PROFILE_STATUS_LABELS } from "@/domain/publishing";
 import { effectiveStatus, SUBSCRIPTION_STATUS_LABELS } from "@/domain/subscriptions";
 import { MODERATION_ACTION_LABELS, REPORT_CATEGORY_LABELS } from "@/domain/types";
+import { localizedPath } from "@/i18n/routes";
 import { formatDate } from "@/lib/site";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
@@ -88,7 +89,7 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
           <>
             <StatusBadge tone={PROFILE_STATUS_TONE[s]} className="self-center">{PROFILE_STATUS_LABELS[s]}</StatusBadge>
             {s === "published" ? (
-              <Link prefetch={false} href={`/profil/${profile.slug}`} target="_blank" className="inline-flex items-center gap-1 self-center text-sm text-brand hover:underline">
+              <Link prefetch={false} href={localizedPath("tr", "profile", { slug: profile.slug })} target="_blank" className="inline-flex items-center gap-1 self-center text-sm text-brand hover:underline">
                 Sitede gör <ExternalLink className="size-3.5" aria-hidden />
               </Link>
             ) : null}

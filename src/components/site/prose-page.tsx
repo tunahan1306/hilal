@@ -1,7 +1,14 @@
+import { getI18n } from "@/i18n/server";
 import { Breadcrumbs } from "./breadcrumbs";
 
-/** Metin ağırlıklı sayfalar: editoryal başlık, 68ch okuma sütunu, saç çizgili bölümler. */
-export function ProsePage({ title, path, lead, eyebrow, children, notice }: { title: string; path: string; lead?: string; eyebrow?: string; children: React.ReactNode; notice?: React.ReactNode }) {
+/**
+ * Metin ağırlıklı sayfalar: editoryal başlık, 68ch okuma sütunu, saç çizgili bölümler.
+ * `contentLang` verilirse gövde o dildedir (ör. yalnızca Türkçe yayımlanan hukuki metin);
+ * ziyaretçinin dili farklıysa açıklama notu gösterilir.
+ */
+export async function ProsePage({ title, path, lead, eyebrow, children, notice, contentLang }: { title: string; path: string; lead?: string; eyebrow?: string; children: React.ReactNode; notice?: React.ReactNode; contentLang?: string }) {
+  const { lang, m } = await getI18n();
+  const foreign = contentLang && contentLang !== lang;
   return (
     <div className="container-page pb-8 pt-6 sm:pt-10">
       <Breadcrumbs items={[{ name: title, href: path }]} />
@@ -14,8 +21,9 @@ export function ProsePage({ title, path, lead, eyebrow, children, notice }: { ti
       </header>
       <div className="lg:grid lg:grid-cols-12">
         <div className="lg:col-span-8 lg:col-start-3">
+          {foreign ? <div role="note" className="mb-6 border-l-2 border-brass py-2 pl-4 text-sm text-muted-foreground">{m.legal.untranslated}</div> : null}
           {notice}
-          <div className="measure space-y-5 text-[1rem] leading-[1.75] text-foreground/90 [&_a]:underline [&_a]:underline-offset-4 [&_h2]:font-display [&_h2]:mt-14 [&_h2]:scroll-mt-24 [&_h2]:border-t [&_h2]:border-hairline [&_h2]:pt-8 [&_h2]:text-display-sm [&_h2]:text-foreground [&_li]:mt-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:marker:text-brass">
+          <div lang={contentLang} className="measure space-y-5 text-[1rem] leading-[1.75] text-foreground/90 [&_a]:underline [&_a]:underline-offset-4 [&_h2]:font-display [&_h2]:mt-14 [&_h2]:scroll-mt-24 [&_h2]:border-t [&_h2]:border-hairline [&_h2]:pt-8 [&_h2]:text-display-sm [&_h2]:text-foreground [&_li]:mt-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:marker:text-brass">
             {children}
           </div>
         </div>
@@ -24,10 +32,11 @@ export function ProsePage({ title, path, lead, eyebrow, children, notice }: { ti
   );
 }
 
-export function LegalDraftNotice() {
+export async function LegalDraftNotice() {
+  const { m } = await getI18n();
   return (
     <div role="note" className="mb-10 border-l-2 border-warning bg-warning/8 py-3 pl-4 pr-3 text-sm">
-      <strong className="font-medium">Taslak metin.</strong> Bu metin hukuki danışmanlık niteliği taşımaz ve yayına alınmadan önce bir hukuk uzmanı tarafından incelenmelidir (bkz. LEGAL_REVIEW_CHECKLIST.md).
+      <strong className="font-medium">{m.legal.draft}</strong> {m.legal.draftText}
     </div>
   );
 }

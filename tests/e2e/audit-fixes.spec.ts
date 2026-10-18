@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { expectToast, login } from "./helpers";
 
 test("KVKK başvurusu gönderilir ve yönetim panelinde görünür", async ({ page }) => {
-  await page.goto("/kaldirma-talebi?profil=ece-tu");
+  await page.goto("/tr/kaldirma-talebi?profil=ece-tu");
   await expect(page.getByLabel(/İlgili profil bağlantısı/)).toHaveValue(/\/profil\/ece-tu$/);
   await page.getByLabel("Ad soyad").fill("E2E Başvuru Sahibi");
   await page.getByLabel("E-posta").fill("basvuru@example.com");
@@ -53,10 +53,10 @@ test("sınırı aşan belge sunucuya gönderilmeden uyarı verir", async ({ page
 });
 
 test("boş il sayfası doğru boş durum mesajını gösterir", async ({ page }) => {
-  await page.goto("/sehir/hakkari");
+  await page.goto("/tr/konum/tr/hakkari");
   await expect(page.getByText("Bu bölgede henüz yayında profil yok")).toBeVisible();
   await expect(page.getByRole("link", { name: "Filtreleri sıfırla" })).toHaveCount(0);
-  await page.goto("/sehir/hakkari?dogrulanmis=1");
+  await page.goto("/tr/konum/tr/hakkari?dogrulanmis=1");
   await expect(page.getByText("Bu bölgede henüz yayında profil yok")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Filtreleri sıfırla" })).toBeVisible();
 });

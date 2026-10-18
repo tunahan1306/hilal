@@ -6,7 +6,7 @@ test.describe("server age confirmation", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
   test("acceptance, refresh and navigation retain declaration", async ({ page, context, request }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    const response = await page.goto("/sehir/istanbul/kadikoy");
+    const response = await page.goto("/tr/konum/tr/istanbul/kadikoy");
     expect(await response!.text()).not.toContain("/demo/");
     await expect(page.getByRole("dialog")).toBeVisible();
     expect((await request.get("/api/discovery" )).status()).toBe(403);
@@ -20,12 +20,12 @@ test.describe("server age confirmation", () => {
     await page.reload();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.getByRole("link", { name: "Keşfet", exact: true }).first().click();
-    await expect(page).toHaveURL(/\/kesfet$/);
+    await expect(page).toHaveURL(/\/tr\/kesfet$/);
     await expect(page.locator("article").first()).toBeVisible();
   });
   test("decline never exposes profiles; gate supports keyboard and screen readers", async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 800 });
-    await page.goto("/");
+    await page.goto("/tr");
     await expect(page.getByRole("dialog")).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(page.getByRole("button", { name: "Evet, 18 yaşından büyüğüm" })).toBeFocused();
@@ -36,7 +36,7 @@ test.describe("server age confirmation", () => {
     await expect(page.locator("img, article")).toHaveCount(0);
     await page.reload();
     await expect(page.locator("img, article")).toHaveCount(0);
-    await page.goto("/profil/ece-tu");
+    await page.goto("/tr/profil/ece-tu");
     await expect(page.getByRole("button", { name: "Evet, 18 yaşından büyüğüm" })).toBeVisible();
   });
 });
@@ -45,7 +45,7 @@ test("progressive discovery retries errors and appends unique results", async ({
   expect((await request.get("/api/discovery?il=izmir&ilce=kadikoy")).status()).toBe(400);
   expect((await request.get("/api/discovery?cursor=bad")).status()).toBe(400);
   expect((await request.get("/api/image?src=https%3A%2F%2Fexample.com%2Fx.webp&w=640")).status()).toBe(400);
-  await page.goto("/kesfet");
+  await page.goto("/tr/kesfet");
   const cards = page.locator("article h3 a");
   const initial = await cards.count();
   await expect(page.getByRole("button", { name: "Daha fazla göster" })).toBeVisible();
@@ -64,7 +64,7 @@ test("responsive themes, photographs, canonical links and screenshots", async ({
   await mkdir("artifacts/premium-discovery", { recursive: true });
   for (const width of [360, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
-    for (const path of ["/", "/sehir/istanbul/kadikoy"]) {
+    for (const path of ["/", "/tr/konum/tr/istanbul/kadikoy"]) {
       await page.goto(path);
       await expect(page.locator("article").first()).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -73,11 +73,11 @@ test("responsive themes, photographs, canonical links and screenshots", async ({
     await expect(page.getByRole("button", { name: "Şikâyet et" })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   }
-  await page.goto("/");
+  await page.goto("/tr");
   await expect.poll(() => page.locator("article img").first().evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
   await page.screenshot({ path: "artifacts/premium-discovery/homepage.png", fullPage: true });
-  await page.goto("/sehir/istanbul/kadikoy");
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/sehir\/istanbul\/kadikoy$/);
+  await page.goto("/tr/konum/tr/istanbul/kadikoy");
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/tr\/konum\/tr\/istanbul\/kadikoy$/);
   await page.screenshot({ path: "artifacts/premium-discovery/district.png", fullPage: true });
   await page.locator("article h3 a").first().click();
   await expect(page.getByRole("heading", { level: 1 })).not.toContainText("load");
@@ -93,7 +93,7 @@ test("responsive themes, photographs, canonical links and screenshots", async ({
     expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical")).toEqual([]);
   }
   await page.context().clearCookies();
-  await page.goto("/");
+  await page.goto("/tr");
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.screenshot({ path: "artifacts/premium-discovery/age-gate.png", fullPage: true });
   expect(errors).toEqual([]);

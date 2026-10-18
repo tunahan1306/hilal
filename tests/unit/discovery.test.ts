@@ -30,7 +30,10 @@ describe("keyset discovery", () => {
   });
   it("rejects malformed cursors and unsafe return destinations", () => {
     for (const raw of ["bad", "x".repeat(600), encodeCursor({ id: "bad,query", publishedAt: "bad" })]) expect(decodeCursor(raw)).toBeNull();
-    for (const raw of ["//evil.test", "/\\evil.test", "/admin", "https://evil.test"]) expect(safeReturnPath(raw)).toBe("/");
-    expect(safeReturnPath("/sehir/istanbul/kadikoy?yasMin=30")).toContain("/sehir/istanbul");
+    for (const raw of ["//evil.test", "/\\evil.test", "/admin", "https://evil.test", "/xx/kesfet"]) expect(safeReturnPath(raw)).toBe("/tr");
+    expect(safeReturnPath("/admin", "de")).toBe("/de");
+    expect(safeReturnPath("/nl/ontdekken?ulke=nl")).toBe("/nl/ontdekken?ulke=nl");
+    // Eski adresler yeni yerel adrese çevrilir
+    expect(safeReturnPath("/sehir/istanbul/kadikoy?yasMin=30")).toBe("/tr/konum/tr/istanbul/kadikoy?yasMin=30");
   });
 });

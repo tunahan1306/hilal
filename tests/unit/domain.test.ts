@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ageOn, isAdult } from "@/domain/age";
 import { hasBlockingFindings, scanText } from "@/domain/content-policy";
 import { hasActiveFilters, parseFilters, serializeFilters } from "@/domain/filters";
-import { districtCount, getDistrict, getProvince, listDistricts, listProvinces } from "@/domain/locations";
+import { districtCount, getDistrict, getProvince, getProvinceIn, listDistricts, listProvinces } from "@/domain/locations";
 import { profileInputSchema, reportInputSchema } from "@/domain/schemas";
 import { safeJsonLd, shouldIndexListing, truncate } from "@/domain/seo";
 import { slugifyTr } from "@/domain/text";
@@ -19,14 +19,26 @@ describe("slugifyTr", () => {
 });
 
 describe("konum verisi", () => {
-  it("81 il ve 973 ilçe içerir", () => {
-    expect(listProvinces()).toHaveLength(81);
+  it("Türkiye 81 il ve 973 ilçe; Hollanda 12 eyalet ve 342 belediye; Almanya 16 eyalet ve 400 Kreis içerir", () => {
+    expect(listProvinces("tr")).toHaveLength(81);
     expect(districtCount()).toBe(973);
+    expect(listProvinces("nl")).toHaveLength(12);
+    expect(listProvinces("nl").reduce((n, p) => n + listDistricts(p.plate).length, 0)).toBe(342);
+    expect(listProvinces("de")).toHaveLength(16);
+    expect(listProvinces("de").reduce((n, p) => n + listDistricts(p.plate).length, 0)).toBe(400);
   });
-  it("il slug'ları benzersizdir ve plakalar 1-81 arasıdır", () => {
-    const provinces = listProvinces();
-    expect(new Set(provinces.map((p) => p.slug)).size).toBe(81);
-    expect(provinces.map((p) => p.plate).sort((a, b) => a - b)).toEqual(Array.from({ length: 81 }, (_, i) => i + 1));
+  it("bölge slug'ları ülkeler arasında benzersizdir; plakalar ülke aralığındadır", () => {
+    const all = listProvinces();
+    expect(new Set(all.map((p) => p.slug)).size).toBe(all.length);
+    expect(listProvinces("tr").map((p) => p.plate).sort((a, b) => a - b)).toEqual(Array.from({ length: 81 }, (_, i) => i + 1));
+    for (const p of listProvinces("nl")) expect(p.plate).toBeGreaterThan(1000);
+    for (const p of listProvinces("de")) expect(p.plate).toBeGreaterThan(2000);
+    for (const p of all) expect(new Set(listDistricts(p.plate).map((d) => d.slug)).size).toBe(listDistricts(p.plate).length);
+  });
+  it("ülke URL'si bölgenin ülkesiyle eşleşmelidir", () => {
+    expect(getProvinceIn("nl", "noord-holland")?.country).toBe("nl");
+    expect(getProvinceIn("de", "noord-holland")).toBeUndefined();
+    expect(getProvinceIn("tr", "istanbul")?.plate).toBe(34);
   });
   it("örnek ilçeleri çözer", () => {
     expect(getProvince("istanbul")?.plate).toBe(34);

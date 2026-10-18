@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { COUNTRIES, COUNTRY_CODES } from "@/domain/countries";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { scanProfileContent } from "@/domain/content-policy";
@@ -101,7 +102,12 @@ export function ProfileForm({
               <Select value={field.value ? String(field.value) : ""} onValueChange={(v) => { field.onChange(Number(v)); setValue("districtSlug", ""); }}>
                 <SelectTrigger id="provincePlate" className="w-full" aria-invalid={Boolean(err("provincePlate"))} aria-describedby={err("provincePlate") ? "provincePlate-error" : undefined}><SelectValue placeholder="İl seçin" /></SelectTrigger>
                 <SelectContent className="max-h-80">
-                  {provinces.map((p) => <SelectItem key={p.plate} value={String(p.plate)}>{p.name}</SelectItem>)}
+                  {COUNTRY_CODES.map((c) => (
+                    <SelectGroup key={c}>
+                      <SelectLabel>{COUNTRIES[c].names.tr}</SelectLabel>
+                      {provinces.filter((p) => p.country === c).map((p) => <SelectItem key={p.plate} value={String(p.plate)}>{p.name}</SelectItem>)}
+                    </SelectGroup>
+                  ))}
                 </SelectContent>
               </Select>
             )}
