@@ -5,12 +5,13 @@ import { ArrowUpRight, Flag, ShieldCheck } from "lucide-react";
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
 import { ContactForm } from "@/components/site/contact-form";
 import { CONTACT_CATEGORIES, type ContactCategory } from "@/domain/types";
-import { publicContactEmail } from "@/lib/site";
+import { publicContactEmail, ogFor } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "İletişim",
   description: "Sorularınız, önerileriniz ve platformla ilgili talepleriniz için Hilal ekibiyle iletişime geçin.",
   alternates: { canonical: "/iletisim" },
+  openGraph: ogFor("/iletisim", "İletişim", "Sorularınız, önerileriniz ve platformla ilgili talepleriniz için Hilal ekibiyle iletişime geçin."),
 };
 
 export default function ContactPage({ searchParams }: PageProps<"/iletisim">) {

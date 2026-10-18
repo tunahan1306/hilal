@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ogFor } from "@/lib/site";
 import Link from "next/link";
 import { LegalDraftNotice, ProsePage } from "@/components/site/prose-page";
 
@@ -6,6 +7,7 @@ export const metadata: Metadata = {
   title: "KVKK aydınlatma metni",
   description: "6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında aydınlatma metni.",
   alternates: { canonical: "/kvkk" },
+  openGraph: ogFor("/kvkk", "KVKK aydınlatma metni", "6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında aydınlatma metni."),
 };
 
 export default function KvkkPage() {

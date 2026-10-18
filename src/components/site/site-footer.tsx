@@ -39,7 +39,7 @@ export function SiteFooter() {
           <p className="flex items-center gap-2">
             <AgeBadge /> Yalnızca 18 yaş ve üzeri. Ücretli hizmet tanıtımına izin verilmez.
           </p>
-          <p>© <CopyrightYear /> Hilal · Profiller yalnızca yönetim tarafından, açık rıza ile oluşturulur.</p>
+          <p>© <CopyrightYear /> Hilal</p>
         </div>
       </div>
     </footer>

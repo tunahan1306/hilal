@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ogFor } from "@/lib/site";
 import { Suspense } from "react";
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
 import { ProfileListing, ProfileListingSkeleton } from "@/components/site/profile-listing";
@@ -11,6 +12,7 @@ export async function generateMetadata({ searchParams }: PageProps<"/kesfet">): 
     title: "Profilleri keşfet",
     description: "Türkiye genelinde şehir, ilçe ve yaş aralığına göre sosyal profilleri keşfedin.",
     alternates: { canonical: "/kesfet" },
+    openGraph: ogFor("/kesfet", "Profilleri keşfet", "Türkiye genelinde şehir, ilçe ve yaş aralığına göre sosyal profilleri keşfedin."),
     // Filtrelenmiş ve sayfalanmış varyantlar indekslenmez (ince/kopya içerik önlemi).
     robots: filtered ? { index: false, follow: true } : undefined,
   };

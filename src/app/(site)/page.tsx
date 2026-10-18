@@ -10,13 +10,13 @@ import { ProfileListing, ProfileListingSkeleton } from "@/components/site/profil
 import { DEFAULT_ISTANBUL_SIDE, ISTANBUL_SIDES, ISTANBUL_SIDE_KEYS, ISTANBUL_SLUG, isIstanbulSide } from "@/domain/istanbul";
 import { POPULAR_PROVINCE_SLUGS } from "@/domain/location-directory";
 import { getLocationDirectory } from "@/server/queries/locations";
-import { SITE, siteUrl } from "@/lib/site";
+import { ogFor, SITE, siteUrl } from "@/lib/site";
 import { getFeaturedProfiles, getLocationCounts, istanbulSideCounts, profileCountFor } from "@/server/queries/public";
 
 export const metadata: Metadata = {
   // ?yaka= yalnızca görünümü değiştirir; tek kanonik adres ana sayfadır.
   alternates: { canonical: "/" },
-  openGraph: { url: "/" },
+  openGraph: { ...ogFor("/", SITE.tagline, SITE.description), title: `${SITE.name} — ${SITE.tagline}` },
 };
 
 export default function HomePage({ searchParams }: PageProps<"/">) {

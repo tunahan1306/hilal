@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ogFor } from "@/lib/site";
 import { Check, Minus } from "lucide-react";
 import { ProsePage } from "@/components/site/prose-page";
 import { getPlans } from "@/server/queries/public";
@@ -7,6 +8,7 @@ export const metadata: Metadata = {
   title: "Üyelik paketleri",
   description: "Profil sahipleri için hukuka uygun görünürlük paketleri: Basic, Plus ve Premium.",
   alternates: { canonical: "/paketler" },
+  openGraph: ogFor("/paketler", "Üyelik paketleri", "Profil sahipleri için hukuka uygun görünürlük paketleri: Basic, Plus ve Premium."),
 };
 
 export default async function PlansPage() {

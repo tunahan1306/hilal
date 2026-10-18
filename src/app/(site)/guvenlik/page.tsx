@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ogFor } from "@/lib/site";
 import Link from "next/link";
 import { ProsePage } from "@/components/site/prose-page";
 import { REPORT_CATEGORY_LABELS } from "@/domain/types";
@@ -7,6 +8,7 @@ export const metadata: Metadata = {
   title: "Güvenlik ve topluluk kuralları",
   description: "Hilal topluluk kuralları: yalnızca 18 yaş üstü, rızası alınmış profiller; ücretli hizmet tanıtımı, taciz ve izinsiz fotoğraf yasaktır.",
   alternates: { canonical: "/guvenlik" },
+  openGraph: ogFor("/guvenlik", "Güvenlik ve topluluk kuralları", "Hilal topluluk kuralları: yalnızca 18 yaş üstü, rızası alınmış profiller; ücretli hizmet tanıtımı, taciz ve izinsiz fotoğraf yasaktır."),
 };
 
 export default function SafetyPage() {

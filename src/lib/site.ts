@@ -27,3 +27,11 @@ export function publicContactEmail(env: NodeJS.ProcessEnv = process.env): string
   const v = env.CONTACT_PUBLIC_EMAIL?.trim();
   return v && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) && !/@example\.(com|org|net)$/i.test(v) ? v : null;
 }
+
+/**
+ * Sayfa düzeyinde Open Graph: Next.js alt sayfadaki `openGraph` nesnesini kök düzenle
+ * birleştirmez, değiştirir; bu yüzden tür, dil ve site adı her sayfada birlikte verilir.
+ */
+export function ogFor(path: string, title: string, description?: string) {
+  return { type: "website" as const, locale: SITE.locale, siteName: SITE.name, url: path, title: `${title} | ${SITE.name}`, description };
+}
