@@ -7,7 +7,8 @@ export type MediaItem =
   | { kind: "image"; url: string; alt: string; width: number; height: number }
   | { kind: "video"; url: string; poster: string | null; alt: string; width: number; height: number; mimeType: string };
 
-const MediaLightboxView = dynamic(() => import("./media-lightbox-view"), { ssr: false });
+const loadView = () => import("./media-lightbox-view");
+const MediaLightboxView = dynamic(loadView, { ssr: false });
 
 type Ctx = { open: (index: number) => void; count: number };
 const MediaContext = createContext<Ctx | null>(null);
@@ -45,6 +46,17 @@ export function ProfileMediaProvider({ items, name, children }: { items: MediaIt
       pushed.current = false;
       history.back();
     }
+  }, []);
+
+  // İlk yükü büyütmeden, tarayıcı boştayken kütüphaneyi indirip kapalı olarak bağla: ilk dokunuşta bekleme olmaz (INP).
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(() => void loadView().then(() => setMounted(true)), { timeout: 3000 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const t = setTimeout(() => void loadView().then(() => setMounted(true)), 1500);
+    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
