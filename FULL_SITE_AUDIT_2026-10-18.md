@@ -1,362 +1,408 @@
-# Hilal — Kapsamlı Site Denetimi (2026-10-18)
+# Hilal — Kapsamlı Site Denetimi (2026-10-18, 2. tur)
 
-Dal: `feat/site-audit-contact` · Taban: `main` @ `46049a2` · Hazırlayan: Claude (Claude Code) · Production'a deploy veya migration **uygulanmadı**.
+Dal: `feat/site-audit-contact` (PR #1) · Taban: `main` @ `46049a2` · Hazırlayan: Claude (Claude Code)
 
-Durum etiketleri: **Düzeltildi** · **Kısmen** (bir kısmı düzeltildi, kalan kısmı açıkça yazıldı) · **Açık** (düzeltilmedi) · **Karar bekliyor** (ürün/hukuk kararı gerekiyor).
+**Bu dalda yapılmayanlar:** PR merge edilmedi, production'a deploy yapılmadı, production migration'ı çalıştırılmadı, production veritabanında test çalıştırılmadı.
+
+**Durum etiketleri:**
+- **Düzeltildi**
+- **Kısmen:** kalan kısım açıkça yazılmıştır.
+- **Açık**
+- **Kapsam dışı:** C-01, kullanıcı kararıyla.
+- **Bilgi**
 
 ---
 
 ## 1. Yönetici özeti
 
-- **69 benzersiz bulgu** kayda geçti (tablolarda 72 satır var; P-01=C-01, P-05=C-16, P-06=C-17 iki tabloda da görünüyor): **1 Critical, 9 High, 28 Medium, 29 Low, 2 Info**.
-- **Düzeltilen:** 22 bulgu tamamen, 24 bulgu kısmen. **Açık:** 18. **Karar bekleyen:** 2 (C-01, C-02). **Bilgi:** 3 (değişiklik gerekmedi).
-- **En önemli bulgu (Critical, C-01): yayındaki 10 profilin tamamı yapay zekâyla üretilmiş kurgusal kadın portreleri.**
-  - Profillerde "kurgusal" etiketi yok.
-  - Her profilde aynı telefon numarasına giden WhatsApp düğmesi var.
-  - Bu durum `88f2aed` ("son kommit") ile bilinçli olarak getirildi.
-  - Bu durum sitenin kendi Güvenlik ve Kullanım Koşulları metinleriyle ve README'deki "müşteri yönlendirme yasak" kuralıyla çelişiyor. Ayrıntı: §9.1.
-  - Bu nedenle **ana sayfa, profil kartı ve profil galerisinin görsel yeniden tasarımı uygulanmadı.** Bu profillerin daha ikna edici görünmesine katkı vermedim. Karar sahibine üç seçenek sunuldu; yanıt gelene kadar bu madde açık.
-- **Yeni iletişim modülü çalışıyor.** Kapsamı:
-  - `/iletisim` sayfası.
-  - Sunucu doğrulaması, honeypot, doldurma süresi kontrolü, iki katmanlı oran sınırı ve tekrar gönderim koruması.
-  - Yalnızca MFA'lı yöneticinin okuyabildiği (RLS) `contact_messages` tablosu.
-  - `/admin/iletisim` gelen kutusu: okundu/okunmadı, durum, kategori, arama, sayfalama, işlem geçmişi.
-  - E-posta bildirimi yalnızca anahtar yapılandırılırsa gönderiliyor.
-- **Gizlilik düzeltmeleri:**
-  - Görsel vekili artık yalnızca şu an yayında ve onaylı medyayı sunuyor.
-  - Eski herkese açık kovadaki dosyalar silme sırasında kaldırılıyor (migration).
-  - Herkese açık yüklemelerin CDN önbelleği 1 yıldan 10 dakikaya indi.
-- **Performans (mobil Lighthouse, yerel üretim derlemesi):**
-  - Performans skoru 68–78'den 86–90'a çıktı.
-  - LCP 5,9 sn'den 3,5–4,2 sn'ye indi.
-  - Sayfa ağırlığı yaklaşık 873 KB'den yaklaşık 500 KB'ye indi.
-  - Ana etken Fraunces italik stili ve SOFT ekseninin kaldırılması.
+- **Toplam:** 73 benzersiz bulgu.
+- **Önem:** 1 Critical, 10 High, 30 Medium, 30 Low, 2 Info. Bulgular ilk turda 69, bu turda 4 yeni bulgu eklendi (V-01–V-04).
+- **Durum:**
+
+  | Durum | Sayı |
+  |---|---|
+  | Tamamen düzeltildi | 46 |
+  | Kısmen | 13 |
+  | Açık | 6 |
+  | Kapsam dışı (C-01, C-02, C-05, C-08, P-13; hepsi C-01'e bağlı) | 5 |
+  | Bilgi | 3 |
+
+- **Açık kalan Critical/High/Medium:**
+
+  | Bulgu | Önem | Durum | Not |
+  |---|---|---|---|
+  | **C-01** | Critical | Kapsam dışı, **çözülmedi** | Kurgusal profiller etiketsiz ve tek WhatsApp numarasına gidiyor |
+  | **C-02** | High | Kapsam dışı | C-01'e bağlı |
+  | **V-01** | High | Açık | Preview ortamı production veritabanını kullanıyor; Vercel yapılandırması gerekiyor |
+  | **C-03** | High | Kısmen | Kod ve migration hazır; production kova taraması elle yapılacak |
+  | **C-04** | High | Kısmen | Kod hazır; mevcut dosyaların 1 yıllık önbellek başlığı kalıyor |
+  | **C-16** | High | Kısmen | Yaş kapısı ve indeksleme ürün kararı gerektiriyor |
+  | **P-02** | High | Kısmen | `/guvenlik` sayfasındaki doğrulama ve rıza kural metinleri C-01 nedeniyle olduğu gibi kaldı |
+  | **C-05** | Medium | Kapsam dışı | C-01'e bağlı |
+  | **P-13** | Medium | Kapsam dışı | WhatsApp CTA stili, C-01'e bağlı |
+  | **V-02** | Medium | Açık | `ALLOW_DEMO_MODE` production'da tanımlı; değeri kontrol edilmeli |
+
+- **Performans (mobil Lighthouse, 5 tekrar, medyan):**
+  - Performans skoru 76–79'dan 89–92'ye çıktı.
+  - LCP 5,7–6,1 sn'den 3,4–3,8 sn'ye indi.
+  - Sayfa ağırlığı yaklaşık 850–930 KB'den yaklaşık 480–550 KB'ye indi.
+  - INP yaklaşığı 80 ms; `main` ile aynı. Bu turda bulunan bir INP gerilemesi düzeltildi (§8).
 - **Testler:**
-  - Typecheck, lint, 103/103 unit, DB politika testleri ve production build geçti.
-  - E2E: 47 geçti, 5 atlandı. Atlananlar Supabase gerektiriyor.
-  - Taramada 28 sayfa × 8 genişlik = 224 kontrol yapıldı: 0 konsol hatası, 0 taşma, 0 kırık görsel, 0 axe ihlali.
-  - **Entegrasyon testleri çalıştırılamadı** (yerel Supabase yığını başlamadı; §13).
+  - Typecheck, lint, unit (110/110), DB/RLS, **entegrasyon (11/11, yerel yalıtılmış Supabase)** ve build geçti.
+  - E2E demo modunda 61 geçti, 7 atlandı. Supabase modunda 11 geçti, 2 başarısız (`examples.spec`; yalnızca production'da bulunan kurgusal profil verisini bekliyor).
+  - Responsive ve axe taraması: 224 kontrol, 0 sorun.
 
 ## 2. İncelenen sayfalar
 
 | Alan | Rotalar |
 |---|---|
-| Public | `/`, `/?yaka=anadolu`, `/kesfet`, `/sehirler`, `/sehir/istanbul`, `/sehir/istanbul?yaka=avrupa`, `/sehir/istanbul/kadikoy`, `/sehir/ankara`, `/sehir/bayburt` (boş), `/sehir/xyz` (404), `/profil/[slug]`, `/paketler`, `/guvenlik`, `/kvkk`, `/kullanim-kosullari`, `/kaldirma-talebi`, `/yas-onayi` (kabul/ret), `/bildirim-alindi`, `/bulunamadi`, rastgele 404, `/iletisim` (yeni), `robots.txt`, `sitemap.xml` |
-| Admin | `/admin/giris`, `/admin`, `/admin/profiller`, `/admin/profiller/yeni`, `/admin/profiller/[id]` (7 sekme), `/admin/sikayetler`, `/admin/sikayetler/[id]`, `/admin/talepler`, `/admin/abonelikler`, `/admin/seo`, `/admin/istatistik`, `/admin/ayarlar`, `/admin/denetim`, `/admin/ilgi-alanlari`, `/admin/iletisim` (yeni), `/admin/iletisim/[id]` (yeni) |
-
-**Denetim yöntemi:**
-- **Production (yalnızca okuma):** sadece GET istekleri ve yaş onayı yapıldı. Yaş onayı yalnızca çerez yazar. Hiçbir form gönderilmedi.
-- **Yönetim paneli:** yerelde bellek içi demo modunda denetlendi. Supabase bağlantısı yoktu, production'a dokunulmadı.
-- **Kod:** salt okuma denetimi.
-- **Doğrulama:** yerel production build (`next start`, demo modu) üzerinde yapıldı.
+| Public | `/`, `/?yaka=anadolu`, `/kesfet`, `/sehirler`, `/sehir/istanbul`, `/sehir/istanbul?yaka=avrupa`, `/sehir/istanbul/kadikoy`, `/sehir/ankara`, `/sehir/bayburt`, `/sehir/xyz` (404), `/profil/[slug]`, olmayan profil (404), `/paketler`, `/guvenlik`, `/kvkk`, `/kullanim-kosullari`, `/kaldirma-talebi`, `/iletisim`, `/yas-onayi`, `/bildirim-alindi`, `/bulunamadi`, `robots.txt`, `sitemap.xml`, `opengraph-image` |
+| Admin | `/admin/giris`, `/admin`, `profiller`, `profiller/yeni`, `profiller/[id]` (7 sekme), `sikayetler` ve detayı, `talepler`, `abonelikler`, `seo`, `istatistik`, `ayarlar`, `denetim`, `ilgi-alanlari`, `iletisim` ve detayı |
 
 ## 3. Sayfa bazında sorunlar
 
-Kimlikler: **P-** public tarayıcı denetimi, **A-** admin, **C-** kod denetimi, **M-** bu oturumdaki ek gözlem.
-
 ### Public
 
-| ID | Önem | Sayfa | Bulgu ve kanıt | Dosya | Durum |
-|---|---|---|---|---|---|
-| P-01 / C-01 | **Critical** | `/`, `/kesfet`, `/profil/*` | 10 profilin tamamı YZ üretimi kurgusal kadın (`kurgu-kadin-*`, `assets/profile-portraits/generation.json`). Hiçbirinde "kurgusal" ibaresi yok. 10 kartın 10'u aynı `wa.me/90507…` numarasına gidiyor. Ayrıntı §9.1 | `profile-card.tsx`, `profil/[slug]/page.tsx`, migration `20261022000001` | **Karar bekliyor** |
-| P-02 | High | genel metinler | Hiçbir profil doğrulanmamışken metinler "doğrulanmış profiller" diyordu (`/kesfet?dogrulanmis=1` → 0 sonuç). | `site.ts`, `kesfet`, `sehirler`, `location-seo.ts`, `site-footer.tsx` | **Kısmen**: genel metinlerden kaldırıldı; footer'daki "Profiller … açık rıza ile oluşturulur" cümlesi C-01 kararına bağlı |
-| P-03 | Medium | `/kesfet` mobil filtre | Sheet'in X düğmesi sticky başlığın altında kalıyordu, tıklanamıyordu. Erişilebilir adı İngilizceydi ("Close"). | `ui/sheet.tsx`, `ui/dialog.tsx` | **Düzeltildi**: z-20, 40px hedef, "Kapat" |
-| P-04 | Medium | `/kesfet` mobil filtre | Ana düğme ekranın alt kenarına yapışıktı (`pb-safe` → 0px). | `filter-bar.tsx` | **Düzeltildi**: `max(env(safe-area-inset-bottom),1rem)` |
-| P-05 / C-16 | High | SEO | Çerezsiz tarayıcı `/`, `/kesfet`, `/sehir/*`, `/profil/*` adreslerinde `noindex` yaş kapısını görüyor; buna rağmen sitemap bu adresleri listeliyordu. | `proxy.ts`, `sitemap.ts` | **Kısmen**: sitemap artık yalnızca taranabilir sayfaları içeriyor; yaş kapısının tasarımı §15'te |
-| P-06 / C-17 | Medium | `/` | Canonical yoktu; `/?yaka=anadolu` kopya olarak indekslenebiliyordu. | `(site)/page.tsx` | **Düzeltildi** |
-| P-07 | Medium | tümü | og:image hiç yoktu (twitter kartı `summary_large_image` olduğu hâlde); og:url çoğu sayfada eksikti. | `app/layout.tsx` | **Kısmen**: marka OG görseli eklendi (kişi fotoğrafı yok); sayfa bazlı og:url açık |
-| P-08 | Low | `/bulunamadi` | 200 dönüyor (soft 404); noindex ve robots ile engelli. | `proxy.ts` | **Açık** |
-| P-09 | Low | metinler | "yaş aralığı göre" yazım hatası, site açıklamasında tekrar, Bayburt'ta "0 doğrulanmış…". | çeşitli | **Düzeltildi** |
-| P-10 | Low | `/kullanim-kosullari` | Sayfaya özel açıklama yok. | sayfa | **Açık** |
-| P-11 | Medium | `/` | 4 profil hem yaka listesinde hem "Öne çıkan" bölümünde görünüyordu. | `(site)/page.tsx` | **Düzeltildi** |
-| P-12 | Low | lightbox | Masaüstünde 640px görsel ~694px'e büyütülüyor; tek fotoğrafta pasif oklar görünüyor. | `media-lightbox.tsx` | **Açık** (galeri tasarımı C-01 nedeniyle beklemede) |
-| P-13 | Medium | kart/profil | WhatsApp düğmesi kartta yeşil, profilde pembe. | `profile-card.tsx` | **Açık** (C-01'e bağlı; bu düğmenin görünürlüğünü artırmadım) |
-| P-14 | Medium | `/` | "Şehir şehir keşfet" bölümünde "0 profil" yazan, boş noindex sayfalara giden bağlantılar vardı. | `(site)/page.tsx` | **Düzeltildi** |
-| P-15 | Low | genel | 10–11px metinler (mobil nav, konum etiketi, 18+ rozeti). | `age-badge.tsx` | **Kısmen**: 18+ rozeti 11px |
-| P-16 | Low | header | Odak halkası %50 opaklıktaydı. | `ui/button.tsx` | **Düzeltildi** (%80) |
-| P-17 | Low | `/paketler` | Pakete dahil olmayan özellik de soluk tik ve üstü çizili gösteriliyordu, "dahil" gibi okunuyordu. | `paketler/page.tsx` | **Kısmen**: çizgi (–) simgesi; sütun hizası ve CTA açık |
-| P-18 | Low | profil | H1 erişilebilir adı "Selin31" olarak okunuyordu; sağ sütun boşluğu. | `profil/[slug]/page.tsx` | **Kısmen**: H1 "Selin, 31 yaşında"; yerleşim C-01 nedeniyle beklemede |
-| P-19 | Info | — | `/iletisim` yoktu (404). | — | **Düzeltildi** (yeni modül) |
-| M-01 | Low | header | Masaüstündeki "Şehir veya profil keşfet" kutusu arama alanı gibi görünüyordu ama yalnızca `/kesfet` bağlantısıydı; menüdeki Keşfet ile aynı yere gidiyordu. | `site-header.tsx` | **Düzeltildi**: kaldırıldı, simge bağlantısı kaldı |
+| ID | Önem | Bulgu | Dosya | Durum |
+|---|---|---|---|---|
+| P-01 / C-01 | **Critical** | 10/10 profil yapay zekâyla üretilmiş kurgusal kadın, "kurgusal" etiketi yok, hepsi aynı WhatsApp numarasına yönlendiriyor (§9.1) | `profile-card.tsx`, `profil/[slug]/page.tsx`, migration `20261022000001` | **Kapsam dışı (çözülmedi)** |
+| P-02 | High | Doğrulanmış profil yokken genel metinler "doğrulanmış" diyordu | `site.ts`, `kesfet`, `sehirler`, `location-seo.ts`, `site-footer.tsx` | **Kısmen**: genel metinler ve footer'daki "açık rıza ile oluşturulur" iddiası kaldırıldı; `/guvenlik` sayfasındaki kural metinleri C-01 nedeniyle olduğu gibi kaldı |
+| P-03 | Medium | Filtre sayfasının kapat düğmesi görünmüyordu, adı İngilizceydi | `ui/sheet.tsx`, `ui/dialog.tsx` | **Düzeltildi** |
+| P-04 | Medium | Filtre sayfasının ana düğmesi ekranın alt kenarına yapışıktı | `filter-bar.tsx` | **Düzeltildi** |
+| P-05 / C-16 | High | Arama motorları yaş kapısını (noindex) görüyordu, sitemap ise kapı arkasındaki adresleri listeliyordu | `proxy.ts`, `sitemap.ts` | **Kısmen** (§7) |
+| P-06 / C-17 | Medium | Ana sayfada canonical yoktu | `(site)/page.tsx` | **Düzeltildi** |
+| P-07 | Medium | og:image ve og:url eksikti | `opengraph-image.tsx`, `lib/site.ts → ogFor`, tüm statik sayfalar | **Düzeltildi** (e2e testiyle doğrulandı) |
+| P-08 | Low | `/bulunamadi` 200 dönüyor (noindex, robots ile engelli) | — | **Açık** |
+| P-09 | Low | Türkçe yazım hataları | çeşitli | **Düzeltildi** |
+| P-10 | Low | Kullanım koşulları sayfasına özel açıklama yoktu | `kullanim-kosullari/page.tsx` | **Düzeltildi** |
+| P-11 | Medium | Ana sayfada aynı profiller iki kez gösteriliyordu | `(site)/page.tsx` | **Düzeltildi** |
+| P-12 | Low | Lightbox küçük görseli büyütüyordu; tek fotoğrafta da oklar görünüyordu | `media-lightbox-view.tsx` | **Düzeltildi** |
+| P-13 | Medium | WhatsApp düğmesinin rengi kartta ve profilde farklı | `profile-card.tsx` | **Kapsam dışı** (C-01) |
+| P-14 | Medium | "0 profil" yazan şehir bağlantıları | `(site)/page.tsx` | **Düzeltildi** |
+| P-15 | Low | 10–11px metinler | `age-badge.tsx` | **Kısmen** |
+| P-16 | Low | Odak halkası soluktu | `ui/button.tsx` | **Düzeltildi** |
+| P-17 | Low | Paketler sayfasında dahil olmayan özellik yanlış gösteriliyordu | `paketler/page.tsx` | **Kısmen** (sütun hizası ve CTA açık) |
+| P-18 | Low | Profil H1'i ekran okuyucuda "Selin31" okunuyordu; yerleşim sorunları | `profil/[slug]/page.tsx` | **Kısmen**: H1 düzeltildi; yerleşim yeniden tasarlanmadı (§5) |
+| P-19 | Info | `/iletisim` sayfası yoktu | — | **Düzeltildi** |
+| M-01 | Low | Header'da sahte arama kutusu ve yinelenen Keşfet bağlantıları vardı | `site-header.tsx` | **Düzeltildi** (2. tur: mobil yineleme de kaldırıldı) |
 
 ### Admin
 
-| ID | Önem | Rota | Bulgu ve kanıt | Dosya | Durum |
-|---|---|---|---|---|---|
-| A-01 | High | `profiller/[id]` | Sekme değiştirince "Genel bilgiler"deki kaydedilmemiş değişiklikler kayboluyordu ("Ceren DEĞİŞTİ" → "Ceren"). | `profiller/[id]/page.tsx` | **Düzeltildi** (`forceMount`) |
-| A-02 | High | formlar | Kaydedilmemiş değişiklikler için hiçbir uyarı yoktu. | — | **Kısmen**: profil formunda `beforeunload` ve uygulama içi bağlantı onayı (`use-unsaved-changes.ts`); diğer formlar açık |
-| A-03 | High | nav | Nav öğesi, palet ve `g m` kısayolu var olmayan `/admin/medya` rotasına gidiyordu (404). | `admin-nav.tsx`, `command-palette.tsx` | **Düzeltildi** (kaldırıldı; `g i` → iletişim) |
-| A-04 | Medium | `/admin/seo` | `/sehir/` ve `/admin` yolları kabul ediliyordu. | `schemas.ts` | **Kısmen**: doğrulama düzeltildi; silme kontrolü açık |
-| A-05 | Medium | ilgi alanları, abonelik | Hata yalnızca toast olarak çıkıyordu, alana bağlı değildi. | `actions.ts`, `subscription-form.tsx` | **Düzeltildi** |
-| A-06 | Medium | `/admin/ayarlar` | İngilizce Zod mesajları görünüyordu. | `actions.ts` | **Düzeltildi** |
-| A-07 | Medium | formlar | Hatalar alana `aria-describedby` ile bağlı değildi. | `profile-form.tsx` | **Kısmen** (profil formu) |
-| A-08 | Medium (axe serious) | `/admin` | KPI şeridinde `<dl>` içinde `<a>` vardı (definition-list, dlitem ihlalleri). | `(panel)/page.tsx` | **Düzeltildi** (liste yapısı) |
-| A-09 | Medium (axe serious) | abonelikler | Koyu temada "Sponsorlu" rozetinin kontrastı 4,27:1. | `status-badge.tsx` | **Düzeltildi** |
-| A-10 | Medium | profil sekmeleri, 390 | Sekmeler taşıyordu ve bunun görsel ipucu yoktu. | `profiller/[id]/page.tsx` | **Kısmen** (kenar solma ipucu) |
-| A-11 | Medium | tablolar, 390 | Tablolar yatay kaydırma gerektiriyor; mobilde kart düzeni yok. | çeşitli | **Açık** |
-| A-12 | Medium | listeler | Arama, filtre ve sayfalama yoktu. | — | **Kısmen**: Şikâyetler (durum filtresi), Denetim (işlem/tür/kimlik), İletişim (tam); Abonelikler ve Talepler açık |
-| A-13 | Low | profiller | Filtre URL'ye yazılmıyor, `aria-sort` yok. | `profiles-table.tsx` | **Açık** |
-| A-14 | Medium | talepler | KVKK reddinde gerekçe istenmiyordu. | `talepler/page.tsx`, `privacy.ts` | **Düzeltildi** (zorunlu, ≥10 karakter, denetime yazılıyor) |
-| A-15 | Medium | yıkıcı işlemler | Gerekçe zorunlu değildi; Arşivle düğmesi yıkıcı görünmüyordu. | `actions.ts`, `action-button.tsx` | **Kısmen**: yayından kaldırma, red ve şikâyet kararlarında gerekçe zorunlu (arayüz ve sunucu); Arşivle yıkıcı stilde; "Taslağa al" onayı açık |
-| A-16 | Low | abonelik yenileme | Ay sayısı serbest metin kutusuna giriliyor. | `abonelikler/page.tsx` | **Açık** |
-| A-17 | Low | profil Geçmiş | Ham enum kodları görünüyordu. | `profiller/[id]/page.tsx`, `types.ts` | **Düzeltildi** |
-| A-18 | Low | mobil nav | Rozetler, demo işareti ve "Siteyi görüntüle" yoktu. | `mobile-admin-nav.tsx`, layout | **Düzeltildi** (`React.cache` ile tek sorgu) |
-| A-19 | Low | `/admin`, 390 | KPI alt etiketi kırpılıyordu. | `(panel)/page.tsx` | **Kısmen** |
-| A-20 | Low | tasarım | Tüm uyarılarda aynı renk kullanılıyor; onaylı profilde "Onayla" düğmesi görünüyordu. | — | **Kısmen** (onay düğmesi gizlendi) |
-| A-21 | Low | dokunma hedefleri | Bazı hedefler 24px'in altında (WCAG 2.5.8). | — | **Açık** |
+| ID | Önem | Bulgu | Durum |
+|---|---|---|---|
+| A-01 | High | Sekme değişince kaydedilmemiş değişiklikler kayboluyordu | **Düzeltildi** |
+| A-02 | High | Kaydedilmemiş değişiklik koruması yoktu | **Düzeltildi**: profil formu ve tüm `ActionForm`'lar |
+| A-03 | High | Ölü `/admin/medya` bağlantısı | **Düzeltildi** |
+| A-04 | Medium | SEO formu geçersiz yolları kabul ediyordu; silme kontrolü yoktu | **Düzeltildi** (doğrulama + silme + geçersiz varsayılan kaldırıldı) |
+| A-05 | Medium | Hatalar alana bağlı değildi, yalnızca toast | **Düzeltildi** |
+| A-06 | Medium | İngilizce Zod mesajları | **Düzeltildi** |
+| A-07 | Medium | `aria-describedby` yoktu | **Düzeltildi**: `ActionForm` hatalı alanı bağlar ve odaklar; profil formu da |
+| A-08 | Medium | KPI şeridinde `<dl>` ihlali (axe) | **Düzeltildi** |
+| A-09 | Medium | Rozet kontrastı | **Düzeltildi** |
+| A-10 | Medium | Sekme taşmasında görsel ipucu yoktu | **Düzeltildi** |
+| A-11 | Medium | Mobilde tablolar kesiliyordu | **Düzeltildi**: ad, durum ve işlem sütunları görünür, ayrıntılar md ve üstünde |
+| A-12 | Medium | Listelerde filtre ve arama yoktu | **Düzeltildi**: şikâyet, talep ve abonelik durum filtreleri; denetim filtreleri; iletişim için arama, filtre ve sayfalama |
+| A-13 | Low | Profil filtresi URL'ye yazılmıyor | **Açık** |
+| A-14 | Medium | KVKK reddinde gerekçe yoktu | **Düzeltildi** |
+| A-15 | Medium | Yıkıcı işlemlerde gerekçe ve onay eksikti | **Düzeltildi** ("Taslağa al" onayı dahil) |
+| A-16 | Low | Yenileme süresi serbest metin kutusuna giriliyordu | **Düzeltildi** (sayı girişi, 1–24) |
+| A-17 | Low | Ham enum değerleri gösteriliyordu | **Düzeltildi** |
+| A-18 | Low | Mobil menüde rozetler yoktu | **Düzeltildi** |
+| A-19 | Low | KPI alt etiketi kırpılıyordu | **Kısmen** |
+| A-20 | Low | Uyarı renkleri ayırt edilmiyordu | **Kısmen** |
+| A-21 | Low | 24px altı dokunma hedefleri | **Açık** |
 
-## 4. Tespit edilen teknik hatalar (kod denetimi)
+## 4. Teknik bulgular (kod denetimi + 2. tur)
 
-| ID | Önem | Alan | Bulgu (file:line, HEAD `46049a2`) | Durum |
-|---|---|---|---|---|
-| C-01 | **Critical** | Hukuk | P-01'e bakın. Migration `20261022000001_example_assets_contact.sql:3-30`, "(Örnek)" ve "KURGUSAL ÖRNEK" zorlamasını kaldırıyor; `88f2aed` etiketleri ve WhatsApp korumasını kaldırıyor; `tests/e2e/examples.spec.ts:12,20` bu durumu test ediyor. | **Karar bekliyor** |
-| C-02 | High | Moderasyon | Örnek profiller şikâyet edilemiyor (`moderation.ts:38-39` yalnızca `published` gerçek profil kabul ediyor). Yayından kalkan gerçek profilin örnek kopyası geri görünebiliyor (`20261021000001_public_examples.sql:35`). | **Karar bekliyor** |
-| C-03 | High | KVKK | Eski `profile_images` kayıtlarının dosyaları herkese açık `profile-images` kovasında kalıyor; silme bu dosyalara hiç dokunmuyordu (`media.ts:315-330`). | **Kısmen**: migration `20261023000002` + `LEGACY_PREFIX`; hak onaysız eski dosyalar kayıttan ayırt edilemiyor, kovada elle denetlenmeli |
-| C-04 | High | Gizlilik | Kaldırılan medya erişilebilir kalıyordu: 1 yıllık CDN önbelleği (`storage/supabase.ts:51`), `/api/image` her herkese açık URL'yi vekilliyordu. | **Kısmen**: vekil yayın kontrolü yapıyor (60 sn önbellek); yeni yüklemeler 10 dk önbellekleniyor; **mevcut dosyalar 1 yıllık başlıkla duruyor**; düzenli eşitleme işi yok |
-| C-05 | Medium | Yanıltıcı içerik | Konum sayımları örnekleri de içeriyor ve meta açıklamaya "doğrulanmış" olarak yansıyordu. | **Kısmen**: "doğrulanmış" ibaresi kaldırıldı; sayım C-01'e bağlı |
-| C-06 | Medium | Gizlilik | `/api/discovery` WhatsApp numaralarını sınırsız döndürüyordu. | **Kısmen**: süreç içi 60 istek/dk sınırı; instance'lar arası sınır (WAF/Redis) açık |
-| C-07 | Low | KVKK | Kalıcı silme denetim kaydına slug (takma ad) yazıyor. | **Açık** |
-| C-08 | Low | Test | E2E testinde gerçek telefon numarası sabit yazılı. | **Açık** (C-01'e bağlı) |
-| C-09 | Medium | Güvenlik | KVKK formu ve giriş oran sınırı yalnızca süreç belleğinde. | **Açık** (iletişim formu veritabanı sayacı kullanıyor) |
-| C-10 | Medium | Güvenlik/maliyet | `/api/image` her istekte sharp ile yeniden kodluyor, `no-store`. | **Kısmen** (yalnızca yayındaki URL'ler işleniyor) |
-| C-11 | Medium | Medya | CSP'de `media-src` yoktu; Supabase videoları engelleniyordu. Posteri olmayan videolar görsel kaynağı olarak veriliyor. | **Kısmen**: `media-src` eklendi; poster sorunu açık |
-| C-12 | Low | Güvenlik | Admin action argümanları çalışma anında doğrulanmıyor. | **Kısmen** (abonelik `op`, iletişim durumu) |
-| C-13 | Low | Performans | Proxy, `/sehir/*` isteklerinde önbelleksiz veritabanı çağrısı yapıyor. | **Açık** |
-| C-14 | Low | Sıralama | Keşifte sponsor önceliği yok; yalnızca "Öne çıkan" bölümü sponsor-öncelikli ve her kart etiketli. VIP katmanı kodda yok. İmleç yalnızca `{publishedAt,id}` taşıyor; sponsor sıralaması eklenirse sayfalama bozulur. | Bilgi (değişiklik gerekmedi) |
-| C-15 | Low | Sayfalama | `published_at` boş bir kayıt "daha fazla" isteğini 400 ile bozar; demo deposu SQL'den farklı sıralıyor. | **Açık** |
-| C-16 | High | SEO | P-05'e bakın. | **Kısmen** |
-| C-17 | Medium | SEO | P-06'ya bakın. | **Düzeltildi** |
-| C-18 | Medium | SEO | Sitemap kararları örnek profilleri de sayıyordu. | **Düzeltildi** (kapı arkasındaki adresler sitemap'te değil) |
-| C-19 | Medium | SEO | Profil sayfasında `notFound()` Suspense içinde çalışıyor; bu yüzden 200 + noindex dönüyor. | **Açık** (tarayıcılar zaten yaş kapısını görüyor; insan ziyaretçi için düşük etki) |
-| C-20 | Low | SEO | Sitemap önbellek etiketi yok; robots `/api` engelliyor. | **Kısmen** (sitemap statik listeye indi) |
-| C-21 | High | Performans | Konum sayım taraması şehir sayfası başına yaklaşık 3 kez çalışıyordu. | **Düzeltildi** (`React.cache`) |
-| C-22 | Medium | Performans | Profil, metadata ve sayfa için iki kez okunuyordu. | **Düzeltildi** (`React.cache`) |
-| C-23 | Medium | Performans/gizlilik | Kart listeleri istemciye tam biyografi ve biyografi belgesi gönderiyor. | **Açık** |
-| C-24 | Medium | Performans | Lightbox kütüphanesi profil sayfasında hemen yükleniyor. | **Açık** |
-| C-25 | Low | Performans | Ekranın altındaki ızgarada `priority` kullanılıyordu. | **Kısmen** (Öne çıkan ızgarasında kaldırıldı) |
-| C-26 | Low | Bağımlılık | `@base-ui/react`, `clsx`, `tailwind-merge` kullanılmıyordu. | **Düzeltildi** (kaldırıldı) |
-| C-27 | Low | Ölü kod | `site/gallery.tsx`, `site/pagination.tsx` ve kullanılmayan `ui/*` bileşenleri. | **Kısmen** (ilk ikisi silindi) |
-| C-28 | Low | Tekrar | `locations.ts` ve `location-directory.ts` içinde yinelenen API'ler. | **Açık** |
-| C-29 | Low | Belgeler | QA_REPORT, SEO, SECURITY ve README belgeleri koddan sapmış. | **Açık** |
-| M-02 | Low | Veri | `site_settings.support_email` varsayılanı `destek@example.com` (yer tutucu). İletişim sayfası bu alanı **kullanmıyor**; gerçek adres için `CONTACT_PUBLIC_EMAIL` gerekiyor. | Bilgi |
-| M-03 | Info | Test altyapısı | E2E varsayılan portu 3217, yerelde açık bir sunucuyla çakışıyor; testler `E2E_PORT=3230` ile çalıştırıldı. | Bilgi |
+| ID | Önem | Bulgu | Durum |
+|---|---|---|---|
+| C-01 | **Critical** | §9.1 | **Kapsam dışı (çözülmedi)** |
+| C-02 | High | Örnek profiller şikâyet edilemiyor; yayından kalkan gerçek profilin örneği geri gelebiliyor | **Kapsam dışı** (C-01) |
+| C-03 | High | Eski herkese açık kova dosyaları silinmiyordu | **Kısmen**: migration `…0002` + `LEGACY_PREFIX` + `scripts/media-orphans.mjs` (yerelde doğrulandı: kurulan sahipsiz dosya bulundu, `--delete` ile silindi); **production'da elle çalıştırılmalı** |
+| C-04 | High | Kaldırılan medya erişilebilir kalıyordu | **Kısmen**: vekil yayın kontrolü yapıyor; yeni yüklemeler 10 dk önbellekleniyor; günlük cron eşitlemesi (`reconcilePublicMedia`); **mevcut dosyaların 1 yıllık önbellek başlığı** ancak dosya yeniden yüklenince ya da silinince düşer |
+| C-05 | Medium | Sayımlara örnek profiller dahil | **Kapsam dışı** (C-01; "doğrulanmış" ibaresi kaldırıldı) |
+| C-06 | Medium | `/api/discovery` üzerinden WhatsApp numaraları toplu çekilebiliyordu | **Düzeltildi**: paylaşılan veritabanı sınırı, 60 istek/dk, tüm sunucu örneklerinde |
+| C-07 | Low | Silme denetim kaydında slug tutuluyordu | **Düzeltildi** |
+| C-08 | Low | Testte gerçek telefon numarası var | **Kapsam dışı** (C-01) |
+| C-09 | Medium | Giriş ve KVKK oran sınırı yalnızca süreç belleğindeydi | **Düzeltildi**: `rate_limit_hit` (migration `…0003`) |
+| C-10 | Medium | Görsel vekili her istekte yeniden kodluyordu | **Düzeltildi**: yalnızca yayındaki URL; 5 dk özel tarayıcı önbelleği; süreç önbelleği |
+| C-11 | Medium | CSP'de `media-src` yoktu; posteri olmayan video görsel olarak veriliyordu | **Düzeltildi** |
+| C-12 | Low | Admin argümanları çalışma anında doğrulanmıyordu | **Kısmen** |
+| C-13 | Low | Proxy her istekte veritabanını çağırıyordu | **Düzeltildi** (konum 10 dk, profil 30 sn önbellek) |
+| C-14 | Low | Sıralama ve sponsorluk | **Bilgi** |
+| C-15 | Low | `published_at` boş kayıt imleci bozuyordu | **Düzeltildi** (NULLS LAST + imleç koruması) |
+| C-16 | High | Yaş kapısı ve SEO | **Kısmen** (§7) |
+| C-17 | Medium | Ana sayfa canonical | **Düzeltildi** |
+| C-18 | Medium | Sitemap örnekleri sayıyordu | **Düzeltildi** |
+| C-19 | Medium | Profilde soft 404 | **Düzeltildi**: proxy gerçek 404 dönüyor (e2e testi) |
+| C-20 | Low | Sitemap önbelleği; robots `/api` | **Kısmen** |
+| C-21 | High | Konum sayımı birden çok kez çalışıyordu | **Düzeltildi** |
+| C-22 | Medium | Profil iki kez okunuyordu | **Düzeltildi** |
+| C-23 | Medium | Kart verisi çok büyüktü | **Düzeltildi**: `CardProfile` (biyografi, zengin metin, SEO ve video yok) |
+| C-24 | Medium | Lightbox hemen yükleniyordu | **Düzeltildi**: ilk yüke dahil değil, tarayıcı boştayken ön yükleniyor |
+| C-25 | Low | Ekran altı görsellerde `priority` | **Kısmen** |
+| C-26 | Low | Kullanılmayan bağımlılıklar | **Düzeltildi** |
+| C-27 | Low | Ölü bileşenler | **Düzeltildi** (9 dosya silindi) |
+| C-28 | Low | İki ayrı konum API'si | **Düzeltildi** (tek `createLocationDirectory`, istek başına bellek) |
+| C-29 | Low | Belgeler koddan sapmış | **Kısmen**: DESIGN_SYSTEM, DEPLOYMENT ve .env.example güncel; QA_REPORT, SECURITY ve README güncellenmedi |
+| **V-01** | **High** | **Preview ve Production aynı Supabase değişkenlerini kullanıyor.** `vercel env ls` çıktısında `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL` ve anon key tek kayıt hâlinde "Production, Preview" olarak tanımlı. PR #1'in preview deploy'u (`hilal-dtz5abesc…`) production veritabanına service role ile bağlı. Preview Vercel Authentication arkasında, yani herkese açık değil (302 → SSO); ama ekip üyelerinin preview'da yaptığı her yönetim işlemi production verisini değiştirir. | **Açık**: Preview için ayrı bir Supabase projesi (veya branch) tanımlanmalı. Vercel yapılandırmasını değiştirmedim. |
+| **V-02** | Medium | `ALLOW_DEMO_MODE` production ortamında tanımlı. Değeri okunmadı; sırları yerele çekmemek için `vercel env pull` kullanılmadı. DEPLOYMENT.md "production'da tanımlamayın" diyor. | **Açık**: değişken kaldırılmalı veya değeri `false` olmalı |
+| **V-03** | Low | Admin'de bilinmeyen kimlik 200 + "bulunamadı" dönüyor; admin layout'unun Suspense akışı yüzünden. Veri sızmıyor, sayfa noindex (e2e testi var). | **Açık** |
+| **V-04** | Medium | 2. turdaki lightbox tembel yüklemesi ilk açılışta INP gerilemesine yol açtı: 64 → 352 ms. | **Düzeltildi**: boşta ön yükleme ve kapalı bağlama, tekrar 64 ms |
+| M-02 | Low | `site_settings.support_email` yer tutucu | **Bilgi** (iletişim sayfası kullanmıyor) |
+| M-03 | Info | E2E varsayılan portu yerel sunucuyla çakışıyor | **Bilgi** |
 
-## 5. UI/UX değerlendirmesi
+## 5. UI/UX değerlendirmesi ve tasarım kapsamı
 
-**Güçlü yanlar:**
-- Tutarlı OKLCH token sistemi (`globals.css`): gece eriği, ahududu, gül ve şampanya.
-- Fraunces + Geist tipografi; akışkan display ölçeği.
-- Saç çizgisi ayrımları; koyu ve açık temada eşit kalite.
-- İyi boş durumlar (`/sehir/bayburt`) ve iyi yapılandırılmış yaş kapısı.
+**Yapılan iyileştirmeler** (hepsi ortak token ve bileşenlerle):
+- Header sadeleşti: sahte arama kutusu ve yinelenen Keşfet bağlantıları kaldırıldı.
+- Footer kompakt: güvenli alan boşluğu, mobilde 40px bağlantı hedefleri, doğrulanmamış iddia yok.
+- Ortak `FilterChips` bileşeni.
+- `ActionForm`: kaydedilmemiş değişiklik koruması, erişilebilir hata bağlama, ilk hataya odak.
+- Mobil admin tabloları.
+- Galeri doğruluğu: büyütme yok, tek öğede ok yok, posteri olmayan videoda nötr yer tutucu, tembel yükleme ve ön yükleme.
+- `DESIGN_SYSTEM.md` güncellendi: 8px ritim, tipografi, köşe, odak, dokunma, güvenli alan ve bileşen kuralları.
 
-**Yapılan iyileştirmeler** (hepsi mevcut token ve bileşenlerle; sayfa bazlı rastgele CSS yazılmadı):
-- **İletişim:** marka diliyle uyumlu yeni sayfa. Kategori seçimi radyo "çip" olarak tasarlandı ve `peer-focus-visible` ile klavyeyle görünür.
-- **Header:** sahte arama kutusu kaldırıldı; menüye "İletişim" eklendi.
-- **Odak halkası:** düğme odak halkası güçlendirildi.
-- **Paketler:** hariç özellik dili netleştirildi.
-- **Ana sayfa:** tekrar eden profiller ve boş şehir bağlantıları kaldırıldı.
-- **Admin:** geçerli liste yapısı, Türkçe ve alana bağlı hatalar, zorunlu gerekçe, kaydedilmemiş değişiklik koruması, filtreler, mobil nav rozetleri.
-
-**Uygulanmayanlar (bilinçli):** ana sayfa ilk ekranının yeniden düzenlenmesi, profil kartı modernizasyonu, profil galerisi ve WhatsApp CTA'sı.
-- Sebep: yayında yalnızca etiketsiz kurgusal profiller var (C-01). Bu yüzeyleri "fotoğrafları ön plana çıkaracak" biçimde güçlendirmek, gerçek kişiymiş gibi görünen bir yönlendirmeyi daha ikna edici yapar.
-- C-01 kararı verildikten sonra (etiketleme veya gizleme) bu iş ayrı bir PR'da yapılabilir. Bunun için planlanan değişiklikler §15'te.
+**Bilinçli olarak yapılmayanlar:** ana sayfanın görsel hiyerarşisi, profil kartlarının "görsel kalitesinin yükseltilmesi" ve galerinin çekiciliğini artıran yeniden tasarım.
+- Sitedeki tek içerik C-01 kapsamındaki etiketsiz kurgusal kadın profilleri ve hepsi aynı WhatsApp numarasına yönlendiriyor.
+- Bu yüzeyleri daha ikna edici hâle getirmek, gerçek kişi izlenimi veren bir yönlendirmeyi güçlendirir. Bu nedenle bu kısım C-01 çözülene kadar beklemede.
+- Erişilebilirlik ve doğruluk düzeltmeleri bu sınırın dışında tutuldu ve yapıldı.
 
 ## 6. Mobil uyumluluk
 
-**Tarama sonucu:**
-- 320, 360, 390, 430, 768, 1024, 1440 ve 1920 px genişliklerde, 28 sayfada (18 public + yaş kapısı + 9 admin) **yatay taşma 0**.
-- Konsol hatası 0, kırık görsel 0. Ham sonuç `sweep.json` dosyasında (taramayı yapan betikle aynı klasörde).
-
-**Mobil düzeltmeler:**
-- Filtre sayfasının kapat düğmesi (P-03) ve güvenli alan boşluğu (P-04).
-- Admin mobil nav rozetleri (A-18).
-- Profil sekmelerinde kaydırma ipucu (A-10).
-
-**Açık:** admin tablolarının mobil kart düzeni (A-11).
+- 320, 360, 390, 430, 768, 1024, 1440 ve 1920 px genişliklerde × 28 sayfa = **224 kontrol**: yatay taşma 0, konsol hatası 0, kırık görsel 0, axe ihlali 0 (axe 390 ve 1440 px'te; ham veri `sweep-r2.json`).
+- INP ölçümü 390 px'te, 4× CPU yavaşlatmayla gerçek dokunuşlarla yapıldı (§8).
 
 ## 7. SEO analizi
 
-- **Yaş kapısı ve indeksleme (en büyük yapısal sorun):** proxy, çerezsiz her isteği `noindex` yaş onayı sayfasına yönlendiriyor (`src/proxy.ts`). Bu yüzden arama motorları `/`, `/kesfet`, il/ilçe ve profil sayfalarını **göremiyor**.
-  - Sitemap artık yalnızca taranabilir sayfaları içeriyor: `/sehirler`, `/guvenlik`, `/paketler`, `/kvkk`, `/kullanim-kosullari`, `/kaldirma-talebi`, `/iletisim`.
-  - Böylece Search Console'da "gönderilen URL noindex" hatası oluşmaz.
-  - Eski davranış `SITEMAP_INCLUDE_GATED=true` ile geri açılabilir.
-  - Kalıcı çözüm bir ürün kararı: yaş kapısını, görsel içermeyen indekslenebilir bir metin katmanının üstüne bindirmek.
-- **Canonical:** `/` canonical'ı `/`; `?yaka=` varyantları buraya işaret ediyor. `/sehir/istanbul?yaka=` zaten noindex + temiz canonical.
-- **OG:** marka OG görseli eklendi (`app/opengraph-image.tsx`, 1200×630). Kişi fotoğrafı bilinçli olarak kullanılmadı.
-- **Lighthouse SEO notu:** `/kesfet` ve `/profil/*` 92 aldı (`meta-description` eksik görünüyor).
-  - Next 16, bot olmayan kullanıcı ajanlarında dinamik metadata'yı akışla `<body>` içinde gönderir; Lighthouse'un ajanı bot değil.
-  - Bot olarak tanınan tarayıcılar metadata'yı `<head>` içinde alır. Bu bir ölçüm yanılgısı, eksik etiket değil.
-- **Türkçe slug yapısı** (`/sehir/istanbul/kadikoy`) korunuyor; geçersiz il/ilçe gerçek 404 dönüyor.
+**Yaş doğrulama ekranının etkisi (teknik değerlendirme):**
+- Çerezsiz her istek (arama motoru dahil) `/`, `/kesfet`, `/sehir/*` ve `/profil/*` adreslerinde `noindex` yaş onayı sayfasını alıyor.
+- **Googlebot'a farklı içerik sunulmuyor (cloaking yok).** Bot ve çerezsiz kullanıcı aynı yanıtı alıyor. Bunu `seo.spec.ts` yaş çerezi olmadan doğruluyor.
+- Sonuç: bu sayfalar indekslenmiyor. Sitemap yalnızca gerçekten taranabilen 7 sayfayı listeliyor; her birinin çerezsiz 200 döndüğü, indekslenebilir olduğu, kendi canonical'ı, og:url'si ve benzersiz başlığı olduğu e2e testiyle doğrulandı.
+
+**Hukuki değerlendirme** (kesin değildir; hukuk görüşü gerekir):
+- Yetişkin içerikli sayfaların kapı arkasında tutulması reşit olmayanların korunması açısından savunulabilir.
+- Kapıyı arama motorları için atlatmak, ya da kapı arkasındaki profilleri metin olarak indekslenebilir yapmak, kapının amacını zayıflatır.
+- C-01 çözülmeden profil içeriğinin indekslenmesi kurgusal profillerin erişimini de büyütür.
+- **Öneri:** C-01 çözülene kadar profil ve şehir sayfalarını indekslemeye açmamak. Sonra yalnızca görselsiz, doğrulanmış içerik taşıyan şehir sayfaları için kapıyı içerik üstüne bindirilmiş katman olarak yeniden tasarlamak; bot ve kullanıcıya aynı HTML gitmeli. `SITEMAP_INCLUDE_GATED=true` bu karardan sonra açılabilir.
+
+**Doğrulananlar:**
+- Canonical: ana sayfa ve `?yaka` varyantı `/` gösteriyor; `/sehir/istanbul?yaka` için temiz canonical + noindex.
+- Boş il sayfası (bayburt) noindex.
+- Olmayan profil gerçek 404.
+- robots.txt `/admin`, `/api`, `/media` adreslerini engelliyor ve sitemap'i bildiriyor.
+- JSON-LD üç sayfada geçerli JSON.
+- og:url ve og:image tüm indekslenebilir sayfalarda var.
+
+**Kopya içerik ve boş sayfalar:**
+- İl/ilçe sayfaları yalnızca 3 veya daha fazla profil ya da özgün tanıtım metni varsa indekslenebiliyor (`shouldIndexListing`); filtreli varyantlar her zaman noindex.
+- Doğrulanmamış iddialar ("doğrulanmış profiller", "açık rıza ile oluşturulur") genel metinlerden kaldırıldı.
+
+**İç bağlantılar:** indekslenebilir sayfalar footer üzerinden birbirine ve `/sehirler` → il sayfalarına bağlı. Il sayfaları kapı arkasında, bu yüzden bağlantı değeri sınırlı.
 
 ## 8. Performans analizi
 
-Mobil Lighthouse 12.8.2 (varsayılan yavaş 4G + 4× CPU), yerel üretim derlemesi, demo verisi, sayfa başına **tek ölçüm** (sapma olabilir):
+Ortam: mobil Lighthouse 12.8.2, varsayılan yavaşlatma, yerel üretim derlemesi, demo verisi. `main` @ `46049a2` ayrı bir worktree'de, dal aynı makinede ölçüldü. Sayfa başına **5 tekrarın medyanı** alındı; profil satırındaki dal ölçümü son düzeltmeden sonra yeniden 5 tekrarla yapıldı.
 
-| Sayfa | Önce: Perf / LCP / TBT / ağırlık | Sonra: Perf / LCP / TBT / ağırlık | A11y | Best practices |
-|---|---|---|---|---|
-| `/` | 68 / 5,9 sn / 430 ms / ~873 KB | **88 / 3,8 sn / 100 ms / 524 KB** | 100 | 100 |
-| `/kesfet` | 74 / 6,1 sn / 230 ms | **90 / 3,6 sn / 70 ms / 514 KB** | 100 | 100 |
-| `/iletisim` | 78 / 5,9 sn / 50 ms | **90 / 3,5 sn / 20 ms / 500 KB** | 100 | 100 |
-| `/profil/[slug]` | 78 / 5,9 sn / 80 ms | **86 / 4,2 sn / 40 ms / 554 KB** | 100 | 100 |
+| Sayfa | main: Perf (min–max) / LCP / TBT / KB | dal: Perf (min–max) / LCP / TBT / KB | CLS (main → dal) |
+|---|---|---|---|
+| `/` | 76 (73–76) / 6085 ms / 177 ms / 893 | **89 (86–90) / 3780 ms / 92 ms / 520** | 0 → 0 |
+| `/kesfet` | 76 (76–77) / 6082 / 154 / 883 | **89 (86–90) / 3708 / 71 / 509** | 0 → 0 |
+| `/sehir/istanbul` | 76 (76–76) / 6084 / 169 / 874 | **90 (89–90) / 3636 / 78 / 502** | 0 → 0 |
+| `/profil/[slug]` | 78 (74–78) / 5781 / 99 / 928 | **90 (86–91) / 3691 / 43 / 550** | 0 → 0 |
+| `/sehirler` | 79 (79–79) / 5706 / 64 / 850 | **92 (92–95) / 3403 / 32 / 479** | 0 → 0 |
+| `/iletisim` | (main'de yok) | 91 (89–91) / 3556 / 24 / 498 | — → 0 |
 
-- CLS her sayfada 0.
-- **Teşhis:** LCP öğesi metindi, render gecikmesi %92'ydi. Tetikleyen, önceden yüklenen ~500 KB Fraunces dosyasıydı (normal + italik × latin/latin-ext, SOFT ekseniyle). İtalik ve SOFT kaldırıldıktan sonra toplam woff2 boyutu 293 KB.
-- **Diğer:** konum sayımı ve profil okuması `React.cache` ile istek başına tek seferde yapılıyor.
-- **Açık:** lightbox'ın geç yüklenmesi (C-24), kart yükünün küçültülmesi (C-23), görsel vekilinin önbelleği (C-10).
+**INP yaklaşığı:**
+- Lighthouse laboratuvarında INP ölçülmez. Bu yüzden ayrı bir Playwright ölçümü yapıldı: 390 px, 4× CPU yavaşlatma, gerçek dokunma ile, Event Timing girdilerine göre, 5 tekrarın medyanı.
+
+| Etkileşim | main | dal |
+|---|---|---|
+| Filtre aç / kapat | 80 / 24 ms | 80 / 24 ms |
+| Tema değiştir | 56 ms | 64 ms |
+| Galeri aç / kapat | 64 / 16 ms | 64 / 16 ms (düzeltmeden önce 352 ms, V-04) |
+| Form yazma / kategori seçimi | — | 16 / 32 ms |
+| **INP yaklaşığı (en kötü etkileşim)** | **80 ms** | **80 ms** |
+
+**İyileştirmenin nedenleri:**
+- Fraunces italik ve SOFT ekseni kaldırıldı (~250 KB font).
+- Kartlar ince veriyle gönderiliyor (C-23).
+- Lightbox ilk yüke dahil değil (C-24).
+- Konum ve profil okumaları `React.cache` ile istek başına bir kez yapılıyor (C-21, C-22).
+- Proxy sorguları önbellekleniyor (C-13).
+
+**Supabase sorguları:**
+- Liste hidrasyonu toplu yapılıyor; N+1 yok.
+- Sayımlar istek başına tek sefer okunuyor.
+- Kart yanıtları biyografi ve zengin metin taşımıyor.
 
 ## 9. Güvenlik analizi
 
-### 9.1 Yüksek riskli hukuki ve gizlilik bulguları (ayrı rapor)
+### 9.1 Yüksek riskli hukuki bulgu: C-01 (kapsam dışı, çözülmedi)
 
-**C-01: Kurgusal profiller gerçek kişi gibi sunuluyor ve tek numaraya yönlendiriyor.**
-- **Kanıt:**
-  - `git show 88f2aed` şu korumaları kaldırıyor:
-    - `profile-card.tsx` içindeki `profile.isExample ? null : whatsAppHref(...)` koruması.
-    - "Kurgusal örnek profil … İletişim kurulamaz." metni.
-    - "Örnek profil" rozeti.
-  - Migration `20261022000001`, `nickname`/`bio` üzerindeki "(Örnek)" ve "KURGUSAL ÖRNEK" kısıtlarını düşürüyor ve örnek satırlara `whatsapp_phone` ekliyor.
-  - `tests/e2e/examples.spec.ts:12` 10 kartın aynı numaraya gitmesini bekliyor; `:20` "Kurgusal" ibaresinin bulunmamasını bekliyor.
-  - Production'da 10/10 profil bu durumda.
-- **Neden yüksek risk:**
-  - Ziyaretçi gerçek kadınlar gördüğünü düşünüyor ve tek bir numaraya yönlendiriliyor.
-  - Bu kayıtlar yayın ön koşullarını, rıza ve yaş doğrulamasını ve moderasyonu atlıyor.
-  - Sitenin kendi Güvenlik metniyle ("Yalnızca 18 yaşını doldurmuş ve yaşı belge ile doğrulanmış kişiler", "ücretli hizmet ve yönlendirme yasak"), Kullanım Koşulları'yla ve README'deki "müşteri yönlendirme yasak" kuralıyla doğrudan çelişiyor.
-  - Tüketicinin aldatılması ve yanıltıcı ticari uygulama açısından ciddi hukuki risk taşıyabilir.
-  - Kesin hukuki değerlendirme bir avukata aittir; bu rapor hukuki garanti vermez.
-- **Önerilen seçenekler** (biri seçilmeli; hiçbiri production'a uygulanmadı):
-  1. **Etiketleri geri getir, WhatsApp'ı kaldır.**
-     - Kart ve profilde "Kurgusal örnek profil" etiketi ve "görseller yapay zekâ ile üretilmiştir" notu.
-     - View'dan örnek profillerin numarasını çıkarmak.
-     - "(Örnek)" ve "KURGUSAL ÖRNEK" kısıtlarını geri koymak.
-     - `examples.spec.ts` beklentilerini tersine çevirmek.
-  2. **Örnekleri gizle:** migration ile `visible=false` ve view'daki örnek kolunun kaldırılması.
-  3. Mevcut hâliyle bırakmak (önerilmez).
+- **Bulgu:** production'daki 10 profilin tamamı yapay zekâyla üretilmiş kurgusal kadın portreleri.
+- **Etiket yok:** "Kurgusal örnek" etiketi ve veritabanı kısıtları `88f2aed` ve migration `20261022000001` ile kaldırılmış.
+- **Tek numara:** 10 profilin hepsi aynı WhatsApp numarasına yönlendiriyor.
+- **Kontroller atlanıyor:** bu kayıtlar rıza, yaş doğrulaması ve moderasyon kontrollerinden geçmiyor.
+- **Çelişki:** sitenin Güvenlik ve Kullanım Koşulları metinleriyle ve README'deki "müşteri yönlendirme yasak" kuralıyla çelişiyor.
+- **Risk:** tüketicinin aldatılması ve yanıltıcı uygulama açısından ciddi hukuki risk taşıyabilir. Hukuki değerlendirme bir avukata aittir.
+- **Durum:** kullanıcı talimatıyla bu turda davranış değiştirilmedi. Bulgu **açık ve çözülmemiş** olarak kalıyor.
+- **Önerilen çözüm:** etiketleri geri getirmek ve WhatsApp'ı kaldırmak, ya da örnek profilleri gizlemek.
 
-**Diğer gizlilik bulguları:**
-- **C-03 ve C-04** (kaldırılan medyanın erişilebilir kalması) kısmen düzeltildi; kalanı:
-  - `profile-images` ve `media-public` kovalarındaki, `profile_media` ile eşleşmeyen dosyalar production'da elle denetlenip silinmeli.
-  - Mevcut dosyaların 1 yıllık önbellek başlığı ancak dosya yeniden yüklenince değişir.
-- **C-06:** WhatsApp numarası toplu çekme riski süreç içi sınırla azaltıldı. Vercel WAF kuralı önerilir.
+### 9.2 Doğrulanan kontroller (2. tur)
 
-### 9.2 Doğrulanan kontroller
+| Kontrol | Yöntem | Sonuç |
+|---|---|---|
+| RLS: `contact_messages`, `rate_limit_buckets` | SQL testi (anon/MFA'sız/MFA'lı) + yerel Supabase REST üzerinden anon okuma, yazma ve RPC denemesi | ✅ anon erişemiyor; MFA'sız oturum 0 satır görüyor |
+| Yetki yükseltme | e2e: aal1, imzası bozuk, süresi dolmuş, yönetici olmayan ve rastgele oturum; Supabase modunda zorunlu TOTP → AAL2 | ✅ hepsi reddediliyor |
+| CSRF / tekrar oynatma | Yakalanan Server Action oturumsuz ve sahte oturumla tekrar gönderildi | ✅ işlem yapılmadı, durum değişmedi |
+| IDOR | Bilinmeyen mesaj kimliği | ✅ veri sızmıyor (V-03: durum kodu 200) |
+| SSRF | Görsel vekili yalnızca yapılandırılmış Supabase origin'i + `/storage/v1/object/public/` + yayında olan URL; `redirect: "error"`, 25 MB / 40 MP sınırı | ✅ kod incelemesi + entegrasyon testi |
+| Dosya yükleme | Magic byte (JPEG/PNG/WebP, MP4/WebM), boyut sınırları, sharp ile yeniden kodlama (EXIF temizlenir), imzalı yükleme | ✅ kod incelemesi |
+| XSS | `< >` zod'da ve DB CHECK'te reddediliyor; tek ham HTML noktası JSON-LD (`<` kaçışlı) | ✅ e2e + entegrasyon testi |
+| Gizli anahtarlar | `.next/static` içinde 10 anahtar adı ve test sırrı arandı; istemci bileşenlerinde `process.env` yok | ✅ 0 eşleşme |
+| Loglar | `logError` yalnızca kapsam, kod ve maskelenmiş mesaj yazıyor; ham hata nesnesi loglanmıyor | ✅ unit testi (e-posta ve mesaj metni logda yok) |
+| Oran sınırı (production güvenilirliği) | `rate_limit_hit` atomik upsert; anahtarlar özetli; yerel Supabase'de veritabanı sayacı sunucu yeniden başlatmalarında korundu (e2e sırasında gözlendi) | ✅ |
 
-- **RLS:** tüm tablolarda açık. Anon yalnızca `*_public` ve `discovery_profiles` view'larını okuyabiliyor.
-- **Yeni tablo:** `contact_messages` için anon okuma ve yazma engeli, MFA'sız oturumun 0 satır görmesi ve MFA'lı yöneticinin satırları görmesi SQL testleriyle doğrulandı (`supabase/sql-tests/policies.test.sql` §9).
-- **Admin yetkisi:** 22 server action'ın tamamı `run()` → `assertAdmin()` (oturum + AAL2) üzerinden geçiyor, 15 sayfa `requireAdmin()` çağırıyor.
-  - Oturumsuz `/admin*` istekleri 307 ile girişe yönleniyor.
-  - Sahte `hilal_admin` çerezi işlem yapamıyor (admin denetiminde yeniden oynatma testiyle görüldü).
-- **XSS:** form alanlarında `< >` sunucuda (zod) ve veritabanında (CHECK kısıtı) reddediliyor; mesaj metni React kaçışıyla düz yazı olarak gösteriliyor.
-- **Yaş beyanı:** kimlik veya yaş doğrulaması olarak sunulmuyor (`age-confirmation.ts`); bu korundu.
+### 9.3 Vercel WAF ve oran sınırı yapılandırması (önerilen; uygulanmadı)
 
-## 10. İletişim sayfasının mimarisi
+Uygulama içi sınırlar artık paylaşılan bir sayaçla çalışıyor. Ek savunma olarak Vercel Firewall → Rate limiting kuralları önerilir:
 
-```
-/iletisim (RSC) ── ContactForm (client)
-   │  istemci ön kontrolü: zorunlu alanlar, e-posta biçimi, < > yasak, karakter sayacı, ilk hatalı alana odak
-   │  gizli alanlar: website (honeypot), startedAt (mount sonrası yazılır → hydration farkı yok)
-   ▼
-contactAction (Server Action, src/app/(site)/actions.ts)
-   ▼
-submitContactMessage (src/server/services/contact.ts)
-   1. zod: contactMessageSchema (kategori enum, ad 2–120, e-posta ≤200, konu 3–150, mesaj 20–3000, < > yok, aydınlatma onayı)
-   2. honeypot dolu → reddet · doldurma < 2 sn → reddet
-   3. oran sınırı: süreç içi 3 / 10 dk + veritabanı 5 / saat (ip_hash; sunucusuz instance'lar arası geçerli)
-   4. aynı içerik 10 dk içinde tekrar → "zaten alındı" (çift gönderim)
-   5. repo.createContactMessage → contact_messages (service role)
-   6. audit("contact_message.create", yalnızca kategori; kişisel veri yok)
-   7. RESEND_API_KEY + CONTACT_NOTIFY_TO + CONTACT_NOTIFY_FROM varsa bildirim
-      (gövdede ad, e-posta ve mesaj yok; yalnızca kategori ve panel bağlantısı). Yoksa gönderim yapılmaz.
-```
+| Yol | Yöntem | Önerilen sınır | Uygulama içi sınır |
+|---|---|---|---|
+| `/admin/giris` | POST | IP başına 20 / 15 dk | IP başına 10, hesap başına 5 / 15 dk |
+| `/iletisim` | POST | IP başına 10 / saat | 3 / 10 dk + 5 / saat (DB) + tekrar engeli |
+| `/kaldirma-talebi` | POST | IP başına 10 / saat | 3 / saat |
+| `/profil/*` (şikâyet) | POST | IP başına 20 / saat | saatlik + profil başına sınır |
+| `/api/discovery` | GET | IP başına 120 / dk | 60 / dk |
+| `/api/image` | GET | IP başına 600 / dk | yalnızca yayındaki URL |
 
-- **Veri modeli:** migration `supabase/migrations/20261023000001_contact_messages.sql`.
-  - Alanlar: `category` ve `status` enum'ları, `read_at`, `ip_hash` (tuzlu IP özeti; ham IP yok), CHECK kısıtları, indeksler, `updated_at` tetikleyicisi.
-  - RLS: `is_admin()` (MFA) dışında erişim yok; `revoke all … from anon`.
-- **Yönetim:**
-  - `/admin/iletisim`: arama, durum/kategori/okunmamış filtresi, 25'li sayfalama, okunmamış vurgusu, bildirim yapılandırma rozeti.
-  - `/admin/iletisim/[id]`: açılınca okundu olur; durumlar İşlemde, Yanıtlandı (onaylı), Kapat, Spam (onaylı); "Okunmadı yap"; denetim kayıtlarından işlem geçmişi.
-  - Nav rozeti, KPI kartı ("Okunmamış mesaj") ve `g i` kısayolu.
-- **Herkese açık iletişim bilgisi:** yalnızca `CONTACT_PUBLIC_EMAIL` tanımlıysa gösteriliyor; `@example.*` adresleri reddediliyor. Uydurma telefon, adres veya unvan yok.
-- **KVKK:** `/kvkk` metnine iletişim formu verileri eklendi. Saklama süresi "[hukuk incelemesi]" olarak işaretli. Talebi yanıtlamak için açık rıza değil aydınlatma onayı alınıyor; bu hukuki nitelendirme incelenmeli.
-- **Testler:** `tests/unit/contact.test.ts` (19 test), `tests/e2e/contact.spec.ts` (5 test), SQL politika testleri.
+## 10. İletişim modülü
+
+**Akış:**
+
+| Adım | Ayrıntı |
+|---|---|
+| 1. İstemci ön kontrolü | Zorunlu alanlar, `< >` reddi, karakter sayacı |
+| 2. Sunucu doğrulaması | zod şeması |
+| 3. Bot kontrolü | Honeypot alanı + 2 sn en kısa doldurma süresi |
+| 4. Oran sınırı | Paylaşılan sayaç: 3 / 10 dk |
+| 5. Tekrar engeli | Aynı içerik 10 dk içinde gönderilemez (paylaşılan) |
+| 6. Saatlik sınır | Veritabanı sayacı: 5 / saat |
+| 7. Kayıt | `contact_messages` tablosuna yazılır |
+| 8. Denetim kaydı | Yalnızca kategori; kişisel veri yok |
+| 9. Bildirim | İsteğe bağlı (Resend); kişisel veri içermez |
+
+- **Hata yönetimi:** veritabanı hatasında ve tablo yokken kullanıcı yalnızca "İletişim formu şu anda kullanılamıyor…" mesajını görür. Bu, yerel Supabase'de tablo geçici olarak yeniden adlandırılarak e2e ile doğrulandı. Log kişisel veri içermez.
+- **Saklama ve silme politikası** (varsayılanlar hukuk incelemesiyle kesinleştirilmeli):
+  - Yanıtlanan ve kapatılan mesajlar son güncellemeden **365 gün** sonra silinir (`CONTACT_RETENTION_DAYS`).
+  - Spam **30 gün** sonra silinir (`CONTACT_SPAM_RETENTION_DAYS`).
+  - Yeni ve işlemdeki mesajlar otomatik silinmez.
+  - Değer `0` olursa otomatik silme kapanır.
+  - Silme günlük cron ile yapılır ve toplu silme sayısı denetim kaydına yazılır.
+  - KVKK silme talepleri için yönetim panelinde gerekçeli **kalıcı silme** var; denetim kaydında yalnızca kategori ve gerekçe tutulur.
+
+**Test sonuçları:**
+
+| Seviye | Kapsam | Sonuç |
+|---|---|---|
+| Unit (`contact.test.ts`, 26 test) | Şema, honeypot, hız, tekrar, süreç ve DB sınırları, durum ve okunma, spam sayacı, bildirim yapılandırması, yer tutucu e-posta, DB hatasında nötr mesaj + PII'siz log, saklama, silme, paylaşılan sınır geri düşüşü | ✅ |
+| Entegrasyon (yerel Supabase, 7 test) | CRUD + denetim, CHECK kısıtları, anon REST/RPC reddi, DB tabanlı sınır, saklama, medya kontrolü, SEO silme | ✅ |
+| E2E demo (`contact.spec`, `security.spec`) | Erişilebilirlik, istemci doğrulaması, XSS reddi, gönderim → admin'de okundu → durum → arama, oturumsuz yönlendirme, tekrar ve oran uyarısı, teknik ayrıntı sızmaması | ✅ 13/13 |
+| E2E Supabase (`supabase-contact.spec`) | Gerçek insert, ham IP saklanmaması, tablo yokken nötr mesaj | ✅ 2/2 |
+| Admin MFA (Supabase) | `supabase-auth.spec`: zorunlu TOTP, aal1 ile panel engeli | ✅ |
 
 ## 11. Admin geliştirmeleri
 
-- **Yeni:** İletişim talepleri gelen kutusu ve detay sayfası (§10).
-- **Veri kaybına karşı:**
-  - "Genel bilgiler" sekmesi bağlı kalıyor (A-01).
-  - Kaydedilmemiş değişiklik koruması (A-02).
-  - Gerekçesi zorunlu işlemlerde onay düğmesi, gerekçe yazılana kadar pasif ve sunucu da reddediyor (A-14, A-15).
-  - Arşivle düğmesi yıkıcı stilde.
-- **Gezinme:** ölü Medya bağlantısı kaldırıldı (A-03); mobil nav rozetleri ve demo işareti (A-18).
-- **Formlar:** Türkçe ve alana bağlı hatalar (A-05, A-06); SEO yolu doğrulaması (A-04).
-- **Listeler:** şikâyet durum filtresi; denetim kaydında işlem/tür/kimlik filtresi (A-12).
-- **Erişilebilirlik:** KPI liste yapısı (A-08), rozet kontrastı (A-09), profil formunda `aria-describedby` (A-07).
-- Mevcut yetkilendirme, MFA ve denetim kaydı akışı değiştirilmedi.
+§3'teki A- satırlarına bakın. Bu turda eklenenler:
+- Tüm `ActionForm`'larda kaydedilmemiş değişiklik koruması ve erişilebilir hata bağlama.
+- SEO ayarı silme.
+- Abonelik ve KVKK talebi durum filtreleri.
+- Mobil tablo sütunları.
+- "Taslağa al" onayı.
+- Sayısal yenileme süresi.
+- İletişim mesajı kalıcı silme.
 
-## 12. Düzeltilen hatalar (commit'ler)
+## 12. 2. tur değişiklik kaydı
 
-| Commit | İçerik |
-|---|---|
-| `333c49c` | İletişim sayfası, `contact_messages` tablosu + RLS + SQL testleri, admin gelen kutusu |
-| `cd9f10f` | İletişim e2e testleri |
-| `0e3d37d` | Admin: kaydedilmemiş değişiklik koruması, zorunlu gerekçeler, ölü bağlantılar, erişilebilirlik |
-| `3e14431` | Medya gizliliği, SEO sinyalleri, `React.cache`, filtre sayfası, ana sayfada tekrar/boş şehir, kullanılmayan bağımlılıklar |
-| `f8f14bd` | Odak halkaları, H1 erişilebilir adı, header sadeleştirme, paketler, admin geçmiş etiketleri |
-| `8a65c29` | Font: Fraunces italik ve SOFT kaldırıldı (LCP) |
-| son commit | `/api/discovery` oran sınırı, bu rapor, ekran görüntüleri |
+| # | Sorun | Kök neden | Düzeltme | Dosyalar | Test | Kalan risk |
+|---|---|---|---|---|---|---|
+| 1 | Oran sınırları sunucusuz ortamda güvenilmezdi (C-06, C-09) | Sayaç her instance'ın belleğindeydi | Atomik Postgres sayacı (`rate_limit_hit`, yalnızca service role), özetli anahtarlar, yerel sayaca geri düşüş | `migrations/…0003`, `rate-limit.ts`, `supabase.ts`, giriş, KVKK, şikâyet, iletişim, discovery | SQL, unit, entegrasyon, e2e | Migration yoksa yerel sayaca düşer (bir kez loglanır) |
+| 2 | Hatalarda kişisel veri loglanabilir ve kullanıcı teknik ayrıntı görebilirdi | `console.error(e)` ve `res.error` ham nesneyle yazılıyordu | `logError` + `redact`; `DbError` yalnızca kod ve mesaj taşır; iletişimde `ContactUnavailableError` | `log.ts`, actions, `contact.ts`, `supabase.ts` | unit, Supabase e2e | — |
+| 3 | Saklama politikası yoktu | — | Env ile yapılandırılabilir otomatik silme + gerekçeli kalıcı silme | `contact.ts`, cron, admin detay | unit, entegrasyon | Süreler hukukça onaylanmalı |
+| 4 | Cron'da bir adımın hatası tümünü düşürüyordu; medya eşitlemesi yoktu (C-04) | Tek `Promise.all` | Adımlar bağımsız; `reconcilePublicMedia`; oran tablosu temizliği; hata olursa 500 | `api/cron/route.ts`, `media.ts` | build | Production cron logları izlenmeli |
+| 5 | Kaldırılan profil 200 dönüyordu (C-19); proxy her istekte DB'ye gidiyordu (C-13) | Suspense içinde `notFound()`; önbellek yoktu | Proxy'de profil doğrulaması (30 sn) ve konum önbelleği (10 dk) | `proxy.ts`, `location-path.ts` | `seo.spec` 404 testi | Profil kaldırıldıktan sonra 30 sn'ye kadar not-found içeriği 200 ile görünebilir |
+| 6 | Kart verisi büyüktü (C-23) | Tam `PublicProfile` istemciye gidiyordu | `CardProfile` / `toCardProfile` | `types.ts`, `public.ts`, kart, ızgara, progressive | unit, e2e | — |
+| 7 | Lightbox ilk yükteydi (C-24); büyütme, oklar (P-12); poster (C-11) | Eager import; genişlik filtresi | `media-lightbox-view.tsx` dinamik; boşta ön yükleme ve bağlama; doğal genişlik sınırı | profile/* | Lighthouse, INP | — |
+| 8 | INP gerilemesi (V-04) | İlk dokunuşta modül indiriliyordu | Boşta ön yükleme ve kapalı bağlama | `media-lightbox.tsx` | INP 352 → 64 ms | — |
+| 9 | Admin formları (A-02, A-07, A-04, A-11, A-12, A-15, A-16) | Ortak form katmanı yoktu | `ActionForm` koruma ve erişilebilirlik; `FilterChips`; SEO silme; mobil sütunlar; onaylar; sayı girişi | `action-form.tsx`, `action-button.tsx`, admin sayfaları | e2e (61) | A-13, A-21 açık |
+| 10 | og:url eksikti (P-07); doğrulanmamış footer iddiası (P-02) | Alt sayfa `openGraph` kökü değiştiriyordu | `ogFor()` | `lib/site.ts`, statik sayfalar, footer | `seo.spec` | — |
+| 11 | Kod tekrarı ve ölü kod (C-27, C-28); denetimde slug (C-07); NULL imleç (C-15) | — | Tek konum dizini, 7 UI bileşeni silindi, PII'siz denetim, NULLS LAST | `locations.ts`, `location-directory.ts`, `profiles.ts`, `supabase.ts` | unit | — |
+| 12 | Sahipsiz medya dosyaları (C-03) | Eski kova kayıtla eşleşmiyordu | `scripts/media-orphans.mjs` (varsayılan dry-run) | script | yerel Supabase'de bulma ve silme doğrulandı | Production'da elle çalıştırılmalı |
+| 13 | Testler eksikti | — | `seo.spec`, `security.spec`, `supabase-contact.spec`, `contact-security.test` | tests/* | ✅ | `examples.spec` C-01 verisine bağlı |
+| 14 | Header ve footer tekrarları | — | Arama bağlantısı kaldırıldı, footer kompakt; DESIGN_SYSTEM güncellendi | header, footer, `DESIGN_SYSTEM.md` | sweep 224/0 | Görsel yeniden tasarım §5'e göre beklemede |
 
-## 13. Test sonuçları (bu oturumda çalıştırıldı)
+## 13. Test sonuçları (bu turda çalıştırıldı)
 
 | Test | Komut | Sonuç |
 |---|---|---|
-| TypeScript | `npm run typecheck` | ✅ geçti |
-| ESLint | `npm run lint` | ✅ geçti (0 uyarı) |
-| Unit | `npx vitest run` | ✅ 103/103 (8 dosya; 19'u yeni iletişim testi) |
-| DB/RLS | `npm run test:db` (geçici Postgres 16) | ✅ ALL DB TESTS PASSED (yeni iletişim politikaları dahil) |
-| Production build | `npx next build` | ✅ geçti |
-| E2E | `E2E_PORT=3230 npx playwright test` (demo modu) | ✅ 47 geçti, 5 atlandı (`E2E_SUPABASE` gerektirenler: database-discovery, examples, supabase-auth) |
-| İletişim e2e | `tests/e2e/contact.spec.ts` | ✅ 5/5 (axe, istemci doğrulaması, XSS reddi, gönderim → admin okundu → durum → arama, oturumsuz yönlendirme) |
-| Responsive + axe taraması | 28 sayfa × 8 genişlik (axe 390 ve 1440) | ✅ 224 kontrol, 0 sorun |
-| Lighthouse | mobil, 4 sayfa | ✅ §8 tablosu |
-| **Integration** | `npm run test:integration` | ❌ **çalıştırılmadı**: `supabase start` 10 dakikada hiçbir container oluşturamadı (eksik imajlar indiriliyordu), durduruldu |
-| Production Playwright denetimi | yalnızca GET | ✅ 20 URL × 8 genişlik, axe 0 ihlal (değişiklikler öncesi production) |
+| TypeScript | `npm run typecheck` | ✅ |
+| ESLint | `npm run lint` | ✅ 0 hata, 0 uyarı |
+| Unit | `npx vitest run` | ✅ 110/110 (8 dosya) |
+| DB/RLS | `npm run test:db` (geçici Postgres 16) | ✅ ALL DB TESTS PASSED (iletişim + oran sınırı politikaları dahil) |
+| **Entegrasyon** | `npm run test:integration` (yerel yalıtılmış Supabase, 127.0.0.1:54321, tüm migration'lar uygulandı) | ✅ **11/11** (2 dosya) |
+| Production build | `npx next build` (demo ve Supabase modu) | ✅ |
+| E2E demo | `E2E_PORT=3230 npx playwright test` | ✅ 61 geçti · 7 atlandı (Supabase gerektirenler) |
+| E2E Supabase | `E2E_SUPABASE=1` + yerel Supabase: supabase-auth, database-discovery, supabase-contact, seo | ✅ 11/11 (iki kez çalıştırıldı) |
+| E2E Supabase: `examples.spec` | aynı ortam | ❌ **2 başarısız**: yerel veritabanında örnek profil verisi yok (0 kayıt); test yalnızca production'daki C-01 verisiyle geçer. Production'da çalıştırılmadı. |
+| Mobil responsive + axe | 28 sayfa × 8 genişlik | ✅ 224 kontrol, 0 sorun |
+| SEO doğrulama | `seo.spec.ts` (çerezsiz tarayıcı görünümü) | ✅ 6/6 (demo ve Supabase modu) |
+| Lighthouse | 6 sayfa × 5 tekrar, main ve dal | ✅ §8 |
+| INP | 5 tekrar, main ve dal | ✅ §8 |
 
-Değiştirilen bir e2e testi var: `public-site.spec.ts` içindeki sitemap testi yeni kurala göre güncellendi (kapı arkasındaki adresler sitemap'te olmamalı).
+## 14. Ekran görüntüleri
 
-## 14. Önce/sonra ekran görüntüleri
-
-- **Önce** (production ve yerel admin, 70 dosya): `artifacts/audit-2026-10-18/before/`. Örnekler: `home-390-dark.webp`, `kesfet-390-filter-sheet-dark.webp`, `profil-1440-dark.webp`, `admin-dashboard-1440.webp`, `admin-profil-gecmis-raw-enums-1440.webp`.
-- **Sonra** (yerel üretim derlemesi, demo verisi, 56 dosya): `artifacts/audit-2026-10-18/after/`. Örnekler: `_iletisim-1440.webp`, `_iletisim-390.webp`, `admin_admin_iletisim-390.webp`, `admin_admin-1440.webp`, `_kesfet-390.webp`.
-- "Önce" görselleri production'daki kurgusal portreleri içeriyor. "Sonra" görselleri demo verisi kullanıyor, bu yüzden profil görselleri birebir karşılaştırılamaz.
+- **Önce:** `artifacts/audit-2026-10-18/before/` (70 dosya, production ve yerel admin).
+- **1. tur sonrası:** `artifacts/audit-2026-10-18/after/` (56 dosya).
+- **2. tur sonrası:** `artifacts/audit-2026-10-18/after-r2/` (56 dosya, 390 ve 1440 px; `/`, `/kesfet` ve `/iletisim` için 390 px tam sayfa).
 
 ## 15. Kalan problemler ve öneriler
 
-1. **C-01 ve C-02 kararı** (en acil). Karardan sonra ayrı bir PR'da yapılacaklar:
-   - Kart ve profil yeniden tasarımı.
-   - Galeri: büyütme sınırı, tek fotoğrafta okların gizlenmesi, lightbox'ın geç yüklenmesi.
-   - WhatsApp CTA'sının tek stile indirilmesi.
-   - Ana sayfa ilk ekranının sadeleştirilmesi.
-2. **Yaş kapısının SEO tasarımı:** indekslenebilir metin katmanı üzerine bindirilmiş kapı. Sonra `SITEMAP_INCLUDE_GATED=true`.
-3. **Medya kovası denetimi** (C-03, C-04): eşleşmeyen dosyaları silmek ve düzenli eşitleme işi eklemek.
-4. **Paylaşımlı oran sınırı:** giriş, KVKK formu ve `/api/discovery` için Vercel WAF veya Upstash (C-06, C-09).
-5. **Kart yükünü küçültmek** (C-23): biyografi ve biyografi belgesini liste yanıtından çıkarmak.
-6. **Admin:** mobil tablo kartları (A-11), Abonelikler ve Talepler filtreleri (A-12), diğer formlarda kaydedilmemiş değişiklik koruması (A-02).
-7. **Belgeler:** QA_REPORT, SEO, SECURITY ve README güncellenmeli (C-29). Şu an C-01 ile çelişen iddialar içeriyorlar.
-8. **Hukuk:** iletişim verisi saklama süresi, veri sorumlusu bilgileri (`/kvkk` içindeki yer tutucular) ve C-01.
+1. **C-01 ve C-02** (kapsam dışı, çözülmedi). Çözüldükten sonra ana sayfa, kart ve galeri tasarımı yapılabilir; `examples.spec` yeni davranışa göre güncellenmeli.
+2. **V-01:** Preview ortamı için ayrı bir Supabase projesi tanımlanmalı; Preview'dan production service role anahtarı kaldırılmalı.
+3. **V-02:** `ALLOW_DEMO_MODE` production'dan kaldırılmalı.
+4. **C-03 ve C-04:** production'da `node scripts/media-orphans.mjs` (önce rapor, yedekten sonra `--delete`).
+5. **C-16:** yaş kapısı ve indeksleme ürün/hukuk kararı (§7).
+6. **Low açıklar:** A-13, A-21, P-08, V-03, C-12, C-20, C-25, P-15, P-17, A-19, A-20.
+7. **Belgeler:** QA_REPORT, SECURITY ve README güncellenmeli (C-29).
+8. **Hukuk:** iletişim saklama süreleri, `/kvkk` içindeki veri sorumlusu yer tutucuları, aydınlatma/rıza nitelendirmesi.
 
-## 16. Production'a alma kontrol listesi
+## 16. Production'a geçiş kontrol listesi
 
-- [ ] C-01 ve C-02 için karar verildi ve uygulandı (hukuk görüşü alındı).
-- [ ] PR incelendi; **otomatik merge edilmedi**.
-- [ ] Migration'lar önce staging'de, sonra production'da **elle** uygulandı (sırayla):
-  - [ ] `20261023000001_contact_messages.sql`
-  - [ ] `20261023000002_legacy_media_paths.sql`
-- [ ] Migration'dan sonra `npm run test:db` yeşil; Supabase Advisors'da RLS uyarısı yok.
-- [ ] Ortam değişkenleri (isteğe bağlı, gerçek değerlerle):
-  - [ ] `CONTACT_PUBLIC_EMAIL` (doğrulanmış adres; boşsa e-posta gösterilmez).
-  - [ ] `RESEND_API_KEY`, `CONTACT_NOTIFY_TO`, `CONTACT_NOTIFY_FROM` (üçü birlikte; yoksa bildirim gönderilmez ve panelde "yapılandırılmamış" görünür).
-- [ ] Not: kod migration'dan önce yayına çıkarsa admin paneli çökmez (okunmamış sayacı tablo yoksa 0 döner), ama iletişim formu gönderimleri **hata verir**. Önce migration uygulanmalı.
-- [ ] Vercel WAF: `/iletisim` POST, `/api/discovery`, `/admin/giris` için oran kuralları.
-- [ ] Preview deploy'da kontrol: `/iletisim` gönderimi → `/admin/iletisim`'de görünüyor → durum değişiyor.
-- [ ] Search Console: yeni sitemap gönderildi.
-- [ ] `profile-images` ve `media-public` kovalarında eşleşmeyen dosya denetimi yapıldı.
+**Karar ve onay**
+- [ ] C-01 için karar verildi; hukuk görüşü alındı.
+- [ ] PR #1 incelendi ve onaylandı (otomatik merge yok).
+
+**Ortam (Vercel)**
+- [ ] Preview ortamı ayrı bir Supabase projesine bağlandı; Preview'da production `SUPABASE_SERVICE_ROLE_KEY` yok (V-01).
+- [ ] `ALLOW_DEMO_MODE` production'da tanımsız (V-02).
+- [ ] `IP_HASH_SALT` ve `CRON_SECRET` tanımlı (zaten var).
+- [ ] İsteğe bağlı: `CONTACT_PUBLIC_EMAIL`, `RESEND_API_KEY` + `CONTACT_NOTIFY_TO` + `CONTACT_NOTIFY_FROM`, `CONTACT_RETENTION_DAYS`, `CONTACT_SPAM_RETENTION_DAYS`.
+
+**Veritabanı** (önce staging, sonra production; elle ve sırayla)
+- [ ] Yedek alındı.
+- [ ] `20261023000001_contact_messages.sql`
+- [ ] `20261023000002_legacy_media_paths.sql`
+- [ ] `20261023000003_shared_rate_limits.sql`
+- [ ] Staging'de `npm run test:integration` yeşil (yalnızca staging URL'iyle; production'a karşı değil).
+- [ ] Supabase Advisors: RLS uyarısı yok.
+
+**Deploy**
+- [ ] Önce migration'lar, sonra kod. Kod önce giderse: iletişim formu nötr hata gösterir, oran sınırı yerel sayaca düşer, yönetim paneli çökmez.
+- [ ] Preview'da kontrol: `/iletisim` gönderimi → `/admin/iletisim` → durum → silme; olmayan profil 404; `/sitemap.xml`.
+- [ ] Vercel WAF oran kuralları (§9.3).
+- [ ] İlk cron çalışmasından sonra `/api/cron` yanıtında `ok: true` (log).
+
+**Sonrası**
+- [ ] `node scripts/media-orphans.mjs` raporu incelendi; gerekirse yedekten sonra `--delete`.
+- [ ] Search Console'a yeni sitemap gönderildi.
