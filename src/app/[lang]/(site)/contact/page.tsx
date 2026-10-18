@@ -8,7 +8,7 @@ import { getI18n } from "@/i18n/server";
 import { localizedPath } from "@/i18n/routes";
 import { ContactForm } from "@/components/site/contact-form";
 import { CONTACT_CATEGORIES, type ContactCategory } from "@/domain/types";
-import { publicContactEmail, ogFor } from "@/lib/site";
+import { publicContactEmail } from "@/lib/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { lang, m } = await getI18n();

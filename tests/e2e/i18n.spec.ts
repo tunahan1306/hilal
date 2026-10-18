@@ -55,7 +55,8 @@ for (const l of LANGS) {
       await page.waitForLoadState("networkidle");
       const alternates = await page.locator('link[rel="alternate"][hreflang]').evaluateAll((els) => els.map((e) => e.getAttribute("hreflang")));
       expect(alternates.sort()).toEqual(["de", "en", "nl", "tr", "x-default"]);
-      await expect(page.locator("main article").first()).toBeVisible();
+      // Demo modunda örnek profiller listelenir; boş yerel veritabanında (Supabase modu) boş durum başlığı görünür.
+      await expect(process.env.E2E_SUPABASE ? page.locator("main article, main h2").first() : page.locator("main article").first()).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     });
 

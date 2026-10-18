@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
 import { COUNTRIES, COUNTRY_CODES, countryName } from "@/domain/countries";
+import { LOCATION_SOURCES } from "@/domain/locations";
 import { fmt } from "@/i18n/config";
 import { i18nPageMeta } from "@/i18n/metadata";
 import { getI18n } from "@/i18n/server";
@@ -57,6 +58,25 @@ export default async function CitiesPage() {
           );
         })}
       </div>
+      <section className="mt-14 border-t border-hairline pt-6 text-xs text-muted-foreground" aria-labelledby="kaynaklar">
+        <h2 id="kaynaklar" className="font-medium text-foreground">{m.cities.sourcesTitle}</h2>
+        <p className="mt-2 max-w-[72ch]">{m.cities.sourcesNote}</p>
+        <ul className="mt-3 grid gap-1.5">
+          {LOCATION_SOURCES.map((s) => (
+            <li key={s.name} lang={s.name.startsWith("Wikidata") ? "en" : s.country} className="break-words">
+              <span className="uppercase">{s.country}</span> · {"url" in s ? <a href={s.url} rel="noopener" className="underline underline-offset-2">{s.name}</a> : s.name}
+              {"license" in s ? <> · {LICENSE_URL[s.license.split(" (")[0]!] ? <a href={LICENSE_URL[s.license.split(" (")[0]!]} rel="license noopener" className="underline underline-offset-2">{s.license}</a> : s.license}</> : null}
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }
+
+/** Lisans metinleri (atıf zorunluluğu: CC BY 4.0 ve dl-de/by-2-0 kaynak, lisans ve değişiklik bildirimi ister). */
+const LICENSE_URL: Record<string, string> = {
+  "CC BY 4.0": "https://creativecommons.org/licenses/by/4.0/",
+  "Datenlizenz Deutschland – Namensnennung – Version 2.0": "https://www.govdata.de/dl-de/by-2-0",
+  "CC0 1.0": "https://creativecommons.org/publicdomain/zero/1.0/",
+};

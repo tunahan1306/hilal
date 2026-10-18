@@ -81,6 +81,8 @@ export const nl: DeepPartial<Messages> = {
     eyebrow: "Index · {n} landen",
     lead: "Er staan nu profielen online in {n} steden of regio's. Aantallen worden live bijgewerkt; pagina's zonder profielen worden niet aan zoekmachines getoond.",
     countryEyebrow: "{n} regio's",
+    sourcesTitle: "Bronnen locatiegegevens",
+    sourcesNote: "Bevolkings- en indelingsgegevens zijn afkomstig uit onderstaande bronnen en voor deze site bewerkt (veldnamen, URL-slugs).",
   },
   places: {
     levels: {

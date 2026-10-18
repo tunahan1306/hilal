@@ -79,6 +79,8 @@ export const tr = {
     eyebrow: "İndeks · {n} ülke",
     lead: "Şu anda {n} şehir veya bölgede yayında profil var. Profil sayıları anlık güncellenir; profili olmayan sayfalar arama motorlarına gösterilmez.",
     countryEyebrow: "{n} bölge",
+    sourcesTitle: "Konum verisi kaynakları",
+    sourcesNote: "Nüfus ve idari bölünme verileri aşağıdaki kaynaklardan alınmış, bu site için uyarlanmıştır (alan adları, URL kısaltmaları).",
   },
   places: {
     levels: {

@@ -81,6 +81,8 @@ export const de: DeepPartial<Messages> = {
     eyebrow: "Index · {n} Länder",
     lead: "Derzeit gibt es veröffentlichte Profile in {n} Städten oder Regionen. Die Zahlen werden live aktualisiert; Seiten ohne Profile werden Suchmaschinen nicht angezeigt.",
     countryEyebrow: "{n} Regionen",
+    sourcesTitle: "Quellen der Ortsdaten",
+    sourcesNote: "Bevölkerungs- und Gebietsdaten stammen aus den unten genannten Quellen und wurden für diese Website angepasst (Feldnamen, URL-Kürzel).",
   },
   places: {
     levels: {
