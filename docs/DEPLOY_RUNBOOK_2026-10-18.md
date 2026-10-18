@@ -36,34 +36,58 @@ Sıra:
 2. Plan **Pro** ise son günlük yedeğin tarihini not edin. Point-in-time recovery açıksa onu da not edin.
 3. Plan **Free** ise otomatik yedek yoktur (DEPLOYMENT.md). 1B **zorunludur**.
 
-### 1B. Mantıksal yedek (kendi terminalinizde)
-Bağlantı dizesi: Dashboard → **Project Settings → Database → Connection string → URI**. "Session pooler" (5432) seçeneğini kullanın. `[YOUR-PASSWORD]` yerine veritabanı şifresini yazın; şifrede `@ : / ? #` gibi karakterler varsa yüzde-kodlu yazılmalıdır (CLI bunu şart koşar). Değeri yalnızca terminalde değişkene atayın:
+### 1B. Mantıksal yedek (kendi Terminal uygulamanızda; Claude oturumunda `!` ile değil)
+Komutlar yerel test veritabanında 2026-10-18'de denendi. Docker açık olmalı; `supabase db dump`, sunucu sürümüne uygun `pg_dump`'ı container içinde çalıştırır. Yereldeki `pg_dump` 14, Postgres 17 için eskidir.
+
+Bağlantı dizesi: Dashboard → **Connect** (veya Project Settings → Database) → **Session pooler** URI. Şifrede `@ : / ? #` varsa yüzde-kodlu yazılmalıdır.
 
 ```bash
-# Değeri ekrana yazdırmadan okur (sohbete veya geçmişe düşmez)
-read -rs PROD_DB_URL && export PROD_DB_URL
+# 1) Kısıtlı izinli klasör
+umask 077 && mkdir -p ~/hilal-backup-2026-10-18 && cd ~/hilal-backup-2026-10-18
 
-cd ~/Projeler/hilal
-mkdir -p ~/hilal-backup-2026-10-18 && cd ~/hilal-backup-2026-10-18
-# supabase db dump, sunucu sürümüne uygun pg_dump'ı Docker içinde çalıştırır
-# (yereldeki pg_dump 14 Postgres 17 için eskidir).
-npx --prefix ~/Projeler/hilal supabase db dump --db-url "$PROD_DB_URL" -f roles.sql --role-only
-npx --prefix ~/Projeler/hilal supabase db dump --db-url "$PROD_DB_URL" -f schema.sql
-npx --prefix ~/Projeler/hilal supabase db dump --db-url "$PROD_DB_URL" -f data.sql --use-copy --data-only
-ls -la && shasum -a 256 *.sql > SHA256SUMS && cat SHA256SUMS
+# 2) Bağlantı dizesini görünmez biçimde okuyun. Ekrana ve shell geçmişine düşmez.
+#    Komutu çalıştırınca hiçbir şey görünmez: URI'yi yapıştırıp Enter'a basın.
+read -rs PROD_DB_URL && export PROD_DB_URL && echo "okundu (uzunluk: ${#PROD_DB_URL})"
+
+# 3) Döküm (her biri yalnızca "Dumping … / Dumped schema to …" yazar)
+SB=~/Projeler/hilal/node_modules/.bin/supabase
+$SB db dump --db-url "$PROD_DB_URL" --file roles.sql  --role-only
+$SB db dump --db-url "$PROD_DB_URL" --file schema.sql
+$SB db dump --db-url "$PROD_DB_URL" --file data.sql   --use-copy --data-only
+
+# 4) Değişkeni silin, bütünlük özetini alın
 unset PROD_DB_URL
+shasum -a 256 roles.sql schema.sql data.sql > SHA256SUMS
+ls -la && grep -c '^COPY ' data.sql
 ```
+**Beklenen:**
+- 3. adımdaki üç komut da `Dumped schema to …` ile biter.
+- `ls` çıktısında üç `.sql` ve `SHA256SUMS` görünür, `schema.sql` boyutu 0'dan büyüktür.
+- `grep` 1'den büyük bir sayı verir (tablo sayısı).
+
+Hata çıkarsa yalnızca hata satırını iletin. CLI hata metninde bağlantı dizesini yazmaz; yine de yapıştırmadan önce kontrol edin.
+
+Not: `--db-url` değeri komut çalışırken yerel süreç listesinde (`ps`) görünür. Paylaşılan bir makinede çalıştırmayın.
 
 ### 1C. Depolama (fotoğraf/video) yedeği
 Veritabanı dökümü kova dosyalarını içermez. Bugün `profile_media` boş. Kurgusal profillerin görselleri kova veya dış adreste olabilir. Hızlı kontrol için **Storage** → `media-public`, `profile-images`, `media-private` kovalarına bakın. Dosya varsa panelden indirin; bu migration'lar dosyalara dokunmaz.
 
 ### 1D. Yedeğin doğrulanması (benim yapacağım; veri makinenizden çıkmaz)
-Dosyalar `~/hilal-backup-2026-10-18` klasöründe olduğunda bana "yedek hazır" yazmanız yeterli. Şunları yaparım:
-1. Dosyaları **yerel, geçici ve yalıtılmış** bir Postgres 17 container'ına geri yüklerim. Bu yerel Supabase test veritabanı değil, ayrı bir container olur.
-2. Tablo bazında satır sayılarını ve `SHA256SUMS` değerlerini raporlarım.
-3. Container'ı silerim.
+"Yedek hazır" yazdığınızda şu komutu çalıştırırım:
+```bash
+scripts/runbook/verify-production-backup.sh ~/hilal-backup-2026-10-18
+```
+Komut şunları yapar:
+1. **Ayrı, geçici bir yerel Supabase yığını** başlatır: Postgres 17.11, `project_id=hilal-restore-check`, portlar 554xx. Auth ve storage servisleri kendi şemalarını oluşturur; test veritabanından tamamen ayrıdır.
+2. Veriyi yüklemeden önce yığını sıkılaştırır: API servislerini (kong, rest, auth, storage) durdurur, veritabanı şifrelerini rastgele değerlerle değiştirir.
+3. `SHA256SUMS` doğrular. Ardından roller ve şemayı tek transaction'da yükler, veriyi tablo tablo yükler ve her tablonun satır sayısını döküm dosyasıyla karşılaştırır. Tek bir uyuşmazlık "doğrulanmadı" demektir.
+4. Bittiğinde yığını **volume'larıyla birlikte siler**; production verisinin kopyası kalmaz.
 
-Bu, "yedek açılabiliyor ve tam" doğrulamasıdır. Dosyalar kişisel veri içerebilir. Diskte şifreli bir yerde saklayın ve repoya koymayın.
+Çıktıda yalnızca tablo adları ve satır sayıları görünür, kişisel veri görünmez.
+
+Prova (2026-10-18, yerel test veritabanı yedeğiyle): **57/57 tablo birebir**, "SONUÇ: YEDEK DOĞRULANDI", sonrasında 0 container ve 0 volume kaldı.
+
+Yedek dosyaları kişisel veri içerebilir. Şifreli bir diskte saklayın, repoya koymayın, işiniz bitince güvenli silin.
 
 > **Onay noktası 1:** yedek alındı ve 1D doğrulaması geçti.
 
