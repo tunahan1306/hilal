@@ -76,7 +76,7 @@ export default async function SubscriptionsPage({ searchParams }: PageProps<"/ad
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       {st !== "cancelled" ? (
-                        <ActionButton action={subscriptionAction.bind(null, s.id, "renew")} size="sm" variant="outline" confirm={{ title: "Abonelik yenilensin mi?", prompt: "Kaç ay? (1–24)", confirmLabel: "Yenile" }}>Yenile</ActionButton>
+                        <ActionButton action={subscriptionAction.bind(null, s.id, "renew")} size="sm" variant="outline" confirm={{ title: "Abonelik yenilensin mi?", prompt: "Kaç ay? (1–24)", confirmLabel: "Yenile", number: { min: 1, max: 24 } }}>Yenile</ActionButton>
                       ) : null}
                       {canCancel(s, now) ? (
                         <ActionButton action={subscriptionAction.bind(null, s.id, "cancel")} size="sm" variant="ghost" confirm={{ title: "Abonelik iptal edilsin mi?", prompt: "İptal gerekçesi", destructive: true, confirmLabel: "İptal et" }}>İptal</ActionButton>
