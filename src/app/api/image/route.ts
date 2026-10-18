@@ -68,6 +68,8 @@ export async function GET(request: NextRequest) {
       if (optimized.size >= 64) optimized.delete(optimized.keys().next().value!);
       if (result.byteLength <= 512 * 1024) optimized.set(key, result);
     }
-    return new Response(new Uint8Array(result), { headers: { ...headers, "Content-Type": "image/webp" } });
+    // Yalnızca yaş onaylı tarayıcının kendi önbelleği (private), kısa süre: tekrar görüntülemede
+    // yeniden indirme/kodlama olmaz; yayından kaldırılan görsel en geç 5 dakikada düşer (C-10).
+    return new Response(new Uint8Array(result), { headers: { ...headers, "Cache-Control": "private, max-age=300", "Content-Type": "image/webp" } });
   } catch { return new Response(null, { status: 404, headers }); }
 }

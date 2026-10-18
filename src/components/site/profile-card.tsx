@@ -1,11 +1,9 @@
 import Image from "next/image";
 import { MessageCircle } from "lucide-react";
 import { whatsAppHref } from "@/domain/whatsapp";
-import type { PublicProfile } from "@/domain/types";
+import type { CardProfile } from "@/domain/types";
 import { cn } from "@/lib/utils";
 import { VerifiedMark } from "./verified-mark";
-
-type Variant = "default" | "feature";
 
 /**
  * Profile links use document navigation so moderation invalidation cannot leave a stale RSC stream.
@@ -15,20 +13,17 @@ type Variant = "default" | "feature";
 export function ProfileCard({
   profile,
   priority = false,
-  variant = "default",
   sizes = "(min-width: 1280px) 300px, (min-width: 1024px) 23vw, (min-width: 640px) 31vw, 46vw",
   className,
 }: {
-  profile: PublicProfile;
+  profile: CardProfile;
   priority?: boolean;
-  variant?: Variant;
   sizes?: string;
   className?: string;
 }) {
   const image = profile.images[0];
   const whatsapp = whatsAppHref(profile.whatsappPhone);
   const location = profile.district ? `${profile.district.name}, ${profile.province.name}` : profile.province.name;
-  const feature = variant === "feature";
   return (
     <article className={cn("group relative flex flex-col", className)}>
       <div className="relative aspect-[4/5] overflow-hidden rounded-xs bg-muted">
@@ -46,19 +41,14 @@ export function ProfileCard({
             <span className="font-display text-7xl text-brand" aria-hidden>{profile.nickname.charAt(0)}</span>
           </div>
         ) : null}
-        {feature && profile.images.length > 1 ? (
-          <span className="absolute bottom-2 right-2 rounded-xs bg-background/95 px-1.5 py-0.5 text-[0.6875rem] tabular-nums text-foreground backdrop-blur-sm">
-            {profile.images.length} fotoğraf
-          </span>
-        ) : null}
       </div>
-      <div className={cn("pt-3", feature && "pt-4")}>
+      <div className="pt-3">
         <p className="eyebrow flex flex-wrap items-center gap-x-2 text-muted-foreground" data-testid="card-location">
           {profile.sponsored ? <span className="text-brand">Sponsorlu</span> : null}
           {profile.sponsored ? <span aria-hidden>·</span> : null}
           <span className="truncate">{location}</span>
         </p>
-        <h3 className={cn("mt-1.5 flex items-baseline gap-2", feature ? "text-display-sm" : "text-[1.3125rem] leading-tight")}>
+        <h3 className="mt-1.5 flex items-baseline gap-2 text-[1.3125rem] leading-tight">
           <a
             href={`/profil/${profile.slug}`}
             className="font-display truncate underline-offset-[5px] decoration-1 after:absolute after:inset-0 group-hover:underline focus-visible:after:outline-2 focus-visible:after:outline-ring focus-visible:after:outline-offset-4"

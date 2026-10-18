@@ -21,14 +21,16 @@ export function MediaMosaic({ items, name, startIndex = 0 }: { items: MediaItem[
               label={`${m.kind === "video" ? "Videoyu" : "Fotoğrafı"} tam ekran aç (${index + 1})`}
               className="group relative block aspect-[4/5] w-full overflow-hidden rounded-xs bg-muted"
             >
-              <Image
-                src={m.kind === "video" ? (m.poster ?? m.url) : m.url}
+              {m.kind === "video" && !m.poster ? (
+                // Posteri olmayan video görsel kaynağı olarak verilmez (C-11); nötr yer tutucu gösterilir.
+                <span className="absolute inset-0 bg-gradient-to-br from-muted to-secondary" aria-hidden />
+              ) : <Image
+                src={m.kind === "video" ? m.poster! : m.url}
                 alt={m.alt || `${name} — galeri ${index + 1}`}
                 fill
                 sizes={wide ? "(min-width: 1024px) 40vw, 92vw" : "(min-width: 1024px) 20vw, (min-width: 640px) 30vw, 46vw"}
                 className="object-cover object-[50%_30%] transition-transform duration-700 ease-[var(--ease-out-soft)] group-hover:scale-[1.03] motion-reduce:transform-none"
-                unoptimized={m.kind === "video" && !m.poster}
-              />
+              />}
               {m.kind === "video" ? (
                 <span className="absolute inset-0 grid place-items-center bg-black/10">
                   <span className="grid size-12 place-items-center rounded-full bg-background/85 backdrop-blur"><Play className="size-5 translate-x-0.5" aria-hidden /></span>

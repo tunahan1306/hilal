@@ -1,8 +1,8 @@
-import type { PublicProfile } from "@/domain/types";
+import type { CardProfile } from "@/domain/types";
 import { cn } from "@/lib/utils";
 import { ProfileCard } from "./profile-card";
 
-export function ProfileGrid({ profiles, priorityCount = 0, columns = 4, className }: { profiles: PublicProfile[]; priorityCount?: number; columns?: 3 | 4; className?: string }) {
+export function ProfileGrid({ profiles, priorityCount = 0, columns = 4, className }: { profiles: CardProfile[]; priorityCount?: number; columns?: 3 | 4; className?: string }) {
   return (
     <ul
       className={cn(

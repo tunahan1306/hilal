@@ -380,6 +380,33 @@ export type PublicProfile = {
   seo: { title: string | null; description: string | null; noindex: boolean };
 };
 
+/**
+ * Kartlarda gösterilen alt küme. Listeler ve keşif API'si biyografi, zengin metin,
+ * ilgi alanı, SEO ve video ayrıntılarını istemciye göndermez (C-23: veri yükü ve minimizasyon).
+ */
+export type CardProfile = Pick<
+  PublicProfile,
+  "isExample" | "id" | "slug" | "nickname" | "age" | "province" | "district" | "whatsappPhone" | "verified" | "sponsored" | "publishedAt"
+> & { images: PublicProfile["images"] };
+
+export function toCardProfile(p: PublicProfile): CardProfile {
+  return {
+    isExample: p.isExample,
+    id: p.id,
+    slug: p.slug,
+    nickname: p.nickname,
+    age: p.age,
+    province: p.province,
+    district: p.district,
+    whatsappPhone: p.whatsappPhone,
+    verified: p.verified,
+    sponsored: p.sponsored,
+    publishedAt: p.publishedAt,
+    // Kart yalnızca kapak görselini kullanır; adet etiketi için diğerleri boyut bilgisi olmadan sayılmaz.
+    images: p.images.slice(0, 1),
+  };
+}
+
 export type PublicVideo = {
   url: string;
   posterUrl: string | null;
