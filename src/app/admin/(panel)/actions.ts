@@ -4,8 +4,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { consentInputSchema, profileInputSchema, seoPageInputSchema, verificationInputSchema } from "@/domain/schemas";
 import { slugifyTr } from "@/domain/text";
-import type { Admin, PrivacyRequestStatus } from "@/domain/types";
+import type { Admin, ContactStatus, PrivacyRequestStatus } from "@/domain/types";
+import { CONTACT_STATUSES } from "@/domain/types";
 import { AuthorizationError, assertAdmin } from "@/server/auth/session";
+import { logError } from "@/server/log";
 import { invalidatePublic } from "@/server/cache";
 import { getRepository } from "@/server/repositories";
 import { audit } from "@/server/services/audit";
@@ -14,6 +16,7 @@ import * as profiles from "@/server/services/profiles";
 import * as moderation from "@/server/services/moderation";
 import * as subscriptions from "@/server/services/subscriptions";
 import { updatePrivacyRequestStatus } from "@/server/services/privacy";
+import { deleteContactMessage, markContactMessageUnread, updateContactMessageStatus } from "@/server/services/contact";
 
 export type ActionResult = { ok: boolean; message: string; errors?: Record<string, string[]>; data?: unknown } | null;
 
@@ -38,7 +41,7 @@ async function run(fn: (admin: Admin) => Promise<string | { message: string; dat
   } catch (e) {
     if (e instanceof z.ZodError) return { ok: false, message: "Formdaki hataları düzeltin.", errors: z.flattenError(e).fieldErrors as Record<string, string[]> };
     if (e instanceof DomainError) return { ok: false, message: e.message };
-    console.error(e);
+    logError("admin.action", e);
     return { ok: false, message: "Beklenmeyen bir hata oluştu." };
   }
 }
@@ -87,7 +90,9 @@ export async function profileStatusAction(id: string, op: "review" | "publish" |
     switch (op) {
       case "review": await profiles.submitForReview(admin, id); return "Profil incelemeye gönderildi.";
       case "publish": await profiles.publishProfile(admin, id); return "Profil yayınlandı.";
-      case "unpublish": await profiles.unpublishProfile(admin, id, reason || "Yönetici kararı"); return "Profil yayından kaldırıldı.";
+      case "unpublish":
+        if ((reason ?? "").trim().length < 5) throw new DomainError("Yayından kaldırma gerekçesi girin (en az 5 karakter).");
+        await profiles.unpublishProfile(admin, id, reason!.trim()); return "Profil yayından kaldırıldı.";
       case "archive": await profiles.archiveProfile(admin, id); return "Profil arşivlendi.";
       case "draft": await profiles.restoreToDraft(admin, id); return "Profil taslağa alındı.";
     }
@@ -96,6 +101,7 @@ export async function profileStatusAction(id: string, op: "review" | "publish" |
 
 export async function moderateProfileAction(id: string, decision: "approved" | "rejected", note: string): Promise<ActionResult> {
   return run(async (admin) => {
+    if (decision === "rejected" && note.trim().length < 5) throw new DomainError("Red gerekçesi girin (en az 5 karakter).");
     await profiles.setModeration(admin, id, decision, note.trim() || null);
     return decision === "approved" ? "Moderasyon onaylandı." : "Profil reddedildi.";
   });
@@ -205,6 +211,7 @@ export async function createSubscriptionAction(_p: ActionResult, fd: FormData): 
 
 export async function subscriptionAction(id: string, op: "renew" | "cancel", value: string): Promise<ActionResult> {
   return run(async (admin) => {
+    if (op !== "renew" && op !== "cancel") throw new DomainError("Geçersiz işlem.");
     if (op === "renew") {
       // "2", "2 ay" gibi girdileri kabul eder; geçersizse servis anlaşılır hata döndürür.
       await subscriptions.renewSubscription(admin, id, Number.parseInt(value.trim(), 10));
@@ -218,10 +225,35 @@ export async function subscriptionAction(id: string, op: "renew" | "cancel", val
 // ---------------------------------------------------------------------------
 // KVKK, SEO, ilgi alanları, ayarlar
 // ---------------------------------------------------------------------------
-export async function privacyStatusAction(id: string, status: PrivacyRequestStatus): Promise<ActionResult> {
+export async function privacyStatusAction(id: string, status: PrivacyRequestStatus, reason = ""): Promise<ActionResult> {
   return run(async (admin) => {
-    await updatePrivacyRequestStatus(admin, id, status);
+    if (status === "rejected" && reason.trim().length < 10) throw new DomainError("Ret gerekçesi girin (en az 10 karakter).");
+    await updatePrivacyRequestStatus(admin, id, status, status === "rejected" ? reason.trim().slice(0, 1000) : undefined);
     return "Başvuru durumu güncellendi.";
+  }, { invalidate: false });
+}
+
+export async function contactStatusAction(id: string, status: ContactStatus): Promise<ActionResult> {
+  return run(async (admin) => {
+    if (!CONTACT_STATUSES.includes(status)) throw new DomainError("Geçersiz durum.");
+    await updateContactMessageStatus(admin, id, status);
+    return "Mesaj durumu güncellendi.";
+  }, { invalidate: false });
+}
+
+export async function contactDeleteAction(id: string, reason: string): Promise<ActionResult> {
+  const res = await run(async (admin) => {
+    await deleteContactMessage(admin, id, reason);
+    return "Mesaj kalıcı olarak silindi.";
+  }, { invalidate: false });
+  if (res?.ok) redirect("/admin/iletisim");
+  return res;
+}
+
+export async function contactUnreadAction(id: string): Promise<ActionResult> {
+  return run(async (admin) => {
+    await markContactMessageUnread(admin, id);
+    return "Mesaj okunmadı olarak işaretlendi.";
   }, { invalidate: false });
 }
 
@@ -241,9 +273,19 @@ export async function seoPageAction(_p: ActionResult, fd: FormData): Promise<Act
   });
 }
 
+export async function deleteSeoPageAction(id: string, path: string): Promise<ActionResult> {
+  return run(async (admin) => {
+    await getRepository().deleteSeoPage(id);
+    await audit(admin, "seo.delete", "seo_page", path);
+    return "SEO ayarı silindi; sayfa otomatik kurallara döndü.";
+  });
+}
+
 export async function interestAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   return run(async (admin) => {
-    const name = z.string().trim().min(2).max(40).parse(str(fd, "name"));
+    const { name } = z
+      .object({ name: z.string().trim().min(2, "Ad en az 2 karakter olmalı").max(40, "Ad en fazla 40 karakter olabilir") })
+      .parse({ name: str(fd, "name") });
     const i = await getRepository().createInterest({ name, slug: slugifyTr(name), description: str(fd, "description").trim() || null });
     await audit(admin, "interest.create", "interest", i.id, { name });
     invalidatePublic("interests");
@@ -263,7 +305,11 @@ export async function deleteInterestAction(id: string): Promise<ActionResult> {
 export async function settingsAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
   return run(async (admin) => {
     const input = z
-      .object({ siteName: z.string().trim().min(2).max(60), supportEmail: z.email(), reportsEnabled: z.boolean() })
+      .object({
+        siteName: z.string().trim().min(2, "Site adı en az 2 karakter olmalı").max(60, "Site adı en fazla 60 karakter olabilir"),
+        supportEmail: z.email("Geçerli bir e-posta girin"),
+        reportsEnabled: z.boolean(),
+      })
       .parse({ siteName: str(fd, "siteName"), supportEmail: str(fd, "supportEmail"), reportsEnabled: fd.get("reportsEnabled") === "on" });
     await getRepository().updateSiteSettings(input);
     await audit(admin, "settings.update", "site_settings", null, input);

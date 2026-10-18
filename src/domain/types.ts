@@ -190,6 +190,19 @@ export const MODERATION_ACTION_TYPES = [
 ] as const;
 export type ModerationActionType = (typeof MODERATION_ACTION_TYPES)[number];
 
+export const MODERATION_ACTION_LABELS: Record<ModerationActionType, string> = {
+  review_started: "İncelemeye alındı",
+  content_removed: "İçerik kaldırıldı",
+  profile_unpublished: "Profil yayından kaldırıldı",
+  profile_restored: "Profil geri yüklendi",
+  report_rejected: "Şikâyet reddedildi",
+  report_resolved: "Şikâyet sonuçlandı",
+  appeal_received: "İtiraz alındı",
+  appeal_accepted: "İtiraz kabul edildi",
+  appeal_rejected: "İtiraz reddedildi",
+  auto_unpublished: "Otomatik yayından kaldırma",
+};
+
 export type ModerationAction = {
   id: string;
   reportId: string | null;
@@ -275,6 +288,46 @@ export type PrivacyRequest = {
   createdAt: string;
 };
 
+export const CONTACT_CATEGORIES = ["general", "support", "partnership", "content_report", "other"] as const;
+export type ContactCategory = (typeof CONTACT_CATEGORIES)[number];
+
+export const CONTACT_CATEGORY_LABELS: Record<ContactCategory, string> = {
+  general: "Genel soru",
+  support: "Teknik destek",
+  partnership: "İş birliği",
+  content_report: "Profil veya içerik bildirimi",
+  other: "Diğer",
+};
+
+export const CONTACT_LIMITS = { name: 120, email: 200, subject: 150, message: 3000 } as const;
+
+export const CONTACT_STATUSES = ["new", "in_progress", "answered", "closed", "spam"] as const;
+export type ContactStatus = (typeof CONTACT_STATUSES)[number];
+
+export const CONTACT_STATUS_LABELS: Record<ContactStatus, string> = {
+  new: "Yeni",
+  in_progress: "İşlemde",
+  answered: "Yanıtlandı",
+  closed: "Kapatıldı",
+  spam: "Spam",
+};
+
+export type ContactMessage = {
+  id: string;
+  category: ContactCategory;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: ContactStatus;
+  /** İlk açılış zamanı; null = okunmadı. */
+  readAt: string | null;
+  /** Tuzlu IP özeti (ham IP saklanmaz); yalnızca kötüye kullanım sınırı için. */
+  ipHash: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type SeoPage = {
   id: string;
   path: string;
@@ -326,6 +379,33 @@ export type PublicProfile = {
   updatedAt: string;
   seo: { title: string | null; description: string | null; noindex: boolean };
 };
+
+/**
+ * Kartlarda gösterilen alt küme. Listeler ve keşif API'si biyografi, zengin metin,
+ * ilgi alanı, SEO ve video ayrıntılarını istemciye göndermez (C-23: veri yükü ve minimizasyon).
+ */
+export type CardProfile = Pick<
+  PublicProfile,
+  "isExample" | "id" | "slug" | "nickname" | "age" | "province" | "district" | "whatsappPhone" | "verified" | "sponsored" | "publishedAt"
+> & { images: PublicProfile["images"] };
+
+export function toCardProfile(p: PublicProfile): CardProfile {
+  return {
+    isExample: p.isExample,
+    id: p.id,
+    slug: p.slug,
+    nickname: p.nickname,
+    age: p.age,
+    province: p.province,
+    district: p.district,
+    whatsappPhone: p.whatsappPhone,
+    verified: p.verified,
+    sponsored: p.sponsored,
+    publishedAt: p.publishedAt,
+    // Kart yalnızca kapak görselini kullanır; adet etiketi için diğerleri boyut bilgisi olmadan sayılmaz.
+    images: p.images.slice(0, 1),
+  };
+}
 
 export type PublicVideo = {
   url: string;

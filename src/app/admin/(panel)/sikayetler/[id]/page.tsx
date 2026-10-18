@@ -57,23 +57,23 @@ export default async function ReportDetailPage({ params }: PageProps<"/admin/sik
             {report.status === "open" || appealed ? <ActionButton action={reportAction.bind(null, id, "review")} variant="outline">İncelemeye al</ActionButton> : null}
             {open ? (
               <>
-                <ActionButton action={reportAction.bind(null, id, "remove")} variant="destructive" confirm={{ title: "İçerik kaldırılsın mı?", description: "Profil yayından kaldırılır ve moderasyon durumu reddedildi olarak işaretlenir.", prompt: "Karar gerekçesi (zorunlu)", destructive: true, confirmLabel: "Kaldır" }}>
+                <ActionButton action={reportAction.bind(null, id, "remove")} variant="destructive" confirm={{ title: "İçerik kaldırılsın mı?", description: "Profil yayından kaldırılır ve moderasyon durumu reddedildi olarak işaretlenir.", prompt: "Karar gerekçesi (zorunlu)", destructive: true, confirmLabel: "Kaldır", minLength: 5 }}>
                   İçeriği kaldır
                 </ActionButton>
-                <ActionButton action={reportAction.bind(null, id, "keep")} variant="outline" confirm={{ title: "Şikâyet reddedilsin mi?", prompt: "Karar gerekçesi (zorunlu)", confirmLabel: "Reddet" }}>
+                <ActionButton action={reportAction.bind(null, id, "keep")} variant="outline" confirm={{ title: "Şikâyet reddedilsin mi?", prompt: "Karar gerekçesi", confirmLabel: "Reddet", minLength: 5 }}>
                   Şikâyeti reddet
                 </ActionButton>
               </>
             ) : null}
             {closed ? (
-              <ActionButton action={reportAction.bind(null, id, "appeal")} variant="outline" confirm={{ title: "İtiraz kaydı", description: "Profil sahibi veya şikâyetçiden gelen itirazı kaydedin.", prompt: "İtiraz özeti", confirmLabel: "Kaydet" }}>
+              <ActionButton action={reportAction.bind(null, id, "appeal")} variant="outline" confirm={{ title: "İtiraz kaydı", description: "Profil sahibi veya şikâyetçiden gelen itirazı kaydedin.", prompt: "İtiraz özeti", confirmLabel: "Kaydet", minLength: 5 }}>
                 İtiraz kaydet
               </ActionButton>
             ) : null}
             {appealed || (report.status === "in_review" && actions.some((a) => a.type === "appeal_received")) ? (
               <>
-                <ActionButton action={reportAction.bind(null, id, "appeal-accept")} confirm={{ title: "İtiraz kabul edilsin mi?", prompt: "Gerekçe", confirmLabel: "Kabul et" }}>İtirazı kabul et</ActionButton>
-                <ActionButton action={reportAction.bind(null, id, "appeal-reject")} variant="outline" confirm={{ title: "İtiraz reddedilsin mi?", prompt: "Gerekçe", confirmLabel: "Reddet" }}>İtirazı reddet</ActionButton>
+                <ActionButton action={reportAction.bind(null, id, "appeal-accept")} confirm={{ title: "İtiraz kabul edilsin mi?", prompt: "Gerekçe", confirmLabel: "Kabul et", minLength: 5 }}>İtirazı kabul et</ActionButton>
+                <ActionButton action={reportAction.bind(null, id, "appeal-reject")} variant="outline" confirm={{ title: "İtiraz reddedilsin mi?", prompt: "Gerekçe", confirmLabel: "Reddet", minLength: 5 }}>İtirazı reddet</ActionButton>
               </>
             ) : null}
           </div>

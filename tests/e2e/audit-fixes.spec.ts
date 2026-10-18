@@ -30,11 +30,15 @@ test("abonelik yenilemede süre doğrulanır", async ({ page }) => {
   await page.goto("/admin/abonelikler");
   const row = page.getByTestId("subscription-row").first();
   await row.getByRole("button", { name: "Yenile" }).click();
-  await page.getByRole("dialog").getByRole("textbox").fill("abc");
-  await page.getByRole("dialog").getByRole("button", { name: "Yenile" }).click();
-  await expectToast(page, /1 ile 24 ay/);
-  await page.getByRole("dialog").getByRole("textbox").fill("2 ay");
-  await page.getByRole("dialog").getByRole("button", { name: "Yenile" }).click();
+  const months = page.getByRole("dialog").getByRole("spinbutton");
+  const confirm = page.getByRole("dialog").getByRole("button", { name: "Yenile" });
+  // Geçersiz süreyle onay düğmesi pasif kalır (sunucu da 1–24 dışını reddeder: tests/unit).
+  for (const bad of ["0", "25", "1.5"]) {
+    await months.fill(bad);
+    await expect(confirm).toBeDisabled();
+  }
+  await months.fill("2");
+  await confirm.click();
   await expectToast(page, "Abonelik yenilendi");
 });
 

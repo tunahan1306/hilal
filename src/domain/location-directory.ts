@@ -5,7 +5,10 @@ export const POPULAR_PROVINCE_SLUGS = ["istanbul", "ankara", "izmir", "antalya",
 export function createLocationDirectory(data: LocationData) {
   const bySlug = new Map(data.provinces.map((p) => [p.slug, p]));
   const byPlate = new Map(data.provinces.map((p) => [p.plate, p]));
-  const listDistricts = (plate: number) => data.districts.filter((d) => d.plate === plate).sort((a,b) => a.name.localeCompare(b.name,"tr"));
+  const byPlateDistricts = new Map<number, District[]>();
+  for (const d of data.districts) byPlateDistricts.set(d.plate, [...(byPlateDistricts.get(d.plate) ?? []), d]);
+  for (const list of byPlateDistricts.values()) list.sort((a, b) => a.name.localeCompare(b.name, "tr"));
+  const listDistricts = (plate: number) => (byPlateDistricts.get(plate) ?? []).slice();
   return {
     listProvinces: () => data.provinces.slice().sort((a,b) => a.name.localeCompare(b.name,"tr")),
     getProvince: (slug: string) => bySlug.get(slug),

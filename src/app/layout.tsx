@@ -9,8 +9,10 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin", "lat
 const fraunces = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin", "latin-ext"],
-  axes: ["opsz", "SOFT"],
-  style: ["normal", "italic"],
+  // Yalnızca optik boyut ekseni: italik ve SOFT ekseni ~250 KB ek font indiriyordu (LCP).
+  // Biyografilerdeki italik vurgular tarayıcı tarafından sentezlenir.
+  axes: ["opsz"],
+  style: ["normal"],
   display: "swap",
 });
 // Mono yalnızca yönetim panelinde birkaç yerde kullanılır; her sayfada preload edilmez.

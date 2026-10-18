@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PrivacyRequestForm } from "@/components/site/privacy-request-form";
 import { ProsePage } from "@/components/site/prose-page";
-import { siteUrl } from "@/lib/site";
+import { siteUrl, ogFor } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Profil kaldırma ve KVKK başvurusu",
   description: "Profilinizin kaldırılması, verilerinize erişim veya silinmesi için başvuru yapın.",
   alternates: { canonical: "/kaldirma-talebi" },
+  openGraph: ogFor("/kaldirma-talebi", "Profil kaldırma ve KVKK başvurusu", "Profilinizin kaldırılması, verilerinize erişim veya silinmesi için başvuru yapın."),
 };
 
 export default function RemovalRequestPage({ searchParams }: PageProps<"/kaldirma-talebi">) {

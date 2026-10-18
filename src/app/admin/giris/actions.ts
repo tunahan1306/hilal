@@ -7,7 +7,7 @@ import { demoAdminConfig, safeEqual, verifyTotp } from "@/server/auth/demo-crede
 import { DEMO_SESSION_COOKIE, SESSION_TTL_SECONDS, signSession } from "@/server/auth/demo-session";
 import { createSupabaseServerClient } from "@/server/auth/supabase-server";
 import { isSupabaseConfigured } from "@/server/env";
-import { clearRateLimit, clientFingerprint, rateLimit } from "@/server/rate-limit";
+import { clearSharedRateLimit, clientFingerprint, sharedRateLimit } from "@/server/rate-limit";
 import { getRepository } from "@/server/repositories";
 import { audit } from "@/server/services/audit";
 
@@ -19,12 +19,15 @@ const WINDOW = 15 * 60_000;
 /** Her deneme sayılır; başarılı girişte o hesabın ve istemcinin sayaçları sıfırlanır. */
 async function limited(email: string): Promise<boolean> {
   const fp = await clientFingerprint();
-  return !rateLimit(`login:${fp}`, 10, WINDOW).ok || !rateLimit(`login-email:${email.toLowerCase()}`, 5, WINDOW).ok;
+  const [byClient, byEmail] = await Promise.all([
+    sharedRateLimit(`login:${fp}`, 10, WINDOW),
+    sharedRateLimit(`login-email:${email.toLowerCase()}`, 5, WINDOW),
+  ]);
+  return !byClient.ok || !byEmail.ok;
 }
 
 async function clearLimits(email: string): Promise<void> {
-  clearRateLimit(`login:${await clientFingerprint()}`);
-  clearRateLimit(`login-email:${email.toLowerCase()}`);
+  await Promise.all([clearSharedRateLimit(`login:${await clientFingerprint()}`), clearSharedRateLimit(`login-email:${email.toLowerCase()}`)]);
 }
 
 export async function loginAction(_prev: LoginState, formData: FormData): Promise<LoginState> {

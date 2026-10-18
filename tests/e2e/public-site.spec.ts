@@ -86,11 +86,14 @@ test.describe("SEO", () => {
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
   });
 
-  test("sitemap yalnızca indekslenebilir sayfaları, robots admin'i engeller", async ({ request }) => {
+  test("sitemap yalnızca tarayıcının indeksleyebileceği sayfaları, robots admin'i engeller", async ({ request }) => {
     const sitemap = await (await request.get("/sitemap.xml")).text();
-    expect(sitemap).toContain("/sehir/istanbul</loc>");
-    expect(sitemap).toContain("/profil/");
-    expect(sitemap).not.toContain("/sehir/hakkari");
+    expect(sitemap).toContain("/iletisim</loc>");
+    expect(sitemap).toContain("/sehirler</loc>");
+    // Yaş kapısı arkasındaki adresler çerezsiz tarayıcıya noindex döner; sitemap'e girmez.
+    expect(sitemap).not.toContain("/sehir/");
+    expect(sitemap).not.toContain("/profil/");
+    expect(sitemap).not.toContain("/kesfet");
     expect(sitemap).not.toContain("/admin");
     const robots = await (await request.get("/robots.txt")).text();
     expect(robots).toContain("Disallow: /admin");

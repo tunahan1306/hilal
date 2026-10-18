@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import { ogFor } from "@/lib/site";
 import { LegalDraftNotice, ProsePage } from "@/components/site/prose-page";
 
 export const metadata: Metadata = {
   title: "Kullanım koşulları",
+  description: "Hilal kullanım koşulları: yalnızca 18 yaş ve üzeri, profil yayın kuralları, yasaklı içerik ve hesap/profil kaldırma süreçleri.",
   alternates: { canonical: "/kullanim-kosullari" },
+  openGraph: ogFor("/kullanim-kosullari", "Kullanım koşulları", "Hilal kullanım koşulları: yalnızca 18 yaş ve üzeri, profil yayın kuralları, yasaklı içerik ve hesap/profil kaldırma süreçleri."),
 };
 
 export default function TermsPage() {

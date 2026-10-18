@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { FilterChips } from "@/components/admin/filter-chips";
 import { PageHeader } from "@/components/admin/page-header";
 import { REPORT_STATUS_LABELS, REPORT_STATUS_TONE, StatusBadge } from "@/components/admin/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -10,16 +11,23 @@ import { getRepository } from "@/server/repositories";
 
 export const metadata: Metadata = { title: "Şikâyetler" };
 
-export default async function ReportsPage() {
+export default async function ReportsPage({ searchParams }: PageProps<"/admin/sikayetler">) {
   await requireAdmin();
+  const durum = (await searchParams).durum;
+  const filter = typeof durum === "string" && durum in REPORT_STATUS_LABELS ? (durum as ReportStatus) : undefined;
   const repo = getRepository();
   const [reports, profiles] = await Promise.all([repo.listReports(), repo.listProfiles()]);
   const nameOf = new Map(profiles.map((p) => [p.id, p.nickname]));
   const order: ReportStatus[] = ["open", "appealed", "in_review", "resolved", "rejected"];
-  const sorted = reports.sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status) || b.createdAt.localeCompare(a.createdAt));
+  const sorted = reports.filter((r) => !filter || r.status === filter).sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status) || b.createdAt.localeCompare(a.createdAt));
   return (
     <>
       <PageHeader title="Şikâyetler" description="Kritik kategorilerde profil otomatik olarak yayından kaldırılır; karar ve itirazlar kayıt altındadır." />
+      <FilterChips
+        label="Duruma göre filtrele"
+        active={filter}
+        items={[undefined, ...order].map((st) => ({ key: st, label: st ? REPORT_STATUS_LABELS[st] : "Tümü", href: st ? `/admin/sikayetler?durum=${st}` : "/admin/sikayetler", count: st ? reports.filter((r) => r.status === st).length : reports.length }))}
+      />
       <div className="overflow-x-auto rounded-lg border border-hairline">
         <Table>
           <TableHeader>

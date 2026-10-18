@@ -5,20 +5,20 @@ import { CrescentMark } from "./logo";
 
 const GROUPS = [
   { title: "Keşfet", links: [["/kesfet", "Tüm profiller"], ["/sehirler", "81 il"], ["/sehir/istanbul", "İstanbul"], ["/sehir/ankara", "Ankara"], ["/sehir/izmir", "İzmir"]] },
-  { title: "Topluluk", links: [["/guvenlik", "Kurallar ve güvenlik"], ["/kaldirma-talebi", "Profil kaldırma"], ["/paketler", "Üyelik paketleri"]] },
+  { title: "Topluluk", links: [["/guvenlik", "Kurallar ve güvenlik"], ["/kaldirma-talebi", "Profil kaldırma"], ["/paketler", "Üyelik paketleri"], ["/iletisim", "İletişim"]] },
   { title: "Yasal", links: [["/kvkk", "KVKK aydınlatma"], ["/kullanim-kosullari", "Kullanım koşulları"]] },
 ] as const;
 
 export function SiteFooter() {
   return (
-    <footer className="mt-10 border-t border-hairline pb-20 md:pb-0">
+    <footer className="mt-10 border-t border-hairline pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
       <div className="container-page grid grid-cols-2 gap-x-6 gap-y-6 py-9 md:grid-cols-12">
         <div className="col-span-2 md:col-span-5">
-          <p className="flex items-center gap-3 font-display text-[clamp(2.5rem,2rem+3vw,4rem)] leading-none tracking-[-0.03em]">
-            <CrescentMark className="size-[0.7em]" /> Hilal
+          <p className="flex items-center gap-2.5 font-display text-3xl leading-none tracking-[-0.02em]">
+            <CrescentMark className="size-[0.8em]" /> Hilal
           </p>
           <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-            Türkiye&apos;nin 81 ilinde sosyal keşif yapmak isteyen yetişkinlerin, rızası alınmış ve doğrulanmış sosyal profilleri.
+            Türkiye&apos;nin 81 ilinde yetişkinler için sosyal keşif. Profillerin doğrulama durumu her profilde ayrıca gösterilir.
           </p>
         </div>
         {GROUPS.map((g) => (
@@ -27,7 +27,7 @@ export function SiteFooter() {
             <ul className="space-y-0.5 text-sm">
               {g.links.map(([href, label]) => (
                 <li key={href}>
-                  <Link href={href} className="inline-flex min-h-8 items-center underline-offset-4 hover:underline">{label}</Link>
+                  <Link href={href} className="inline-flex min-h-10 items-center underline-offset-4 hover:underline md:min-h-8">{label}</Link>
                 </li>
               ))}
             </ul>
@@ -39,7 +39,7 @@ export function SiteFooter() {
           <p className="flex items-center gap-2">
             <AgeBadge /> Yalnızca 18 yaş ve üzeri. Ücretli hizmet tanıtımına izin verilmez.
           </p>
-          <p>© <CopyrightYear /> Hilal · Profiller yalnızca yönetim tarafından, açık rıza ile oluşturulur.</p>
+          <p>© <CopyrightYear /> Hilal</p>
         </div>
       </div>
     </footer>

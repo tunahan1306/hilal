@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ogFor } from "@/lib/site";
 import Link from "next/link";
 import { LegalDraftNotice, ProsePage } from "@/components/site/prose-page";
 
@@ -6,6 +7,7 @@ export const metadata: Metadata = {
   title: "KVKK aydınlatma metni",
   description: "6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında aydınlatma metni.",
   alternates: { canonical: "/kvkk" },
+  openGraph: ogFor("/kvkk", "KVKK aydınlatma metni", "6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında aydınlatma metni."),
 };
 
 export default function KvkkPage() {
@@ -16,7 +18,7 @@ export default function KvkkPage() {
       <h2>İşlenen kişisel veriler</h2>
       <ul>
         <li><strong>Profil sahipleri:</strong> takma ad, doğum tarihi (yalnızca yaş doğrulaması için; kamuya yaş olarak yansır), il/ilçe, biyografi, isteğe bağlı WhatsApp numarası ve paylaşım izni tarihi, ilgi alanları, fotoğraflar, rıza ve doğrulama kayıtları.</li>
-        <li><strong>Ziyaretçiler:</strong> şikâyet ve başvuru formlarında paylaşılan bilgiler; kötüye kullanımı önlemek için IP adresinin geri döndürülemez özeti (ham IP saklanmaz).</li>
+        <li><strong>Ziyaretçiler:</strong> şikâyet, başvuru ve <Link href="/iletisim" className="text-brand underline underline-offset-4">iletişim</Link> formlarında paylaşılan bilgiler (iletişim formunda ad soyad, e-posta, konu ve mesaj; yalnızca talebin yanıtlanması amacıyla); kötüye kullanımı önlemek için IP adresinin geri döndürülemez özeti (ham IP saklanmaz).</li>
         <li><strong>Yöneticiler:</strong> e-posta, oturum ve işlem kayıtları.</li>
       </ul>
       <h2>İşleme amaçları ve hukuki sebepler</h2>
@@ -25,6 +27,7 @@ export default function KvkkPage() {
       <ul>
         <li>Yaş/kimlik doğrulama belgeleri: doğrulamadan sonra en fazla 30 gün (yapılandırılabilir), ardından otomatik silinir; yalnızca doğrulama sonucu saklanır.</li>
         <li>Profil verileri: rızanın geri alınmasına veya silme talebine kadar.</li>
+        <li>İletişim formu mesajları: [süre hukuk incelemesi ile belirlenecek].</li>
         <li>Denetim kayıtları: [süre hukuk incelemesi ile belirlenecek].</li>
       </ul>
       <h2>Haklarınız (KVKK m.11)</h2>

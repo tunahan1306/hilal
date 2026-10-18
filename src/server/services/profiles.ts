@@ -194,7 +194,7 @@ export async function restoreToDraft(actor: Admin, id: string) {
 /** KVKK silme: profil, görseller ve özel belgeler kalıcı olarak silinir. */
 export async function deleteProfilePermanently(actor: Admin, id: string, reason: string) {
   const repo = getRepository();
-  const profile = await mustGetProfile(id);
+  await mustGetProfile(id); // yoksa anlaşılır hata
   const [consents, verifications] = await Promise.all([repo.listConsents(id), repo.listVerifications(id)]);
   await purgeProfileMedia(id);
   await Promise.all([
@@ -203,7 +203,7 @@ export async function deleteProfilePermanently(actor: Admin, id: string, reason:
   ]);
   await repo.deleteProfile(id);
   // Denetim kaydında kişisel veri tutulmaz; yalnızca kimlik ve gerekçe.
-  await audit(actor, "profile.delete", "profile", id, { reason, slug: profile.slug });
+  await audit(actor, "profile.delete", "profile", id, { reason });
 }
 
 // ---------------------------------------------------------------------------

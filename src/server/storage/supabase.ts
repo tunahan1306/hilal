@@ -5,6 +5,9 @@ import type { MediaStorage } from "./types";
 
 export const PRIVATE_BUCKET = "media-private";
 export const PUBLIC_BUCKET = "media-public";
+/** 20261017 öncesi herkese açık kova; taşınan kayıtlar `public_paths` içinde bu önekle işaretlidir. */
+export const LEGACY_PUBLIC_BUCKET = "profile-images";
+export const LEGACY_PREFIX = "legacy-profile-images:";
 
 let client: SupabaseClient | null = null;
 function service(): SupabaseClient {
@@ -48,11 +51,14 @@ export function createSupabaseStorage(): MediaStorage {
       const publicPath = `${randomUUID()}.${ext}`;
       const file = await service().storage.from(PRIVATE_BUCKET).download(privatePath);
       if (file.error) throw new Error(file.error.message);
-      must(await service().storage.from(PUBLIC_BUCKET).upload(publicPath, file.data, { contentType, upsert: false, cacheControl: "31536000" }));
+      must(await service().storage.from(PUBLIC_BUCKET).upload(publicPath, file.data, { contentType, upsert: false, cacheControl: "600" }));
       return { publicPath, url: service().storage.from(PUBLIC_BUCKET).getPublicUrl(publicPath).data.publicUrl };
     },
     async unpublish(paths) {
-      if (paths.length) must(await service().storage.from(PUBLIC_BUCKET).remove(paths));
+      const legacy = paths.filter((p) => p.startsWith(LEGACY_PREFIX)).map((p) => p.slice(LEGACY_PREFIX.length));
+      const current = paths.filter((p) => !p.startsWith(LEGACY_PREFIX));
+      if (current.length) must(await service().storage.from(PUBLIC_BUCKET).remove(current));
+      if (legacy.length) must(await service().storage.from(LEGACY_PUBLIC_BUCKET).remove(legacy));
     },
   };
 }

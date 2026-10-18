@@ -2,7 +2,7 @@ export const SITE = {
   name: "Hilal",
   tagline: "Türkiye'nin sosyal keşif platformu",
   description:
-    "Hilal, Türkiye'nin 81 ilinde sosyal profillerini paylaşan yetişkinlerin doğrulanmış sosyal profillerini keşfetmesini sağlayan güvenli bir platformdur.",
+    "Hilal, Türkiye'nin 81 ilinde yetişkinlerin sosyal profillerini şehir ve ilçeye göre keşfetmesini sağlayan bir platformdur.",
   locale: "tr_TR",
 };
 
@@ -17,4 +17,21 @@ export function formatDate(iso: string, opts: Intl.DateTimeFormatOptions = { day
 
 export function formatNumber(n: number) {
   return new Intl.NumberFormat("tr-TR").format(n);
+}
+
+/**
+ * Herkese açık iletişim e-postası yalnızca yapılandırılmışsa gösterilir;
+ * uydurma veya yer tutucu adres yayımlanmaz.
+ */
+export function publicContactEmail(env: NodeJS.ProcessEnv = process.env): string | null {
+  const v = env.CONTACT_PUBLIC_EMAIL?.trim();
+  return v && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) && !/@example\.(com|org|net)$/i.test(v) ? v : null;
+}
+
+/**
+ * Sayfa düzeyinde Open Graph: Next.js alt sayfadaki `openGraph` nesnesini kök düzenle
+ * birleştirmez, değiştirir; bu yüzden tür, dil ve site adı her sayfada birlikte verilir.
+ */
+export function ogFor(path: string, title: string, description?: string) {
+  return { type: "website" as const, locale: SITE.locale, siteName: SITE.name, url: path, title: `${title} | ${SITE.name}`, description };
 }

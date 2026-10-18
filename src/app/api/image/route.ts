@@ -5,6 +5,19 @@ import path from "node:path";
 import { AGE_COOKIE, AGE_COOKIE_VALUE } from "@/domain/age-confirmation";
 import { memoryGet } from "@/server/storage/memory";
 import { isDemoMode } from "@/server/env";
+import { getRepository } from "@/server/repositories";
+
+// Yayın kontrolü sonucu kısa süre önbelleklenir; yayından kalkan medya en geç bu sürede kesilir.
+const PUBLISHED_TTL_MS = 60_000;
+const publishedCheck = new Map<string, { ok: boolean; at: number }>();
+async function isPublished(url: string): Promise<boolean> {
+  const hit = publishedCheck.get(url);
+  if (hit && Date.now() - hit.at < PUBLISHED_TTL_MS) return hit.ok;
+  const ok = await getRepository().isPublishedMediaUrl(url);
+  if (publishedCheck.size >= 512) publishedCheck.delete(publishedCheck.keys().next().value!);
+  publishedCheck.set(url, { ok, at: Date.now() });
+  return ok;
+}
 
 // Bounded process cache; moderation still controls origin URLs and tagged page caches.
 const optimized = new Map<string, Buffer>();
@@ -30,6 +43,8 @@ export async function GET(request: NextRequest) {
       const source = new URL(src);
       const origin = process.env.NEXT_PUBLIC_SUPABASE_URL;
       if (!origin || source.origin !== new URL(origin).origin || !source.pathname.startsWith("/storage/v1/object/public/") || source.username || source.password) return new Response(null, { status: 400, headers });
+      // Yalnızca şu anda yayında ve onaylı olan medya vekillenir (yayından kaldırılan dosya adresi bilinse bile).
+      if (!(await isPublished(source.toString()))) return new Response(null, { status: 404, headers });
       const response = await fetch(source, { redirect: "error", cache: "no-store", signal: AbortSignal.timeout(10_000) });
       if (!response.ok || Number(response.headers.get("content-length")) > MAX_SOURCE_BYTES) return new Response(null, { status: 404, headers });
       // Limit the streamed body before buffering to avoid unbounded remote inputs.
@@ -53,6 +68,8 @@ export async function GET(request: NextRequest) {
       if (optimized.size >= 64) optimized.delete(optimized.keys().next().value!);
       if (result.byteLength <= 512 * 1024) optimized.set(key, result);
     }
-    return new Response(new Uint8Array(result), { headers: { ...headers, "Content-Type": "image/webp" } });
+    // Yalnızca yaş onaylı tarayıcının kendi önbelleği (private), kısa süre: tekrar görüntülemede
+    // yeniden indirme/kodlama olmaz; yayından kaldırılan görsel en geç 5 dakikada düşer (C-10).
+    return new Response(new Uint8Array(result), { headers: { ...headers, "Cache-Control": "private, max-age=300", "Content-Type": "image/webp" } });
   } catch { return new Response(null, { status: 404, headers }); }
 }

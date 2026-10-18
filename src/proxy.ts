@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { AGE_COOKIE, AGE_COOKIE_VALUE } from "@/domain/age-confirmation";
-import { validLocation } from "@/server/location-path";
+import { validLocation, validPublicProfile } from "@/server/location-path";
 
 /**
  * Yalnızca iyimser kontrol: yönetim sayfalarına oturum çerezi olmadan gelen
@@ -17,11 +17,7 @@ export async function proxy(request: NextRequest) {
     const [, , il, ilce, ...rest] = pathname.split("/");
     const valid = rest.length === 0 ? await validLocation(il ?? "", ilce) : false;
     if (valid === null) return new NextResponse("Konum bilgileri şu anda yüklenemiyor.", { status: 503, headers: { "Cache-Control": "no-store", "X-Robots-Tag": "noindex" } });
-    if (!valid) {
-      // rewrite() durum kodunu korumadığından statik 404 sayfası 404 koduyla döndürülür.
-      const page = await fetch(new URL("/bulunamadi", request.url), { headers: { accept: "text/html" } });
-      return new NextResponse(page.body, { status: 404, headers: { "content-type": "text/html; charset=utf-8" } });
-    }
+    if (!valid) return notFoundPage(request);
   }
 
   const restricted = pathname === "/" || pathname === "/kesfet" || pathname.startsWith("/sehir/") || pathname.startsWith("/profil/");
@@ -34,6 +30,13 @@ export async function proxy(request: NextRequest) {
     response.headers.set("Cache-Control", "private, no-store");
     return response;
   }
+  // Yaş onaylı ziyaretçide olmayan/kaldırılmış profil gerçek 404 alır (soft 404 yok).
+  if (pathname.startsWith("/profil/")) {
+    const [, , slug, ...rest] = pathname.split("/");
+    const valid = rest.length === 0 ? await validPublicProfile(slug ?? "") : false;
+    if (valid === false) return notFoundPage(request);
+  }
+
   if (!pathname.startsWith("/admin")) {
     const response = NextResponse.next();
     if (restricted || media) response.headers.set("Cache-Control", "private, no-store");
@@ -65,6 +68,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/admin/giris", request.url));
   }
   return NextResponse.next();
+}
+
+/** rewrite() durum kodunu korumadığından statik 404 sayfası 404 koduyla döndürülür. */
+async function notFoundPage(request: NextRequest) {
+  const page = await fetch(new URL("/bulunamadi", request.url), { headers: { accept: "text/html" } });
+  return new NextResponse(page.body, { status: 404, headers: { "content-type": "text/html; charset=utf-8", "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex" } });
 }
 
 export const config = {

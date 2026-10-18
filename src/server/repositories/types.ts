@@ -7,6 +7,9 @@ import type {
   MembershipPlan,
   ModerationAction,
   ModerationReport,
+  ContactCategory,
+  ContactMessage,
+  ContactStatus,
   PrivacyRequest,
   Profile,
   ProfileConsent,
@@ -36,6 +39,7 @@ export type DashboardCounts = {
   activeSubscriptions: number;
   expiringSoon: number;
   openPrivacyRequests: number;
+  unreadContactMessages: number;
 };
 
 export type DailyViews = { day: string; views: number };
@@ -117,10 +121,30 @@ export interface Repository {
   listPrivacyRequests(): Promise<PrivacyRequest[]>;
   updatePrivacyRequest(id: string, patch: Partial<Pick<PrivacyRequest, "status" | "completedAt" | "profileId">>): Promise<PrivacyRequest>;
 
+  /** Instance'lar arası paylaşılan oran sınırı (yalnızca Supabase; bellek deposunda tanımsız). */
+  hitRateLimit?(key: string, limit: number, windowSeconds: number): Promise<{ ok: boolean; retryAfterSeconds: number }>;
+  clearSharedRateLimit?(key: string): Promise<void>;
+  purgeRateLimits?(): Promise<number>;
+
+  /** Adres şu anda kamuya açık (yayında + onaylı) bir medyaya mı ait? Görsel vekili için. */
+  isPublishedMediaUrl(url: string): Promise<boolean>;
+
+  // İletişim talepleri
+  createContactMessage(input: Omit<ContactMessage, "id" | "createdAt" | "updatedAt" | "status" | "readAt">): Promise<ContactMessage>;
+  countContactMessagesSince(ipHash: string, sinceIso: string): Promise<number>;
+  countUnreadContactMessages(): Promise<number>;
+  listContactMessages(filter?: { status?: ContactStatus; category?: ContactCategory; unread?: boolean }): Promise<ContactMessage[]>;
+  getContactMessage(id: string): Promise<ContactMessage | null>;
+  updateContactMessage(id: string, patch: Partial<Pick<ContactMessage, "status" | "readAt">>): Promise<ContactMessage>;
+  deleteContactMessage(id: string): Promise<void>;
+  /** Saklama süresi dolan mesajları siler; silinen kayıt sayısını döndürür. */
+  deleteContactMessagesBefore(statuses: ContactStatus[], beforeIso: string): Promise<number>;
+
   // SEO ve ayarlar
   listSeoPages(): Promise<SeoPage[]>;
   getSeoPage(path: string): Promise<SeoPage | null>;
   upsertSeoPage(input: Omit<SeoPage, "id" | "updatedAt">): Promise<SeoPage>;
+  deleteSeoPage(id: string): Promise<void>;
   getSiteSettings(): Promise<SiteSettings>;
   updateSiteSettings(patch: Partial<SiteSettings>): Promise<SiteSettings>;
 

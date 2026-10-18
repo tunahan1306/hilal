@@ -10,12 +10,12 @@ import { DeleteProfileDialog, ExportButton } from "@/components/admin/data-tools
 import { ImageManager } from "@/components/admin/image-manager";
 import { PageHeader } from "@/components/admin/page-header";
 import { ProfileForm } from "@/components/admin/profile-form";
-import { PROFILE_STATUS_TONE, StatusBadge } from "@/components/admin/status-badge";
+import { PROFILE_STATUS_TONE, REPORT_STATUS_LABELS, StatusBadge } from "@/components/admin/status-badge";
 import { ViewsChart } from "@/components/admin/views-chart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { canTransition, evaluatePublishReadiness, PROFILE_STATUS_LABELS } from "@/domain/publishing";
 import { effectiveStatus, SUBSCRIPTION_STATUS_LABELS } from "@/domain/subscriptions";
-import { REPORT_CATEGORY_LABELS } from "@/domain/types";
+import { MODERATION_ACTION_LABELS, REPORT_CATEGORY_LABELS } from "@/domain/types";
 import { formatDate } from "@/lib/site";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
@@ -97,7 +97,7 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
       />
 
       <Tabs defaultValue="yayin" className="gap-4">
-        <TabsList className="w-full justify-start overflow-x-auto [scrollbar-width:none] group-data-horizontal/tabs:h-10 [&>*]:flex-none [&>*]:px-3">
+        <TabsList className="w-full justify-start overflow-x-auto [mask-image:linear-gradient(to_right,#000_85%,transparent)] group-data-horizontal/tabs:h-10 sm:[mask-image:none] [&>*]:flex-none [&>*]:px-3">
           <TabsTrigger value="yayin">Yayın</TabsTrigger>
           <TabsTrigger value="genel">Genel bilgiler</TabsTrigger>
           <TabsTrigger value="foto">Fotoğraflar ({images.length})</TabsTrigger>
@@ -126,10 +126,10 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
               <p className="mb-2 text-sm">Moderasyon: <StatusBadge tone={profile.moderationStatus === "approved" ? "success" : profile.moderationStatus === "rejected" ? "danger" : "warning"}>{MOD_LABEL[profile.moderationStatus]}</StatusBadge></p>
               {profile.moderationNote ? <p className="mb-2 text-xs text-muted-foreground">Not: {profile.moderationNote}</p> : null}
               <div className="flex flex-wrap gap-2">
-                <ActionButton action={moderateProfileAction.bind(null, id, "approved")} variant="outline" size="sm" confirm={{ title: "Moderasyon onaylansın mı?", description: "Biyografi, fotoğraflar ve ilgi alanlarını içerik kurallarına göre incelediğinizi onaylıyorsunuz.", prompt: "Not (isteğe bağlı)", confirmLabel: "Onayla" }}>
+                {profile.moderationStatus !== "approved" ? <ActionButton action={moderateProfileAction.bind(null, id, "approved")} variant="outline" size="sm" confirm={{ title: "Moderasyon onaylansın mı?", description: "Biyografi, fotoğraflar ve ilgi alanlarını içerik kurallarına göre incelediğinizi onaylıyorsunuz.", prompt: "Not (isteğe bağlı)", confirmLabel: "Onayla" }}>
                   Moderasyonu onayla
-                </ActionButton>
-                <ActionButton action={moderateProfileAction.bind(null, id, "rejected")} variant="outline" size="sm" confirm={{ title: "Profil reddedilsin mi?", prompt: "Red gerekçesi", destructive: true, confirmLabel: "Reddet" }}>
+                </ActionButton> : null}
+                <ActionButton action={moderateProfileAction.bind(null, id, "rejected")} variant="outline" size="sm" confirm={{ title: "Profil reddedilsin mi?", prompt: "Red gerekçesi", destructive: true, confirmLabel: "Reddet", minLength: 5 }}>
                   Reddet
                 </ActionButton>
               </div>
@@ -140,22 +140,22 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
               ) : null}
               {canTransition(s, "in_review") ? <ActionButton action={profileStatusAction.bind(null, id, "review")} variant="outline">İncelemeye gönder</ActionButton> : null}
               {canTransition(s, "unpublished") ? (
-                <ActionButton action={profileStatusAction.bind(null, id, "unpublish")} variant="outline" confirm={{ title: "Yayından kaldırılsın mı?", prompt: "Gerekçe", confirmLabel: "Yayından kaldır", destructive: true }}>
+                <ActionButton action={profileStatusAction.bind(null, id, "unpublish")} variant="outline" confirm={{ title: "Yayından kaldırılsın mı?", prompt: "Gerekçe", confirmLabel: "Yayından kaldır", destructive: true, minLength: 5 }}>
                   Yayından kaldır
                 </ActionButton>
               ) : null}
               {canTransition(s, "archived") ? (
-                <ActionButton action={profileStatusAction.bind(null, id, "archive")} variant="ghost" confirm={{ title: "Profil arşivlensin mi?", description: "Arşivlenen profil yayında görünmez ve düzenlenemez.", confirmLabel: "Arşivle" }}>
+                <ActionButton action={profileStatusAction.bind(null, id, "archive")} variant="ghost" confirm={{ title: "Profil arşivlensin mi?", description: "Arşivlenen profil yayında görünmez ve düzenlenemez.", confirmLabel: "Arşivle", destructive: true }}>
                   Arşivle
                 </ActionButton>
               ) : null}
-              {canTransition(s, "draft") ? <ActionButton action={profileStatusAction.bind(null, id, "draft")} variant="ghost">Taslağa al</ActionButton> : null}
+              {canTransition(s, "draft") ? <ActionButton action={profileStatusAction.bind(null, id, "draft")} variant="ghost" confirm={{ title: "Profil taslağa alınsın mı?", description: "Taslaktaki profil sitede görünmez; yeniden yayınlamak için ön koşullar tekrar kontrol edilir.", confirmLabel: "Taslağa al" }}>Taslağa al</ActionButton> : null}
             </div>
             {!readiness.ready && canTransition(s, "published") ? <p className="text-xs text-muted-foreground">Eksik koşullar tamamlandığında yayınlama etkinleşir.</p> : null}
           </section>
         </TabsContent>
 
-        <TabsContent value="genel" className="rounded-lg border border-hairline p-5">
+        <TabsContent value="genel" forceMount className="rounded-lg border border-hairline p-5 data-[state=inactive]:hidden">
           {s === "archived" ? <p className="mb-4 text-sm text-muted-foreground">Arşivlenmiş profil düzenlenemez; önce taslağa alın.</p> : null}
           <ProfileForm locations={locations}
             action={updateProfileAction.bind(null, id)}
@@ -205,9 +205,9 @@ export default async function ProfileDetailPage({ params }: PageProps<"/admin/pr
             <h2 className="mb-3 font-semibold">Şikâyetler ve moderasyon</h2>
             <ul className="space-y-2 text-sm">
               {reports.map((r) => (
-                <li key={r.id}><Link prefetch={false} href={`/admin/sikayetler/${r.id}`} className="hover:underline">{REPORT_CATEGORY_LABELS[r.category]}</Link> <span className="text-muted-foreground">· {r.status} · {formatDate(r.createdAt)}</span></li>
+                <li key={r.id}><Link prefetch={false} href={`/admin/sikayetler/${r.id}`} className="hover:underline">{REPORT_CATEGORY_LABELS[r.category]}</Link> <span className="text-muted-foreground">· {REPORT_STATUS_LABELS[r.status]} · {formatDate(r.createdAt)}</span></li>
               ))}
-              {modActions.map((a) => <li key={a.id} className="text-muted-foreground">{a.type} · {formatDate(a.createdAt)}{a.note ? ` · ${a.note}` : ""}</li>)}
+              {modActions.map((a) => <li key={a.id} className="text-muted-foreground">{MODERATION_ACTION_LABELS[a.type]} · {formatDate(a.createdAt)}{a.note ? ` · ${a.note}` : ""}</li>)}
               {!reports.length && !modActions.length ? <li className="text-muted-foreground">Kayıt yok.</li> : null}
             </ul>
           </section>

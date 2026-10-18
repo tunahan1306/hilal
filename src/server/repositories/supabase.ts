@@ -9,6 +9,7 @@ import type {
   MembershipPlan,
   ModerationAction,
   ModerationReport,
+  ContactMessage,
   PrivacyRequest,
   Profile,
   ProfileConsent,
@@ -57,8 +58,19 @@ function service(): SupabaseClient {
   return serviceClient;
 }
 
-function check<T>(res: { data: T; error: { message: string } | null }): T {
-  if (res.error) throw new Error(res.error.message);
+/** Veritabanı hatası: yalnızca kod ve mesaj taşınır; `details`/`hint` (satır değerleri içerebilir) atılır. */
+export class DbError extends Error {
+  constructor(message: string, readonly code: string | undefined) {
+    super(message);
+    this.name = "DbError";
+  }
+}
+
+/** Tablo/ilişki yok: migration uygulanmamış. */
+export const isMissingRelation = (e: unknown) => e instanceof DbError && (e.code === "PGRST205" || e.code === "42P01");
+
+function check<T>(res: { data: T; error: { message: string; code?: string } | null }): T {
+  if (res.error) throw new DbError(res.error.message, res.error.code);
   return res.data;
 }
 
@@ -255,6 +267,20 @@ const toPrivacy = (r: Row): PrivacyRequest => ({
   createdAt: r.created_at as string,
 });
 
+const toContact = (r: Row): ContactMessage => ({
+  id: r.id as string,
+  category: r.category as ContactMessage["category"],
+  name: r.name as string,
+  email: r.email as string,
+  subject: r.subject as string,
+  message: r.message as string,
+  status: r.status as ContactMessage["status"],
+  readAt: (r.read_at as string) ?? null,
+  ipHash: r.ip_hash as string,
+  createdAt: r.created_at as string,
+  updatedAt: r.updated_at as string,
+});
+
 const toSeo = (r: Row): SeoPage => ({
   id: r.id as string,
   path: r.path as string,
@@ -385,8 +411,9 @@ export function createSupabaseRepository(): Repository {
       if (filters.dogrulanmis) q = q.eq("verified", true);
       if (ids) q = q.in("id", ids);
       if (cursor) q = q.or(`published_at.lt.${cursor.publishedAt},and(published_at.eq.${cursor.publishedAt},id.lt.${cursor.id})`);
+      // NULL published_at en sona: imleç her zaman geçerli bir zaman damgası taşır (C-15).
       const res = await q
-        .order("published_at", { ascending: false })
+        .order("published_at", { ascending: false, nullsFirst: false })
         .order("id", { ascending: false })
         .range(offset, offset + limit - 1);
       const rows = check(res) as Row[];
@@ -739,6 +766,79 @@ export function createSupabaseRepository(): Repository {
       return toPrivacy(check(await service().from("privacy_requests").update(row).eq("id", id).select().single()) as Row);
     },
 
+    async hitRateLimit(key, limit, windowSeconds) {
+      const rows = check(await service().rpc("rate_limit_hit", { p_key: key, p_limit: limit, p_window_seconds: windowSeconds })) as Row[];
+      const r = rows[0];
+      return { ok: Boolean(r?.allowed), retryAfterSeconds: Number(r?.retry_after_seconds ?? 0) };
+    },
+    async clearSharedRateLimit(key) {
+      check(await service().rpc("rate_limit_clear", { p_key: key }));
+    },
+    async purgeRateLimits() {
+      return Number(check(await service().rpc("rate_limit_purge")) ?? 0);
+    },
+
+    async isPublishedMediaUrl(url) {
+      const [media, poster, example] = await Promise.all([
+        anon().from("profile_media_public").select("profile_id", { count: "exact", head: true }).eq("url", url),
+        anon().from("profile_media_public").select("profile_id", { count: "exact", head: true }).eq("poster_url", url),
+        anon().from("discovery_profiles").select("id", { count: "exact", head: true }).eq("example_image_url", url),
+      ]);
+      for (const r of [media, poster, example]) if (r.error) throw new Error(r.error.message);
+      return (media.count ?? 0) + (poster.count ?? 0) + (example.count ?? 0) > 0;
+    },
+
+    // İletişim mesajları yalnızca service role ile okunur/yazılır; tabloda anon erişimi yoktur (RLS).
+    async createContactMessage(input) {
+      const r = check(
+        await service()
+          .from("contact_messages")
+          .insert({ category: input.category, name: input.name, email: input.email, subject: input.subject, message: input.message, ip_hash: input.ipHash })
+          .select()
+          .single(),
+      ) as Row;
+      return toContact(r);
+    },
+    async countContactMessagesSince(ipHash, sinceIso) {
+      const res = await service().from("contact_messages").select("id", { count: "exact", head: true }).eq("ip_hash", ipHash).gte("created_at", sinceIso);
+      if (res.error) throw new DbError(res.error.message, res.error.code);
+      return res.count ?? 0;
+    },
+    async countUnreadContactMessages() {
+      const res = await service().from("contact_messages").select("id", { count: "exact", head: true }).is("read_at", null).neq("status", "spam");
+      // Migration henüz uygulanmadıysa yönetim paneli çökmesin.
+      if (res.error && (res.error.code === "PGRST205" || res.error.code === "42P01")) return 0;
+      if (res.error) throw new Error(res.error.message);
+      return res.count ?? 0;
+    },
+    async listContactMessages(filter = {}) {
+      let q = service().from("contact_messages").select("*");
+      if (filter.status) q = q.eq("status", filter.status);
+      if (filter.category) q = q.eq("category", filter.category);
+      if (filter.unread) q = q.is("read_at", null);
+      return (check(await q.order("created_at", { ascending: false }).order("id", { ascending: false }).limit(500)) as Row[]).map(toContact);
+    },
+    async deleteContactMessage(id) {
+      check(await service().from("contact_messages").delete().eq("id", id));
+    },
+    async deleteContactMessagesBefore(statuses, beforeIso) {
+      const rows = check(await service().from("contact_messages").delete().in("status", statuses).lt("updated_at", beforeIso).select("id")) as Row[];
+      return rows.length;
+    },
+    async getContactMessage(id) {
+      const rows = check(await service().from("contact_messages").select("*").eq("id", id).limit(1)) as Row[];
+      return rows[0] ? toContact(rows[0]) : null;
+    },
+    async updateContactMessage(id, patch) {
+      const row: Row = {};
+      if (patch.status) row.status = patch.status;
+      if ("readAt" in patch) row.read_at = patch.readAt;
+      return toContact(check(await service().from("contact_messages").update(row).eq("id", id).select().single()) as Row);
+    },
+
+    async deleteSeoPage(id) {
+      check(await service().from("seo_pages").delete().eq("id", id));
+    },
     async listSeoPages() {
       return (check(await anon().from("seo_pages").select("*").order("path")) as Row[]).map(toSeo);
     },
@@ -815,13 +915,14 @@ export function createSupabaseRepository(): Repository {
         startsAt: r.starts_at as string,
         endsAt: r.ends_at as string,
       }));
-      const [totalProfiles, published, drafts, inReview, openReports, openPrivacyRequests] = await Promise.all([
+      const [totalProfiles, published, drafts, inReview, openReports, openPrivacyRequests, unreadContactMessages] = await Promise.all([
         count("profiles"),
         count("profiles", "status", ["published"]),
         count("profiles", "status", ["draft"]),
         count("profiles", "status", ["in_review"]),
         count("moderation_reports", "status", ["open", "in_review", "appealed"]),
         count("privacy_requests", "status", ["received", "in_progress"]),
+        this.countUnreadContactMessages(),
       ]);
       return {
         totalProfiles,
@@ -832,6 +933,7 @@ export function createSupabaseRepository(): Repository {
         activeSubscriptions: subs.filter((s) => effectiveStatus(s, now) === "active").length,
         expiringSoon: subs.filter((s) => isExpiringSoon(s, now)).length,
         openPrivacyRequests,
+        unreadContactMessages,
       };
     },
 

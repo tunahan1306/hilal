@@ -2,7 +2,7 @@ import "server-only";
 import { reportInputSchema, type ReportInput } from "@/domain/schemas";
 import { CRITICAL_REPORT_CATEGORIES, type Admin, type ModerationActionType, type ModerationReport } from "@/domain/types";
 import { getRepository } from "../repositories";
-import { rateLimit } from "../rate-limit";
+import { sharedRateLimit } from "../rate-limit";
 import { audit } from "./audit";
 import { DomainError, RateLimitedError } from "./errors";
 import { syncPublicMedia } from "./media";
@@ -31,7 +31,7 @@ export async function submitReport(raw: unknown, fingerprint: string): Promise<{
   const settings = await repo.getSiteSettings();
   if (!settings.reportsEnabled) throw new DomainError("Şikâyet sistemi geçici olarak kapalı");
 
-  if (!rateLimit(`report:${fingerprint}`, REPORTS_PER_HOUR, HOUR).ok) throw new RateLimitedError();
+  if (!(await sharedRateLimit(`report:${fingerprint}`, REPORTS_PER_HOUR, HOUR)).ok) throw new RateLimitedError();
   const recent = await repo.countRecentReportsByHash(fingerprint, new Date(Date.now() - HOUR).toISOString());
   if (recent >= REPORTS_PER_HOUR) throw new RateLimitedError();
 

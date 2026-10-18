@@ -3,11 +3,13 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { invalidatePublic } from "@/server/cache";
+import { logError } from "@/server/log";
 import { clientFingerprint, rateLimit } from "@/server/rate-limit";
 import { getRepository } from "@/server/repositories";
 import { DomainError } from "@/server/services/errors";
 import { submitReport } from "@/server/services/moderation";
 import { submitPrivacyRequest } from "@/server/services/privacy";
+import { submitContactMessage } from "@/server/services/contact";
 
 export type FormState = { ok: boolean; message: string; errors?: Record<string, string[]> } | null;
 
@@ -16,7 +18,7 @@ function failure(e: unknown): FormState {
     return { ok: false, message: "Lütfen formdaki hataları düzeltin.", errors: z.flattenError(e).fieldErrors as Record<string, string[]> };
   }
   if (e instanceof DomainError) return { ok: false, message: e.message };
-  console.error(e);
+  logError("site.action", e);
   return { ok: false, message: "Beklenmeyen bir hata oluştu. Lütfen daha sonra tekrar deneyin." };
 }
 
@@ -64,6 +66,27 @@ export async function privacyRequestAction(_prev: FormState, formData: FormData)
       ok: true,
       message: `Başvurunuz alındı (no: ${req.id.slice(0, 8).toUpperCase()}). KVKK kapsamında en geç 30 gün içinde e-posta ile yanıtlanacaktır.`,
     };
+  } catch (e) {
+    return failure(e);
+  }
+}
+
+export async function contactAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  try {
+    const message = await submitContactMessage(
+      {
+        category: formData.get("category"),
+        name: formData.get("name"),
+        email: formData.get("email"),
+        subject: formData.get("subject"),
+        message: formData.get("message"),
+        acknowledge: formData.get("acknowledge") === "on",
+        website: formData.get("website") ?? undefined,
+        startedAt: formData.get("startedAt") || undefined,
+      },
+      await clientFingerprint(),
+    );
+    return { ok: true, message: `Mesajınız alındı (no: ${message.id.slice(0, 8).toUpperCase()}). Yanıtımız belirttiğiniz e-posta adresine gönderilecektir.` };
   } catch (e) {
     return failure(e);
   }

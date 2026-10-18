@@ -1,10 +1,10 @@
 "use client";
 import { useState } from "react";
-import type { PublicProfile } from "@/domain/types";
+import type { CardProfile } from "@/domain/types";
 import { serializeFilters, type ProfileFilters } from "@/domain/filters";
 import { ProfileGrid } from "./profile-grid";
 import { Button } from "@/components/ui/button";
-type Batch = { items: PublicProfile[]; nextCursor: string | null };
+type Batch = { items: CardProfile[]; nextCursor: string | null };
 export function ProgressiveProfiles({ initial, filters }: { initial: Batch; filters: ProfileFilters }) {
   const [items, setItems] = useState(initial.items);
   const [cursor, setCursor] = useState(initial.nextCursor);

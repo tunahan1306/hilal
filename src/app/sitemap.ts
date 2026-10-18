@@ -6,13 +6,25 @@ import { getPublicProfileSlugs } from "@/server/queries/public";
 import { getRepository } from "@/server/repositories";
 
 /**
- * Yalnızca indekslenebilir sayfalar eklenir: boş veya yetersiz içerikli il/ilçe
- * sayfaları (noindex) sitemap'e girmez.
+ * Yalnızca arama motorlarının gerçekten indeksleyebileceği sayfalar eklenir.
+ * `/`, `/kesfet`, `/sehir/*` ve `/profil/*` yaş kapısının arkasındadır: çerezsiz
+ * tarayıcılar `noindex` yaş onayı sayfasını görür (src/proxy.ts). Bu adresleri
+ * sitemap'e koymak "gönderilen URL noindex" hatalarına yol açar; yaş kapısı
+ * tarayıcıya içerik gösterecek şekilde yeniden tasarlanana kadar dışarıda kalırlar.
+ * İl/ilçe/profil uygunluk kuralları `GATED_SITEMAP` açılırsa yeniden devreye girer.
  */
+const GATED_SITEMAP = process.env.SITEMAP_INCLUDE_GATED === "true";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   "use cache";
-  const { getProvinceByPlate, listProvinces } = await getLocationDirectory();
   const base = siteUrl();
+  const staticPages = [...(GATED_SITEMAP ? ["/", "/kesfet"] : []), "/sehirler", "/guvenlik", "/paketler", "/kvkk", "/kullanim-kosullari", "/kaldirma-talebi", "/iletisim"].map((p) => ({
+    url: `${base}${p === "/" ? "" : p}`,
+    changeFrequency: "weekly" as const,
+    priority: p === "/" ? 1 : 0.6,
+  }));
+  if (!GATED_SITEMAP) return staticPages;
+
+  const { getProvinceByPlate, listProvinces } = await getLocationDirectory();
   const [counts, slugs, seoPages] = await Promise.all([getRepository().countPublishedByLocation(), getPublicProfileSlugs(), getRepository().listSeoPages()]);
   const seoByPath = new Map(seoPages.map((s) => [s.path, s]));
   const indexable = (path: string, count: number) => {
@@ -20,11 +32,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return shouldIndexListing({ profileCount: count, hasCuratedIntro: Boolean(seo?.intro), override: seo?.indexOverride ?? null });
   };
 
-  const staticPages = ["/", "/kesfet", "/sehirler", "/guvenlik", "/paketler", "/kvkk", "/kullanim-kosullari", "/kaldirma-talebi"].map((p) => ({
-    url: `${base}${p === "/" ? "" : p}`,
-    changeFrequency: "weekly" as const,
-    priority: p === "/" ? 1 : 0.6,
-  }));
 
   const cities = listProvinces()
     .map((p) => ({ p, count: counts.find((c) => c.plate === p.plate && c.districtSlug === null)?.count ?? 0 }))

@@ -1,8 +1,8 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ArrowUpRight, ShieldCheck } from "lucide-react";
 import { CityPicker } from "@/components/site/city-picker";
-import { EmptyState } from "@/components/site/empty-state";
 import { IstanbulSideTabs } from "@/components/site/istanbul-side-tabs";
 import { JsonLd } from "@/components/site/json-ld";
 import { ProfileGrid } from "@/components/site/profile-grid";
@@ -10,8 +10,14 @@ import { ProfileListing, ProfileListingSkeleton } from "@/components/site/profil
 import { DEFAULT_ISTANBUL_SIDE, ISTANBUL_SIDES, ISTANBUL_SIDE_KEYS, ISTANBUL_SLUG, isIstanbulSide } from "@/domain/istanbul";
 import { POPULAR_PROVINCE_SLUGS } from "@/domain/location-directory";
 import { getLocationDirectory } from "@/server/queries/locations";
-import { SITE, siteUrl } from "@/lib/site";
+import { ogFor, SITE, siteUrl } from "@/lib/site";
 import { getFeaturedProfiles, getLocationCounts, istanbulSideCounts, profileCountFor } from "@/server/queries/public";
+
+export const metadata: Metadata = {
+  // ?yaka= yalnızca görünümü değiştirir; tek kanonik adres ana sayfadır.
+  alternates: { canonical: "/" },
+  openGraph: { ...ogFor("/", SITE.tagline, SITE.description), title: `${SITE.name} — ${SITE.tagline}` },
+};
 
 export default function HomePage({ searchParams }: PageProps<"/">) {
   return (
@@ -25,13 +31,16 @@ async function HomeContent({ searchParams }: Pick<PageProps<"/">, "searchParams"
   const yaka = (await searchParams).yaka;
   const side = isIstanbulSide(yaka) ? yaka : DEFAULT_ISTANBUL_SIDE;
   const { getProvince, listProvinces } = await getLocationDirectory();
-  const [featured, counts] = await Promise.all([getFeaturedProfiles(8), getLocationCounts()]);
+  const [featuredAll, counts] = await Promise.all([getFeaturedProfiles(16), getLocationCounts()]);
+  // Üstteki yaka listesinde zaten görünen profiller "Öne çıkan" bölümünde tekrarlanmaz.
+  const shownSide = new Set<string>(ISTANBUL_SIDES[side].districts);
+  const featured = featuredAll.filter((p) => !(p.province.slug === ISTANBUL_SLUG && p.district && shownSide.has(p.district.slug))).slice(0, 8);
   const cities = listProvinces().map((p) => ({ slug: p.slug, name: p.name, plate: p.plate, count: profileCountFor(counts, p.plate) }));
   const sideCounts = istanbulSideCounts(counts);
   const popular = [
     ...ISTANBUL_SIDE_KEYS.map((s) => ({ key: s, name: ISTANBUL_SIDES[s].name, href: `/sehir/istanbul?yaka=${s}`, count: sideCounts[s] })),
     ...POPULAR_PROVINCE_SLUGS.filter((slug) => slug !== ISTANBUL_SLUG).map((slug) => getProvince(slug)!).map((p) => ({ key: p.slug, name: p.name, href: `/sehir/${p.slug}`, count: profileCountFor(counts, p.plate) })),
-  ];
+  ].filter((c) => c.count > 0);
   return <>
     <JsonLd data={{ "@context": "https://schema.org", "@type": "WebSite", name: SITE.name, url: siteUrl(), inLanguage: "tr-TR" }} />
     <section className="border-b border-hairline bg-paper">
@@ -53,18 +62,18 @@ async function HomeContent({ searchParams }: Pick<PageProps<"/">, "searchParams"
         <ProfileListing filters={{ il: ISTANBUL_SLUG, yaka: side, ilgi: [], dogrulanmis: false, sayfa: 1 }} mode={{ type: "location", il: ISTANBUL_SLUG }} />
       </Suspense>
     </section>
-    <section className="container-page py-9 sm:py-12" aria-labelledby="one-cikanlar">
+    {featured.length ? <section className="container-page py-9 sm:py-12" aria-labelledby="one-cikanlar">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div><p className="eyebrow text-brand">Seçkimiz</p><h2 id="one-cikanlar" className="font-display mt-2 text-display-md">Öne çıkan profiller</h2></div>
         <p className="text-xs text-muted-foreground">Sponsorlu profiller açıkça etiketlenir.</p>
       </div>
-      {featured.length ? <ProfileGrid profiles={featured} priorityCount={2} /> : <EmptyState title="Henüz yayında profil yok" description="Profiller rıza, yaş doğrulaması ve moderasyon tamamlandıktan sonra yayınlanır." />}
-    </section>
+      <ProfileGrid profiles={featured} priorityCount={0} />
+    </section> : null}
     <section className="container-page py-8" aria-labelledby="sehirler">
       <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3"><h2 id="sehirler" className="font-display text-display-md">Şehir şehir keşfet</h2><Link href="/sehirler" className="inline-flex min-h-11 items-center text-sm text-brand">81 ilin tamamı →</Link></div>
-      <ul className="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-4">
+      {popular.length ? <ul className="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-4">
         {popular.map((p) => <li key={p.key} className="border-t border-hairline"><Link href={p.href} className="flex min-h-16 items-center justify-between gap-3"><span className="font-display text-xl">{p.name}</span><span className="text-xs text-muted-foreground">{p.count} profil ↗</span></Link></li>)}
-      </ul>
+      </ul> : null}
     </section>
     <section className="container-page mt-5 border-t border-hairline py-8" aria-labelledby="guvenlik-baslik">
       <div className="flex flex-wrap items-center gap-x-8 gap-y-4"><h2 id="guvenlik-baslik" className="flex items-center gap-2 text-sm font-medium"><ShieldCheck className="size-5 text-brand" aria-hidden /> Rıza, mahremiyet, güven.</h2><p className="max-w-2xl text-sm text-muted-foreground">Yayın öncesi yaş ve rıza kontrolü yapılır. Yalnızca sahibinin paylaşım izni verdiği WhatsApp iletişimi gösterilir. Ücretli cinsel hizmet tanıtımı ve yönlendirme yasaktır.</p><Link href="/guvenlik" className="inline-flex min-h-11 items-center text-sm text-brand">Güvenlik ilkeleri →</Link></div>

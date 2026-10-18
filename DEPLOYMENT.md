@@ -35,6 +35,8 @@ select id, email, 'Ad Soyad', 'owner' from auth.users where email = 'yonetici@or
    | `SUPABASE_SERVICE_ROLE_KEY` | yalnızca Production/Preview, asla client |
    | `IP_HASH_SALT`, `CRON_SECRET` | `openssl rand -hex 32` — `IP_HASH_SALT` yoksa sunucu istekleri reddeder |
    | `VERIFICATION_DOC_RETENTION_DAYS` | hukuk incelemesine göre |
+   | `CONTACT_PUBLIC_EMAIL` | isteğe bağlı; yalnızca doğrulanmış gerçek adres. Boşsa `/iletisim` e-posta göstermez |
+   | `RESEND_API_KEY`, `CONTACT_NOTIFY_TO`, `CONTACT_NOTIFY_FROM` | isteğe bağlı; üçü birlikte tanımlanınca yeni iletişim mesajı bildirimi gönderilir |
    `ALLOW_DEMO_MODE` production'da **tanımlamayın**.
 3. `vercel.json` günlük cron'u (`/api/cron`, 03:00 UTC) tanımlar; Vercel `Authorization: Bearer $CRON_SECRET` gönderir.
 4. Firewall → Rate limiting: `/admin/giris` ve form POST'ları için kural ekleyin (uygulama içi limit instance başınadır).

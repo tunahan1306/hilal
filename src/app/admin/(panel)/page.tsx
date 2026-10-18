@@ -57,21 +57,22 @@ export default async function DashboardPage() {
     { label: "Taslak", value: counts.drafts, href: "/admin/profiller?durum=draft" },
     { label: "Açık şikâyet", value: counts.openReports, href: "/admin/sikayetler", warn: counts.openReports > 0 },
     { label: "KVKK talebi", value: counts.openPrivacyRequests, href: "/admin/talepler", warn: counts.openPrivacyRequests > 0 },
+    { label: "Okunmamış mesaj", value: counts.unreadContactMessages, href: "/admin/iletisim?okunmamis=1", warn: counts.unreadContactMessages > 0 },
     { label: "Aktif abonelik", value: counts.activeSubscriptions, sub: `${counts.expiringSoon} tanesi 7 gün içinde bitiyor`, href: "/admin/abonelikler" },
   ];
 
   return (
     <>
       <PageHeader title="Gösterge paneli" eyebrow={formatDate(now.toISOString(), { weekday: "long", day: "numeric", month: "long" })} />
-      <dl className="grid grid-cols-2 overflow-hidden rounded-lg border border-hairline sm:grid-cols-3 xl:grid-cols-6">
+      <ul aria-label="Özet göstergeler" className="grid grid-cols-2 overflow-hidden rounded-lg border border-hairline sm:grid-cols-3 xl:grid-cols-7">
         {kpis.map((k) => (
-          <Link key={k.label} href={k.href} prefetch={false} className="group border-b border-r border-hairline p-4 transition-colors hover:bg-secondary/60 [&:nth-child(2n)]:border-r-0 sm:[&:nth-child(2n)]:border-r sm:[&:nth-child(3n)]:border-r-0 xl:border-b-0 xl:[&:nth-child(3n)]:border-r xl:last:border-r-0">
-            <dt className="text-xs text-muted-foreground">{k.label}</dt>
-            <dd className={`mt-1.5 text-2xl font-semibold tabular-nums tracking-tight ${k.warn ? "text-warning" : ""}`}>{formatNumber(k.value)}</dd>
-            {k.sub ? <dd className="mt-0.5 truncate text-xs text-muted-foreground">{k.sub}</dd> : null}
-          </Link>
+          <li key={k.label} className="border-b border-r border-hairline [&:nth-child(2n)]:border-r-0 sm:[&:nth-child(2n)]:border-r sm:[&:nth-child(3n)]:border-r-0 xl:border-b-0 xl:[&:nth-child(3n)]:border-r xl:last:border-r-0"><Link href={k.href} prefetch={false} className="group block h-full p-4 transition-colors hover:bg-secondary/60">
+            <span className="block text-xs text-muted-foreground">{k.label}</span>
+            <span className={`mt-1.5 block text-2xl font-semibold tabular-nums tracking-tight ${k.warn ? "text-warning" : ""}`}>{formatNumber(k.value)}</span>
+            {k.sub ? <span className="mt-0.5 block text-xs text-muted-foreground sm:truncate">{k.sub}</span> : null}
+          </Link></li>
         ))}
-      </dl>
+      </ul>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.5fr_1fr]">
         <section className="self-start rounded-lg border border-hairline" aria-labelledby="kuyruk">

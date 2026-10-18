@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ogFor } from "@/lib/site";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
 import { getLocationDirectory } from "@/server/queries/locations";
@@ -6,8 +7,9 @@ import { getLocationCounts, profileCountFor } from "@/server/queries/public";
 
 export const metadata: Metadata = {
   title: "Türkiye'nin 81 ili",
-  description: "Türkiye'nin 81 ilinde ve ilçelerinde doğrulanmış sosyal profilleri bölge bölge keşfedin.",
+  description: "Türkiye'nin 81 ilinde ve ilçelerinde sosyal profilleri bölge bölge keşfedin.",
   alternates: { canonical: "/sehirler" },
+  openGraph: ogFor("/sehirler", "Türkiye'nin 81 ili", "Türkiye'nin 81 ilinde ve ilçelerinde sosyal profilleri bölge bölge keşfedin."),
 };
 
 export default async function CitiesPage() {

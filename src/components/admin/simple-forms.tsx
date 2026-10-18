@@ -36,7 +36,7 @@ export function SeoPageForm({ action, page, path }: { action: Act; page?: SeoPag
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label htmlFor={`${uid}-path`}>Yol</Label>
-              <Input id={`${uid}-path`} name="path" defaultValue={page?.path ?? path ?? "/sehir/"} readOnly={Boolean(page)} placeholder="/sehir/istanbul" />
+              <Input id={`${uid}-path`} name="path" defaultValue={page?.path ?? path ?? ""} readOnly={Boolean(page)} placeholder="/sehir/istanbul" />
               <FieldError errors={errors} name="path" />
             </div>
             <div className="grid gap-1.5">

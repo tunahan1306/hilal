@@ -27,15 +27,17 @@ export function MediaStrip({ items, name }: { items: MediaItem[]; name: string }
         {items.map((m, i) => (
           <li key={`${m.url}-${i}`} className="w-full shrink-0 snap-center">
             <button type="button" onClick={() => open(i)} className="relative block aspect-[4/5] w-full bg-muted" aria-label={`${i + 1}. medyayı tam ekran aç`}>
-              <Image
-                src={m.kind === "video" ? (m.poster ?? m.url) : m.url}
+              {m.kind === "video" && !m.poster ? (
+                // Posteri olmayan video görsel kaynağı olarak verilmez (C-11); nötr yer tutucu gösterilir.
+                <span className="absolute inset-0 bg-gradient-to-br from-muted to-secondary" aria-hidden />
+              ) : <Image
+                src={m.kind === "video" ? m.poster! : m.url}
                 alt={m.alt}
                 fill
                 sizes="100vw"
                 priority={i === 0}
                 className="object-cover object-[50%_30%]"
-                unoptimized={m.kind === "video" && !m.poster}
-              />
+              />}
               {m.kind === "video" ? (
                 <span className="absolute inset-0 grid place-items-center">
                   <span className="grid size-14 place-items-center rounded-full bg-background/85 backdrop-blur"><Play className="size-6 translate-x-0.5" aria-hidden /></span>

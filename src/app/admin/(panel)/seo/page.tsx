@@ -6,7 +6,8 @@ import { getLocationDirectory } from "@/server/queries/locations";
 import { shouldIndexListing } from "@/domain/seo";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
-import { seoPageAction } from "../actions";
+import { ActionButton } from "@/components/admin/action-button";
+import { deleteSeoPageAction, seoPageAction } from "../actions";
 
 export const metadata: Metadata = { title: "SEO" };
 
@@ -47,6 +48,9 @@ export default async function SeoPage() {
                   <span className="flex gap-2"><StatusBadge>{countFor(p.path)} profil</StatusBadge><StatusBadge tone={indexed ? "success" : "neutral"}>{indexed ? "index" : "noindex"}</StatusBadge></span>
                 </summary>
                 <div className="mt-4"><SeoPageForm action={seoPageAction} page={p} /></div>
+                <div className="mt-3 flex justify-end border-t border-hairline pt-3">
+                  <ActionButton action={deleteSeoPageAction.bind(null, p.id, p.path)} size="sm" variant="ghost" confirm={{ title: "SEO ayarı silinsin mi?", description: `${p.path} için başlık, açıklama, canonical ve indeks ayarı kaldırılır; sayfa otomatik kurallara döner.`, confirmLabel: "Sil", destructive: true }}>Ayarı sil</ActionButton>
+                </div>
               </details>
             );
           })}
