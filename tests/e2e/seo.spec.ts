@@ -17,7 +17,8 @@ test.describe("SEO doğrulama", () => {
       expect(canonical && new URL(canonical, baseURL).pathname, `${path} canonical`).toBe(path === "" ? "/" : path);
       expect(html, `${path} og:url`).toMatch(/<meta property="og:url"/);
       expect(html, `${path} açıklama`).toMatch(/<meta name="description" content="[^"]{30,}"/);
-      const title = html.match(/<title>([^<]+)<\/title>/)?.[1] ?? "";
+      // Başlıklar aynı dil içinde benzersiz olmalı (ör. "Contact" İngilizce ve Hollandacada aynı sözcüktür).
+      const title = `${path.split("/")[1]}:${html.match(/<title>([^<]+)<\/title>/)?.[1] ?? ""}`;
       expect(titles.has(title), `${path} başlığı benzersiz olmalı`).toBe(false);
       titles.add(title);
     }
@@ -27,7 +28,7 @@ test.describe("SEO doğrulama", () => {
   test("yaş kapısı arkasındaki adresler çerezsiz istekte noindex döner ve sitemap'te yoktur", async ({ playwright, baseURL }) => {
     const anon = await playwright.request.newContext({ baseURL, storageState: { cookies: [], origins: [] } });
     const xml = await (await anon.get("/sitemap.xml")).text();
-    for (const path of ["/", "/kesfet", "/sehir/istanbul"]) {
+    for (const path of ["/tr", "/tr/kesfet", "/tr/konum/tr/istanbul", "/en/explore", "/de/ort/de/bayern"]) {
       const html = await (await anon.get(path)).text();
       expect(html, path).toMatch(/<meta name="robots" content="noindex/);
       expect(xml).not.toContain(`${new URL(path, baseURL).href.replace(/\/$/, "")}</loc>`);
@@ -36,22 +37,22 @@ test.describe("SEO doğrulama", () => {
   });
 
   test("olmayan profil gerçek 404 döner (soft 404 yok)", async ({ request }) => {
-    const res = await request.get("/profil/boyle-bir-profil-yok-123");
+    const res = await request.get("/en/profile/boyle-bir-profil-yok-123");
     expect(res.status()).toBe(404);
   });
 
   test("boş il sayfası ve filtreli varyant noindex; varyant canonical temiz", async ({ page }) => {
-    await page.goto("/sehir/bayburt");
+    await page.goto("/tr/konum/tr/bayburt");
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-    await page.goto("/sehir/istanbul?yaka=anadolu");
+    await page.goto("/tr/konum/tr/istanbul?yaka=anadolu");
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/sehir\/istanbul$/);
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/tr\/konum\/tr\/istanbul$/);
   });
 
   test("ana sayfa ?yaka varyantı ana sayfaya canonical verir; JSON-LD geçerli", async ({ page }) => {
-    await page.goto("/?yaka=anadolu");
-    expect(new URL((await page.locator('link[rel="canonical"]').getAttribute("href"))!).pathname).toBe("/");
-    for (const path of ["/", "/sehir/istanbul", "/guvenlik"]) {
+    await page.goto("/tr?yaka=anadolu");
+    expect(new URL((await page.locator('link[rel="canonical"]').getAttribute("href"))!).pathname).toBe("/tr");
+    for (const path of ["/tr", "/tr/konum/tr/istanbul", "/tr/guvenlik", "/nl/veiligheid"]) {
       await page.goto(path);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible(); // JSON-LD akışla gelen içeriktedir
       const blocks = await page.locator('script[type="application/ld+json"]').allTextContents();

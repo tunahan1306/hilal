@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, SlidersHorizontal, X } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { COUNTRY_CODES, countryName, type CountryCode } from "@/domain/countries";
@@ -86,7 +86,14 @@ function FilterFields({ mode, filters, provinces, districts, update, idPrefix }:
             <SelectTrigger id={`${idPrefix}-il`} className="w-full bg-paper"><SelectValue placeholder={f.allRegions} /></SelectTrigger>
             <SelectContent className="max-h-80">
               {mode.type === "explore" ? <SelectItem value={ALL}>{f.allRegions}</SelectItem> : null}
-              {regionOptions.map((p) => <SelectItem key={p.slug} value={p.slug}>{p.name}{!country && p.country ? ` · ${p.country.toUpperCase()}` : ""}</SelectItem>)}
+              {country
+                ? regionOptions.map((p) => <SelectItem key={p.slug} value={p.slug}>{p.name}</SelectItem>)
+                : COUNTRY_CODES.map((c) => (
+                    <SelectGroup key={c}>
+                      <SelectLabel>{countryName(c, lang)}</SelectLabel>
+                      {regionOptions.filter((p) => p.country === c).map((p) => <SelectItem key={p.slug} value={p.slug}>{p.name}</SelectItem>)}
+                    </SelectGroup>
+                  ))}
             </SelectContent>
           </Select>
         </Field>

@@ -15,7 +15,7 @@ async function withSession(page: Page, value: string, baseURL: string) {
 }
 
 async function submitContact(page: Page, subject: string) {
-  await page.goto("/iletisim");
+  await page.goto("/tr/iletisim");
   await page.getByLabel("Ad soyad").fill("Güvenlik Testi");
   await page.getByLabel("E-posta").fill("sec@test.local");
   await page.getByLabel("Konu", { exact: true }).fill(subject);

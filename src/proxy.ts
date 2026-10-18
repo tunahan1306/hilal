@@ -45,7 +45,13 @@ export async function proxy(request: NextRequest) {
   if (legacy) return NextResponse.redirect(new URL(`${legacy}${search}`, request.url), 301);
 
   const parsed = parseLocalized(pathname);
-  if (!parsed) return NextResponse.next(); // dil öneki yok, eski adres değil → genel 404 (global-not-found)
+  if (!parsed) {
+    // Dosya (public/ altındaki varlıklar) ise dokunma; aksi halde dil öneki olmayan bilinmeyen sayfa:
+    // [lang] köküne düşüp İngilizce varsayılan 404'e gitmesin, ziyaretçinin dilinde gerçek 404 dönsün.
+    if (/\.[a-z0-9]{2,5}$/i.test(pathname)) return NextResponse.next();
+    const saved = request.cookies.get(LANG_COOKIE)?.value;
+    return notFoundPage(request, isLocale(saved) ? saved : negotiateLocale(request.headers.get("accept-language")));
+  }
   if (parsed.kind === "redirect") return NextResponse.redirect(new URL(`${parsed.to}${search}`, request.url), 301);
   if (parsed.kind === "unknown") return notFoundPage(request, parsed.lang);
 

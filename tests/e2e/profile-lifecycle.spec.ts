@@ -63,7 +63,7 @@ test("profil oluşturma → yayın engeli → ön koşullar → yayın → arşi
   await expectToast(page, "Profil yayınlandı");
 
   const slug = (await page.getByText(/\/profil\//).first().textContent())!.match(/\/profil\/([a-z0-9-]+)/)![1];
-  const res = await page.goto(`/profil/${slug}`);
+  const res = await page.goto(`/tr/profil/${slug}`);
   expect(res?.status()).toBe(200);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("E2E Deneme");
   await expect(page.getByText("Karşıyaka, İzmir").first()).toBeVisible();
@@ -77,7 +77,7 @@ test("profil oluşturma → yayın engeli → ön koşullar → yayın → arşi
   await page.getByRole("button", { name: "Arşivle" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Arşivle" }).click();
   await expectToast(page, "Profil arşivlendi");
-  await page.goto(`/profil/${slug}`);
+  await page.goto(`/tr/profil/${slug}`);
   await expect(page.getByRole("heading", { name: "Sayfa bulunamadı" })).toBeVisible();
   await expect(page.locator('meta[name="robots"]').first()).toHaveAttribute("content", /noindex/);
 });

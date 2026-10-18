@@ -17,17 +17,17 @@ const wa = `https://wa.me/${FIXTURE_WHATSAPP}`;
 test("veritabanı örnek profilleri görsel ve izinli WhatsApp bağlantısıyla gösterilir", async ({ page, request }) => {
   const verified = await (await request.get("/api/discovery?dogrulanmis=1")).json();
   expect(verified.items.filter((p: { isExample?: boolean }) => p.isExample)).toEqual([]);
-  await page.goto("/");
+  await page.goto("/tr");
   await expect(page.getByRole("article").first()).toBeVisible();
-  await page.goto("/kesfet");
+  await page.goto("/tr/kesfet");
   await expect(page.getByRole("article")).toHaveCount(FIXTURES.length);
   await expect(page.locator(`article a[href="${wa}"]`)).toHaveCount(FIXTURES.length);
-  await page.goto("/sehir/istanbul/atasehir");
+  await page.goto("/tr/konum/tr/istanbul/atasehir");
   const card = page.getByRole("article").filter({ hasText: "Ece" });
   await expect(card).toBeVisible();
   await expect(card).toContainText("Ataşehir, İstanbul");
   await card.getByRole("link", { name: "Ece", exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`/profil/${slugOf("ece")}$`));
+  await expect(page).toHaveURL(new RegExp(`/tr/profil/${slugOf("ece")}$`));
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Ece");
   await expect(page.getByText("Kimlik ve yaş doğrulaması yapılmadı.", { exact: true })).toBeVisible();
   await expect(page.getByText("Yaş belgeyle doğrulandı", { exact: false })).toHaveCount(0);
@@ -46,7 +46,7 @@ test("veritabanında doğrudan yapılan görünürlük değişikliği bir sonrak
   const { createClient } = await import("@supabase/supabase-js");
   const service = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
   const slug = slugOf("elif");
-  await page.goto("/sehir/izmir/karsiyaka");
+  await page.goto("/tr/konum/tr/izmir/karsiyaka");
   await expect(page.getByRole("link", { name: "Elif", exact: true })).toBeVisible();
   try {
     const hidden = await service.from("example_profiles").update({ visible: false }).eq("slug", slug);
