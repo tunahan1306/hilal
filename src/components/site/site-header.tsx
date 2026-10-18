@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
 import { AgeBadge } from "./age-badge";
 import { Logo } from "./logo";
 import { NavLinks, NavLinksFallback } from "./nav-links";
@@ -27,9 +26,6 @@ export function SiteHeader() {
           </Suspense>
         </nav>
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
-          <Link href="/kesfet" className="inline-flex size-10 items-center justify-center rounded-md hover:bg-secondary" aria-label="Profilleri keşfet ve filtrele">
-            <Search className="size-[1.15rem]" aria-hidden />
-          </Link>
           <Link href="/guvenlik#yetiskin" className="inline-flex items-center rounded-full" aria-label="Yalnızca yetişkinler — topluluk kuralları">
             <AgeBadge />
           </Link>
