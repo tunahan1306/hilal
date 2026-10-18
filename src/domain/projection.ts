@@ -38,7 +38,7 @@ export function toPublicProfile(args: {
     slug: profile.slug,
     nickname: profile.nickname,
     age: ageOn(profile.birthDate, now),
-    province: { plate: province.plate, name: province.name, slug: province.slug },
+    province: { plate: province.plate, name: province.name, slug: province.slug, country: province.country },
     district: district ? { name: district.name, slug: district.slug } : null,
     bio: profile.bio,
     interests: args.interests

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { trackProfileViewAction } from "@/app/(site)/actions";
+import { trackProfileViewAction } from "@/server/actions/public";
 
 export function ViewTracker({ profileId }: { profileId: string }) {
   useEffect(() => {

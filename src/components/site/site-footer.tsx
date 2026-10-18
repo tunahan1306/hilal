@@ -1,15 +1,26 @@
 import Link from "next/link";
 import { cacheLife } from "next/cache";
+import { COUNTRY_CODES, countryName } from "@/domain/countries";
+import { getI18n } from "@/i18n/server";
+import { localizedPath } from "@/i18n/routes";
 import { AgeBadge } from "./age-badge";
 import { CrescentMark } from "./logo";
 
-const GROUPS = [
-  { title: "Keşfet", links: [["/kesfet", "Tüm profiller"], ["/sehirler", "81 il"], ["/sehir/istanbul", "İstanbul"], ["/sehir/ankara", "Ankara"], ["/sehir/izmir", "İzmir"]] },
-  { title: "Topluluk", links: [["/guvenlik", "Kurallar ve güvenlik"], ["/kaldirma-talebi", "Profil kaldırma"], ["/paketler", "Üyelik paketleri"], ["/iletisim", "İletişim"]] },
-  { title: "Yasal", links: [["/kvkk", "KVKK aydınlatma"], ["/kullanim-kosullari", "Kullanım koşulları"]] },
-] as const;
-
-export function SiteFooter() {
+export async function SiteFooter() {
+  const { lang, m } = await getI18n();
+  const f = m.footer;
+  const groups = [
+    {
+      title: f.explore,
+      links: [
+        [localizedPath(lang, "explore"), f.allProfiles],
+        [localizedPath(lang, "cities"), f.allCities],
+        ...COUNTRY_CODES.map((c) => [localizedPath(lang, "location", { country: c }), countryName(c, lang)] as const),
+      ],
+    },
+    { title: f.community, links: [[localizedPath(lang, "safety"), f.safety], [localizedPath(lang, "removal"), f.removal], [localizedPath(lang, "packages"), f.packages], [localizedPath(lang, "contact"), f.contact]] },
+    { title: f.legal, links: [[localizedPath(lang, "privacy"), f.privacy], [localizedPath(lang, "terms"), f.terms]] },
+  ];
   return (
     <footer className="mt-10 border-t border-hairline pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
       <div className="container-page grid grid-cols-2 gap-x-6 gap-y-6 py-9 md:grid-cols-12">
@@ -17,11 +28,9 @@ export function SiteFooter() {
           <p className="flex items-center gap-2.5 font-display text-3xl leading-none tracking-[-0.02em]">
             <CrescentMark className="size-[0.8em]" /> Hilal
           </p>
-          <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-            Türkiye&apos;nin 81 ilinde yetişkinler için sosyal keşif. Profillerin doğrulama durumu her profilde ayrıca gösterilir.
-          </p>
+          <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted-foreground">{f.blurb}</p>
         </div>
-        {GROUPS.map((g) => (
+        {groups.map((g) => (
           <div key={g.title} className="md:col-span-2">
             <h2 className="eyebrow mb-4 text-muted-foreground">{g.title}</h2>
             <ul className="space-y-0.5 text-sm">
@@ -37,7 +46,7 @@ export function SiteFooter() {
       <div className="border-t border-hairline">
         <div className="container-page flex flex-col gap-3 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p className="flex items-center gap-2">
-            <AgeBadge /> Yalnızca 18 yaş ve üzeri. Ücretli hizmet tanıtımına izin verilmez.
+            <AgeBadge label={m.common.adultsOnly} /> {f.adultsNote}
           </p>
           <p>© <CopyrightYear /> Hilal</p>
         </div>

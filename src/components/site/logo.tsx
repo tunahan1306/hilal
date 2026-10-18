@@ -10,9 +10,9 @@ export function CrescentMark({ className }: { className?: string }) {
   );
 }
 
-export function Logo({ className, href = "/" }: { className?: string; href?: string }) {
+export function Logo({ className, href, label = "Hilal" }: { className?: string; href: string; label?: string }) {
   return (
-    <Link href={href} className={cn("group inline-flex items-center gap-2 rounded-sm", className)} aria-label="Hilal ana sayfa">
+    <Link href={href} className={cn("group inline-flex items-center gap-2 rounded-sm", className)} aria-label={label}>
       <CrescentMark className="size-[22px] transition-transform duration-500 ease-[var(--ease-out-soft)] group-hover:-rotate-12" />
       <span className="font-display text-[1.375rem] leading-none tracking-[-0.02em]">Hilal</span>
     </Link>

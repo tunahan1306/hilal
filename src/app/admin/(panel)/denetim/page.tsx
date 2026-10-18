@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PageHeader } from "@/components/admin/page-header";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate } from "@/lib/site";
@@ -35,7 +36,7 @@ export default async function AuditPage({ searchParams }: PageProps<"/admin/dene
           <input name="varlik" defaultValue={entity} className="h-9 w-56 rounded-md border border-input bg-background px-3 font-mono text-xs text-foreground" />
         </label>
         <button type="submit" className="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">Filtrele</button>
-        {action || entity || type ? <a href="/admin/denetim" className="h-9 content-center text-sm text-muted-foreground hover:text-foreground">Temizle</a> : null}
+        {action || entity || type ? <Link href="/admin/denetim" prefetch={false} className="h-9 content-center text-sm text-muted-foreground hover:text-foreground">Temizle</Link> : null}
       </form>
       <p className="mb-2 text-xs text-muted-foreground" role="status">{logs.length} kayıt</p>
       <div className="overflow-x-auto rounded-lg border border-hairline">

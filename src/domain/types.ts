@@ -364,7 +364,7 @@ export type PublicProfile = {
   slug: string;
   nickname: string;
   age: number;
-  province: { plate: number; name: string; slug: string };
+  province: { plate: number; name: string; slug: string; country: import("./countries").CountryCode };
   district: { name: string; slug: string } | null;
   bio: string;
   bioDoc: import("./rich-text").RichDoc | null;
@@ -389,7 +389,8 @@ export type CardProfile = Pick<
   "isExample" | "id" | "slug" | "nickname" | "age" | "province" | "district" | "whatsappPhone" | "verified" | "sponsored" | "publishedAt"
 > & { images: PublicProfile["images"] };
 
-export function toCardProfile(p: PublicProfile): CardProfile {
+/** Tam profil veya kart verilebilir; yalnızca kart alanları kopyalanır (fazlası istemciye gitmez). */
+export function toCardProfile(p: CardProfile): CardProfile {
   return {
     isExample: p.isExample,
     id: p.id,

@@ -1,41 +1,43 @@
-import { getLocationDirectory } from "@/server/queries/locations";
 import Link from "next/link";
 import { Suspense } from "react";
+import { COUNTRIES, countryName } from "@/domain/countries";
 import { parseFilters } from "@/domain/filters";
-import type { District, Province } from "@/domain/locations";
-import { formatNumber } from "@/lib/site";
-import { getLocationCounts, getLocationSummary, getSeoPage, istanbulSideCounts } from "@/server/queries/public";
 import { ISTANBUL_SIDES, ISTANBUL_SLUG } from "@/domain/istanbul";
-import { IstanbulSideTabs } from "./istanbul-side-tabs";
+import type { District, Province } from "@/domain/locations";
+import { fmt, formatNumberIntl } from "@/i18n/config";
+import { getI18n } from "@/i18n/server";
+import { localizedPath } from "@/i18n/routes";
+import { getLocationDirectory } from "@/server/queries/locations";
+import { seoKey } from "@/server/queries/location-seo";
+import { getLocationCounts, getLocationSummary, getSeoPage, istanbulSideCounts } from "@/server/queries/public";
 import { Breadcrumbs, type Crumb } from "./breadcrumbs";
+import { IstanbulSideTabs } from "./istanbul-side-tabs";
 import { ProfileListing, ProfileListingSkeleton } from "./profile-listing";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-/** İl ve ilçe sayfalarının ortak gövdesi. */
-export async function LocationPage({
-  province,
-  district,
-  searchParams,
-}: {
-  province: Province;
-  district?: District;
-  searchParams: SearchParams;
-}) {
-  const { listDistricts } = await getLocationDirectory();
-  const path = district ? `/sehir/${province.slug}/${district.slug}` : `/sehir/${province.slug}`;
-  const [summary, seo, counts, params] = await Promise.all([getLocationSummary(province.slug, district?.slug), getSeoPage(path), getLocationCounts(), searchParams]);
+/** Bölge (il/eyalet) ve yer (ilçe/belediye/kreis) sayfalarının ortak gövdesi. */
+export async function LocationPage({ province, district, searchParams }: { province: Province; district?: District; searchParams: SearchParams }) {
+  const [{ lang, m }, { listDistricts }] = await Promise.all([getI18n(), getLocationDirectory()]);
+  const level = m.places.levels[province.country];
+  const regionPath = localizedPath(lang, "location", { country: province.country, region: province.slug });
+  const path = district ? localizedPath(lang, "location", { country: province.country, region: province.slug, locality: district.slug }) : regionPath;
+  const [summary, seoRow, counts, params] = await Promise.all([getLocationSummary(province.slug, district?.slug), getSeoPage(seoKey(province, district)), getLocationCounts(), searchParams]);
+  const seo = lang === "tr" ? seoRow : null;
   const showSides = province.slug === ISTANBUL_SLUG && !district;
   const side = showSides ? parseFilters(params).yaka : undefined;
   const total = side ? istanbulSideCounts(counts)[side] : summary.total;
   const sideDistricts = side ? (ISTANBUL_SIDES[side].districts as readonly string[]) : undefined;
   const listedDistricts = sideDistricts ? summary.districts.filter((d) => sideDistricts.includes(d.slug)) : summary.districts;
-  const place = district ? `${district.name}, ${province.name}` : side ? ISTANBUL_SIDES[side].name : province.name;
+  const heading = district ? district.name : side ? m.istanbul[side] : province.name;
+  const place = district ? `${district.name}, ${province.name}` : heading;
   const crumbs: Crumb[] = [
-    { name: "Şehirler", href: "/sehirler" },
-    { name: province.name, href: `/sehir/${province.slug}` },
+    { name: m.nav.cities, href: localizedPath(lang, "cities") },
+    { name: countryName(province.country, lang), href: localizedPath(lang, "location", { country: province.country }) },
+    { name: province.name, href: regionPath },
     ...(district ? [{ name: district.name, href: path }] : []),
   ];
+  const code = COUNTRIES[province.country].showPlate ? String(province.plate).padStart(2, "0") : province.country.toUpperCase();
 
   return (
     <div className="container-page pb-8 pt-6 sm:pt-10">
@@ -43,24 +45,21 @@ export async function LocationPage({
       <header className="mb-6 mt-6 grid gap-8 border-b border-hairline pb-6 lg:mb-8 lg:grid-cols-12 lg:items-end">
         <div className="lg:col-span-7">
           <p className="eyebrow text-muted-foreground">
-            {district ? `${province.name} · ilçe` : `${province.region} Bölgesi · ${String(province.plate).padStart(2, "0")}`}
+            {district ? fmt(m.places.localityEyebrow, { region: province.name, level: level.locality }) : fmt(m.places.regionEyebrow, { region: province.region, code })}
           </p>
-          <h1 className="font-display mt-4 text-display-xl">{district ? district.name : side ? ISTANBUL_SIDES[side].name : province.name}</h1>
+          <h1 className="font-display mt-4 text-display-xl">{heading}</h1>
           {showSides ? (
             <div className="mt-5">
               <IstanbulSideTabs active={side} allHref={path} hrefFor={(s) => `${path}?yaka=${s}`} counts={istanbulSideCounts(counts)} />
             </div>
           ) : null}
           <p className="mt-5 max-w-[56ch] text-lede text-muted-foreground">
-            {seo?.intro ??
-              (total > 0
-                ? `${place} bölgesinde şu anda ${total} yayında profil bulunuyor.`
-                : `${place} için henüz yayında profil bulunmuyor. Yakın illere göz atabilir veya daha sonra tekrar kontrol edebilirsiniz.`)}
+            {seo?.intro ?? (total > 0 ? fmt(m.places.introHas, { place, n: total }) : fmt(m.places.introNone, { place }))}
           </p>
         </div>
         <dl className="grid grid-cols-2 border-t border-hairline lg:col-span-4 lg:col-start-9 lg:border-t-0">
-          <Stat label="Profil" value={formatNumber(total)} />
-          <Stat label={district ? "Nüfus" : "İlçe"} value={district ? formatNumber(district.population) : String(sideDistricts?.length ?? listDistricts(province.plate).length)} />
+          <Stat label={m.places.statProfiles} value={formatNumberIntl(lang, total)} />
+          <Stat label={district ? m.places.statPopulation : level.localities} value={district ? formatNumberIntl(lang, district.population) : String(sideDistricts?.length ?? listDistricts(province.plate).length)} />
         </dl>
       </header>
 
@@ -70,13 +69,13 @@ export async function LocationPage({
 
       {!district && listedDistricts.length ? (
         <section className="mt-12 grid gap-6 border-t border-hairline pt-10 lg:grid-cols-12" aria-labelledby="ilce-baslik">
-          <h2 id="ilce-baslik" className="font-display text-display-md lg:col-span-4">{place} ilçeleri</h2>
+          <h2 id="ilce-baslik" className="font-display text-display-md lg:col-span-4">{fmt(m.places.localitiesOf, { place, level: level.localities })}</h2>
           <ul className="grid grid-cols-1 sm:grid-cols-2 lg:col-span-7 lg:col-start-6">
             {listedDistricts.map((d) => (
               <li key={d.slug} className="border-b border-hairline">
-                <Link href={`/sehir/${province.slug}/${d.slug}`} className="group flex min-h-12 items-baseline justify-between gap-3 py-3 pr-4">
+                <Link href={localizedPath(lang, "location", { country: province.country, region: province.slug, locality: d.slug })} className="group flex min-h-12 items-baseline justify-between gap-3 py-3 pr-4">
                   <span className="font-display text-lg transition-transform group-hover:translate-x-1">{d.name}</span>
-                  <span className="text-sm tabular-nums text-muted-foreground">{d.count} profil</span>
+                  <span className="text-sm tabular-nums text-muted-foreground">{fmt(m.common.profiles, { n: d.count })}</span>
                 </Link>
               </li>
             ))}
@@ -85,8 +84,8 @@ export async function LocationPage({
       ) : null}
       {district ? (
         <p className="mt-16 border-t border-hairline pt-8">
-          <Link href={`/sehir/${province.slug}`} className="font-display text-display-sm underline-offset-[6px] decoration-1 hover:underline">
-            {province.name} genelindeki tüm profiller →
+          <Link href={regionPath} className="font-display text-display-sm underline-offset-[6px] decoration-1 hover:underline">
+            {fmt(m.places.allIn, { region: province.name })}
           </Link>
         </p>
       ) : null}
@@ -96,8 +95,8 @@ export async function LocationPage({
 
 async function LocationResults({ province, district, searchParams }: { province: Province; district?: District; searchParams: SearchParams }) {
   const raw = parseFilters(await searchParams);
-  const filters = { ...raw, il: province.slug, ilce: district?.slug };
-  return <ProfileListing filters={filters} mode={{ type: "location", il: province.slug }} />;
+  const filters = { ...raw, ulke: undefined, il: province.slug, ilce: district?.slug };
+  return <ProfileListing filters={filters} mode={{ type: "location", country: province.country, il: province.slug }} />;
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

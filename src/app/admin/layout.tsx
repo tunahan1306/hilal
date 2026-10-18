@@ -1,11 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { RootDocument, VIEWPORT } from "@/components/root-document";
+import { siteUrl } from "@/lib/site";
 
-// Başlık şablonu tanımlandığı segmentin alt segmentlerine uygulanır; bu yüzden üst düzeyde.
+// Yönetim paneli ayrı kök layout'tur (Türkçe; ziyaretçi dil yönlendirmesinin dışında).
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
   title: { template: "%s · Yönetim | Hilal", default: "Yönetim | Hilal" },
   robots: { index: false, follow: false },
 };
 
+export const viewport: Viewport = VIEWPORT;
+
 export default function AdminRootLayout({ children }: LayoutProps<"/admin">) {
-  return children;
+  return <RootDocument lang="tr">{children}</RootDocument>;
 }

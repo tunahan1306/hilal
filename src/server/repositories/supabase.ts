@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { countryOfPlate, plateRange } from "@/domain/countries";
 import { sideDistricts } from "@/domain/istanbul";
 import { effectiveStatus, isExpiringSoon } from "@/domain/subscriptions";
 import type {
@@ -325,6 +326,7 @@ async function hydratePublic(rows: Row[]): Promise<PublicProfile[]> {
         plate: r.city_plate as number,
         name: (r.city_name as string) ?? "",
         slug: r.city_slug as string,
+        country: countryOfPlate(r.city_plate as number),
       },
       district: r.district_slug ? { name: r.district_name as string, slug: r.district_slug as string } : null,
       bio: r.bio as string,
@@ -403,6 +405,7 @@ export function createSupabaseRepository(): Repository {
       }
       let q = anon().from("discovery_profiles").select("*", { count: "exact" });
       if (filters.il) q = q.eq("city_slug", filters.il);
+      else if (filters.ulke) { const [min, max] = plateRange(filters.ulke); q = q.gte("city_plate", min).lte("city_plate", max); }
       if (filters.ilce) q = q.eq("district_slug", filters.ilce);
       const side = sideDistricts(filters);
       if (side) q = q.in("district_slug", [...side]);

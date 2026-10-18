@@ -1,5 +1,6 @@
 // İstemci paketine girdiği için (filtre çubuğu) bu modül zod içermez.
 import { MINIMUM_AGE } from "./age";
+import { isCountry, type CountryCode } from "./countries";
 import { isIstanbulSide, type IstanbulSide } from "./istanbul";
 
 export const MAX_AGE_FILTER = 99;
@@ -9,6 +10,8 @@ const SLUG = /^[a-z0-9-]{1,80}$/;
 const isSlug = (v: unknown): v is string => typeof v === "string" && SLUG.test(v);
 
 export type ProfileFilters = {
+  /** Ülke (il seçili değilken keşfi o ülkeyle sınırlar). */
+  ulke?: CountryCode;
   il?: string;
   ilce?: string;
   yaka?: IstanbulSide;
@@ -34,6 +37,7 @@ function toAge(v: string | undefined): number | undefined {
 
 /** URL query parametrelerini güvenli şekilde ayrıştırır; geçersiz değerler yok sayılır. */
 export function parseFilters(params: RawParams): ProfileFilters {
+  const ulke = first(params.ulke);
   const il = first(params.il);
   const ilce = first(params.ilce);
   const yaka = first(params.yaka);
@@ -47,6 +51,7 @@ export function parseFilters(params: RawParams): ProfileFilters {
   if (yasMin !== undefined && yasMax !== undefined && yasMin > yasMax) [yasMin, yasMax] = [yasMax, yasMin];
   const sayfa = Math.min(Math.max(Number.parseInt(first(params.sayfa) ?? "1", 10) || 1, 1), 500);
   return {
+    ulke: isCountry(ulke) ? ulke : undefined,
     il: isSlug(il) ? il : undefined,
     ilce: isSlug(il) && isSlug(ilce) ? ilce : undefined,
     yaka: isIstanbulSide(yaka) ? yaka : undefined,
@@ -62,6 +67,7 @@ export function parseFilters(params: RawParams): ProfileFilters {
 export function serializeFilters(f: Partial<ProfileFilters>, omit: (keyof ProfileFilters)[] = []): string {
   const sp = new URLSearchParams();
   const skip = new Set(omit);
+  if (f.ulke && !skip.has("ulke")) sp.set("ulke", f.ulke);
   if (f.il && !skip.has("il")) sp.set("il", f.il);
   if (f.ilce && !skip.has("ilce")) sp.set("ilce", f.ilce);
   if (f.yaka && !skip.has("yaka")) sp.set("yaka", f.yaka);
@@ -75,5 +81,5 @@ export function serializeFilters(f: Partial<ProfileFilters>, omit: (keyof Profil
 }
 
 export function hasActiveFilters(f: ProfileFilters): boolean {
-  return Boolean(f.il || f.ilce || f.yaka || f.yasMin !== undefined || f.yasMax !== undefined || f.ilgi.length || f.dogrulanmis);
+  return Boolean(f.ulke || f.il || f.ilce || f.yaka || f.yasMin !== undefined || f.yasMax !== undefined || f.ilgi.length || f.dogrulanmis);
 }

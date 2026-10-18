@@ -5,6 +5,16 @@ import { getRepository } from "../repositories";
 import { sharedRateLimit } from "../rate-limit";
 import { audit } from "./audit";
 import { DomainError, RateLimitedError } from "./errors";
+import { LOCALES } from "@/i18n/config";
+import { SEGMENTS } from "@/i18n/routes";
+
+const PROFILE_SEGMENTS = [...new Set(LOCALES.map((l) => SEGMENTS[l].profile))].join("|");
+const PROFILE_URL = new RegExp(`/(?:[a-z]{2}/)?(?:${PROFILE_SEGMENTS})/([a-z0-9-]+)`);
+
+/** Başvurudaki profil bağlantısından slug (tüm diller ve eski /profil/ adresleri). */
+export function profileSlugFromUrl(url: string | null | undefined): string | undefined {
+  return url?.match(PROFILE_URL)?.[1];
+}
 
 /** KVKK m.13: başvurular en geç 30 gün içinde sonuçlandırılır. */
 export const PRIVACY_RESPONSE_DAYS = 30;
@@ -15,7 +25,7 @@ export async function submitPrivacyRequest(raw: unknown, fingerprint: string): P
   if (!(await sharedRateLimit(`privacy:${fingerprint}`, 3, 3_600_000)).ok) throw new RateLimitedError();
   const repo = getRepository();
   let profileId: string | null = null;
-  const slug = input.profileUrl?.match(/\/profil\/([a-z0-9-]+)/)?.[1];
+  const slug = profileSlugFromUrl(input.profileUrl);
   if (slug) profileId = (await repo.getProfileBySlug(slug))?.id ?? null;
   const request = await repo.createPrivacyRequest({
     type: input.type,

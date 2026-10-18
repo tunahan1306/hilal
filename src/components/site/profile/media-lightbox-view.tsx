@@ -6,6 +6,8 @@ import Video from "yet-another-react-lightbox/plugins/video";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
 import "yet-another-react-lightbox/styles.css";
 import "yet-another-react-lightbox/plugins/counter.css";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 import type { MediaItem } from "./media-lightbox";
 
 const WIDTHS = [640, 1080, 1600, 2048];
@@ -35,6 +37,7 @@ function toSlide(m: MediaItem): Slide {
 /** Lightbox kütüphanesi ve CSS'i yalnızca galeri ilk kez açıldığında yüklenir (C-24). */
 export default function MediaLightboxView({ items, name, index, onClose, onView }: { items: MediaItem[]; name: string; index: number; onClose: () => void; onView: (i: number) => void }) {
   const single = items.length <= 1;
+  const l = useI18n().m.media.lightbox;
   return (
     <Lightbox
       open={index >= 0}
@@ -51,16 +54,16 @@ export default function MediaLightboxView({ items, name, index, onClose, onView 
       zoom={{ maxZoomPixelRatio: 1 }}
       counter={single ? { container: { style: { display: "none" } } } : { container: { style: { top: "unset", bottom: 0 } } }}
       labels={{
-        Previous: "Önceki",
-        Next: "Sonraki",
-        Close: "Kapat",
-        Lightbox: `${name} — medya galerisi`,
-        Carousel: "Medya",
-        Slide: "Medya",
-        "Photo gallery": "Galeri",
-        "{index} of {total}": "{index} / {total}",
-        "Zoom in": "Yakınlaştır",
-        "Zoom out": "Uzaklaştır",
+        Previous: l.previous,
+        Next: l.next,
+        Close: l.close,
+        Lightbox: fmt(l.gallery, { name }),
+        Carousel: l.carousel,
+        Slide: l.slide,
+        "Photo gallery": l.photoGallery,
+        "{index} of {total}": l.counter,
+        "Zoom in": l.zoomIn,
+        "Zoom out": l.zoomOut,
       }}
       styles={{ container: { backgroundColor: "rgb(10 11 14 / 0.96)" } }}
     />

@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ISTANBUL_SIDES, ISTANBUL_SIDE_KEYS, type IstanbulSide } from "@/domain/istanbul";
+import { ISTANBUL_SIDE_KEYS, type IstanbulSide } from "@/domain/istanbul";
+import { getI18n } from "@/i18n/server";
 import { cn } from "@/lib/utils";
 
 /** İstanbul Avrupa / Anadolu yaka seçimi; her sekme gerçek bir bağlantıdır. */
-export function IstanbulSideTabs({
+export async function IstanbulSideTabs({
   active,
   hrefFor,
   counts,
@@ -15,12 +16,13 @@ export function IstanbulSideTabs({
   /** Verilirse "Tüm İstanbul" sekmesi de gösterilir. */
   allHref?: string;
 }) {
+  const { m } = await getI18n();
   const tabs = [
-    ...(allHref ? [{ key: "all", label: "Tüm İstanbul", href: allHref, current: !active, count: undefined }] : []),
-    ...ISTANBUL_SIDE_KEYS.map((side) => ({ key: side, label: ISTANBUL_SIDES[side].name, href: hrefFor(side), current: active === side, count: counts?.[side] })),
+    ...(allHref ? [{ key: "all", label: m.istanbul.all, href: allHref, current: !active, count: undefined }] : []),
+    ...ISTANBUL_SIDE_KEYS.map((side) => ({ key: side, label: m.istanbul[side], href: hrefFor(side), current: active === side, count: counts?.[side] })),
   ];
   return (
-    <nav aria-label="İstanbul yakası" className="flex flex-wrap gap-2">
+    <nav aria-label={m.istanbul.nav} className="flex flex-wrap gap-2">
       {tabs.map((t) => (
         <Link
           key={t.key}
