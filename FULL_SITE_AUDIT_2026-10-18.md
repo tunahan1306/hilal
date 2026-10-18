@@ -21,9 +21,9 @@ Dal: `feat/site-audit-contact` (PR #1) · Taban: `main` @ `46049a2` · Hazırlay
 
   | Durum | Sayı |
   |---|---|
-  | Tamamen düzeltildi | 46 |
+  | Tamamen düzeltildi | 47 |
   | Kısmen | 13 |
-  | Açık | 6 |
+  | Açık | 5 |
   | Kapsam dışı (C-01, C-02, C-05, C-08, P-13; hepsi C-01'e bağlı) | 5 |
   | Bilgi | 3 |
 
@@ -40,7 +40,6 @@ Dal: `feat/site-audit-contact` (PR #1) · Taban: `main` @ `46049a2` · Hazırlay
   | **P-02** | High | Kısmen | `/guvenlik` sayfasındaki doğrulama ve rıza kural metinleri C-01 nedeniyle olduğu gibi kaldı |
   | **C-05** | Medium | Kapsam dışı | C-01'e bağlı |
   | **P-13** | Medium | Kapsam dışı | WhatsApp CTA stili, C-01'e bağlı |
-  | **V-02** | Medium | Açık | `ALLOW_DEMO_MODE` production'da tanımlı; değeri kontrol edilmeli |
 
 - **Performans (mobil Lighthouse, 5 tekrar, medyan):**
   - Performans skoru 76–79'dan 89–92'ye çıktı.
@@ -146,7 +145,7 @@ Dal: `feat/site-audit-contact` (PR #1) · Taban: `main` @ `46049a2` · Hazırlay
 | C-28 | Low | İki ayrı konum API'si | **Düzeltildi** (tek `createLocationDirectory`, istek başına bellek) |
 | C-29 | Low | Belgeler koddan sapmış | **Kısmen**: DESIGN_SYSTEM, DEPLOYMENT ve .env.example güncel; QA_REPORT, SECURITY ve README güncellenmedi |
 | **V-01** | **High** | **Preview ve Production aynı Supabase değişkenlerini kullanıyor.** `vercel env ls` çıktısında `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL` ve anon key tek kayıt hâlinde "Production, Preview" olarak tanımlı. PR #1'in preview deploy'u (`hilal-dtz5abesc…`) production veritabanına service role ile bağlı. Preview Vercel Authentication arkasında, yani herkese açık değil (302 → SSO); ama ekip üyelerinin preview'da yaptığı her yönetim işlemi production verisini değiştirir. | **Açık**: Preview için ayrı bir Supabase projesi (veya branch) tanımlanmalı. Vercel yapılandırmasını değiştirmedim. |
-| **V-02** | Medium | `ALLOW_DEMO_MODE` production ortamında tanımlı. Değeri okunmadı; sırları yerele çekmemek için `vercel env pull` kullanılmadı. DEPLOYMENT.md "production'da tanımlamayın" diyor. | **Açık**: değişken kaldırılmalı veya değeri `false` olmalı |
+| **V-02** | Medium | `ALLOW_DEMO_MODE` production ortamında tanımlı (DEPLOYMENT.md "tanımlamayın" diyor). | **Düzeltildi (doğrulandı)**: değer `false`; demo modu yalnızca `true` ile açılır. Değişken temizlik için kaldırılabilir. |
 | **V-03** | Low | Admin'de bilinmeyen kimlik 200 + "bulunamadı" dönüyor; admin layout'unun Suspense akışı yüzünden. Veri sızmıyor, sayfa noindex (e2e testi var). | **Açık** |
 | **V-04** | Medium | 2. turdaki lightbox tembel yüklemesi ilk açılışta INP gerilemesine yol açtı: 64 → 352 ms. | **Düzeltildi**: boşta ön yükleme ve kapalı bağlama, tekrar 64 ms |
 | M-02 | Low | `site_settings.support_email` yer tutucu | **Bilgi** (iletişim sayfası kullanmıyor) |
@@ -385,7 +384,7 @@ Uygulama içi sınırlar artık paylaşılan bir sayaçla çalışıyor. Ek savu
 
 **Ortam (Vercel)**
 - [ ] Preview ortamı ayrı bir Supabase projesine bağlandı; Preview'da production `SUPABASE_SERVICE_ROLE_KEY` yok (V-01).
-- [ ] `ALLOW_DEMO_MODE` production'da tanımsız (V-02).
+- [x] `ALLOW_DEMO_MODE` production'da `false` (V-02, doğrulandı).
 - [ ] `IP_HASH_SALT` ve `CRON_SECRET` tanımlı (zaten var).
 - [ ] İsteğe bağlı: `CONTACT_PUBLIC_EMAIL`, `RESEND_API_KEY` + `CONTACT_NOTIFY_TO` + `CONTACT_NOTIFY_FROM`, `CONTACT_RETENTION_DAYS`, `CONTACT_SPAM_RETENTION_DAYS`.
 
@@ -406,3 +405,78 @@ Uygulama içi sınırlar artık paylaşılan bir sayaçla çalışıyor. Ek savu
 **Sonrası**
 - [ ] `node scripts/media-orphans.mjs` raporu incelendi; gerekirse yedekten sonra `--delete`.
 - [ ] Search Console'a yeni sitemap gönderildi.
+
+## 17. Deploy hazırlığı (son kontrol turu)
+
+### 17.1 Çalışma durumu
+- Commit edilmemiş değişiklik yok.
+- Alt oturumların tamamı bitti.
+- PR #1 mergeable/CLEAN durumda; Vercel kontrolleri geçti.
+- Production'a gidecek kod: PR #1'in başı (bu bölümü ekleyen commit). Merge'den sonraki SHA `main` üzerinde oluşacak.
+
+### 17.2 Testler (istenen sırayla)
+
+| Test | Sonuç |
+|---|---|
+| `npm run lint` | ✅ |
+| `npm run typecheck` | ✅ |
+| `npm test` | ✅ 110/110 |
+| `npm run test:db` | ✅ |
+| `npm run test:integration` | ✅ 11/11 (önce `reset.sh` çalıştı; içeriği kontrol edildi, yalnızca `supabase db reset --local`, proje link'li değil) |
+| `npm run build` | ✅ |
+| E2E demo modu | ✅ 61 geçti, 7 atlandı |
+| E2E Supabase modu, Supabase'e özgü spec'ler | ✅ 11/11 |
+| E2E Supabase modu, `examples.spec` | ❌ 2 başarısız (yerelde C-01 verisi yok) |
+
+E2E paketinin tamamı Supabase modunda çalıştırıldığında 27 test başarısız oldu. Bunlar demo giriş bilgileri, demo verisi ve demo oturum çerezi kullanan, tasarım gereği demo moduna özgü testler. Ayrıca bu testlerin başarısız giriş denemeleri yeni paylaşılan giriş sınırını (10 / 15 dk) doldurdu ve `supabase-auth.spec`'i geçici olarak engelledi. Bu, oran sınırının sunucu yeniden başlatmalarından bağımsız çalıştığını gösteriyor; yerel sayaçlar temizlenince test geçti.
+
+### 17.3 Production veritabanı (yalnızca okuma; PostgREST şeması ve sayımlar)
+
+| Migration | Production'da | Veri kaybı riski | RLS |
+|---|---|---|---|
+| `20261023000001_contact_messages` | **Yok** (`contact_messages` tablosu yok) | Yok: yalnızca yeni tip ve tablo | Yalnızca MFA'lı admin; anon `revoke all` |
+| `20261023000002_legacy_media_paths` | Bilinmiyor (geçmiş tablosu REST'te görünmüyor); hedef satır **0** (`profile_media` boş) | Yok: 0 satır güncellenir; idempotent | — |
+| `20261023000003_shared_rate_limits` | **Yok** (tablo ve RPC yok) | Yok: yalnızca yeni nesneler | RLS açık, politika yok (yalnızca service role); fonksiyonlar yalnızca `service_role` |
+
+- **Production verisi:** 0 yayında gerçek profil, 0 medya, 0 KVKK talebi, 10 görünür kurgusal örnek profil.
+- **Yedek: doğrulanamadı.** Supabase yönetim erişimi yok (`supabase login` / erişim token'ı yok). DEPLOYMENT.md'ye göre Free planda günlük yedek de yok.
+- **Migration uygulama: yapılamadı.** Veritabanı bağlantı dizesi veya şifresi ortamda yok; migration'lar REST üzerinden uygulanamaz.
+
+### 17.4 Preview ortamı
+- **Değişkenler:** Preview ve Production'da `NEXT_PUBLIC_SUPABASE_URL`, anon anahtarı, `SUPABASE_SERVICE_ROLE_KEY`, `IP_HASH_SALT`, `CRON_SECRET` ve diğerleri **aynı** (özet karşılaştırması). Preview production veritabanına service role ile yazabilir (V-01).
+- **Önizleme okuma testleri** (`hilal-efk04jbmn…`, `vercel curl`):
+  - `/`, `/kesfet`, `/sehir/istanbul`, `/sehir/istanbul/kadikoy`, profil ve `/iletisim` 200 dönüyor.
+  - Olmayan profil 404, `/admin` 307 (giriş) dönüyor.
+  - Sitemap 7 taranabilir adres içeriyor.
+  - Keşif yanıtında biyografi alanı yok.
+- **İletişim formu ve gelen kutusu önizlemede test edilmedi.** Gönderim production veritabanına yazar; ayrıca tablo yok ve form nötr hata verir.
+
+### 17.5 Geri dönüş planı (hazır; uygulanmadı)
+
+**Uygulama:** Vercel → Deployments → önceki production deploy'u (`hilal-7z89qvjiz…`, commit `46049a2`) → "Promote to Production" (anında geri alma). Eski kod yeni tabloları kullanmaz; migration'lar geri alınmasa da çalışır.
+
+**Veritabanı** (yalnızca gerekirse, ters sırayla; Supabase SQL Editor):
+```sql
+-- 0003 geri al (veri kaybı yok: yalnızca geçici sayaçlar)
+drop function if exists public.rate_limit_purge();
+drop function if exists public.rate_limit_clear(text);
+drop function if exists public.rate_limit_hit(text, integer, integer);
+drop table if exists public.rate_limit_buckets;
+-- 0002 geri al (bugün 0 satır etkilenir)
+update public.profile_media set public_paths = '{}'
+where array_length(public_paths, 1) = 1 and public_paths[1] like 'legacy-profile-images:%';
+-- 0001 geri al (DİKKAT: gelen iletişim mesajlarını siler; önce dışa aktarın)
+drop table if exists public.contact_messages;
+drop type if exists public.contact_status;
+drop type if exists public.contact_category;
+```
+
+### 17.6 Karar: production deploy DURDURULDU
+
+Talimattaki durdurma koşullarından dördü sağlanıyor:
+1. **Doğrulanamayan yedek:** production yedeği ve geri yükleme yöntemi doğrulanamadı.
+2. **Uygulanamayan migration:** 0001 ve 0003 eksik ve benim uygulayabileceğim bir kanal yok.
+3. **Preview production veritabanını kullanıyor** (V-01, High): "preview production'a test verisi yazmasın" koşulu sağlanmıyor; iletişim formu ve gelen kutusu preview'da güvenle test edilemiyor.
+4. **Başarısız test:** `examples.spec` (2), C-01 verisine bağlı.
+
+C-01 (Critical) açık risk olarak duruyor (kapsam dışı).
