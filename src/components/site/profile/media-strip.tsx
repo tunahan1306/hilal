@@ -38,7 +38,7 @@ export function MediaStrip({ items, name }: { items: MediaItem[]; name: string }
                 alt={item.alt}
                 fill
                 sizes="100vw"
-                priority={i === 0}
+                {...(i === 0 ? { loading: "eager" as const, fetchPriority: "high" as const } : {})}
                 className="object-cover object-[50%_30%]"
               />}
               {item.kind === "video" ? (

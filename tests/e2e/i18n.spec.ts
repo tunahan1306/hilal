@@ -97,11 +97,17 @@ test("dil seçici sayfayı ve konumu korur", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Amsterdam" })).toBeVisible();
 });
 
-test("keşifte ülke filtresi yalnızca o ülkenin bölgelerini sunar", async ({ page }) => {
+test("keşifte yalnızca yayına açık ülkeler sunulur (demo: yalnızca Türkiye)", async ({ page }) => {
+  test.skip(Boolean(process.env.E2E_SUPABASE), "Ülke kararları veritabanına göre değişir");
   await page.goto("/en/explore?ulke=de");
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/en\/explore$/);
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  await page.getByRole("combobox", { name: "Country", exact: true }).first().click();
+  await expect(page.getByRole("option", { name: "Türkiye" })).toBeVisible();
+  await expect(page.getByRole("option", { name: "Germany" })).toHaveCount(0);
+  await expect(page.getByRole("option", { name: "Netherlands" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
   await page.getByRole("combobox", { name: "Province / region", exact: true }).first().click();
-  await expect(page.getByRole("option", { name: "Bayern" })).toBeVisible();
-  await expect(page.getByRole("option", { name: "İstanbul" })).toHaveCount(0);
+  await expect(page.getByRole("option", { name: "İstanbul" })).toBeVisible();
+  await expect(page.getByRole("option", { name: "Bayern" })).toHaveCount(0);
 });

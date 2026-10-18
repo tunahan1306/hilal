@@ -2,7 +2,9 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { normalizeWhatsAppPhone } from "@/domain/whatsapp";
 import { isAdult } from "@/domain/age";
-import { scanProfileContent } from "@/domain/content-policy";
+import { requiresEscalation, scanProfileContent } from "@/domain/content-policy";
+import { countryOfPlate } from "@/domain/countries";
+import { isPublishable } from "@/domain/country-policy";
 import { getLocationDirectory } from "../queries/locations";
 import { activeConsent, canTransition, evaluatePublishReadiness, PROFILE_STATUS_LABELS } from "@/domain/publishing";
 import type { ProfileInput } from "@/domain/schemas";
@@ -41,19 +43,40 @@ async function mustGetProfile(id: string): Promise<Profile> {
   return p;
 }
 
+async function phoneUsedByOtherPublished(id: string, phone: string): Promise<boolean> {
+  return (await getRepository().listProfiles()).some((o) => o.id !== id && o.status === "published" && o.whatsappPhone === phone);
+}
+
+/** Yayındaki profil kapalı ülkeye taşınamaz ve başka yayındaki profilin numarasını alamaz (veritabanı tetikleyicisiyle aynı kural). */
+async function assertPublishedConstraints(current: Profile, next: { provincePlate: number; whatsappPhone: string | null }) {
+  if (current.status !== "published") return;
+  if (countryOfPlate(next.provincePlate) !== countryOfPlate(current.provincePlate) || next.provincePlate !== current.provincePlate) {
+    const policies = await getRepository().listCountryPolicies();
+    if (!isPublishable(policies.find((p) => p.code === countryOfPlate(next.provincePlate)))) {
+      throw new DomainError("Yayındaki profil, yayın kararı olmayan bir ülkeye taşınamaz; önce yayından kaldırın");
+    }
+  }
+  if (next.whatsappPhone && next.whatsappPhone !== current.whatsappPhone && (await phoneUsedByOtherPublished(current.id, next.whatsappPhone))) {
+    throw new DomainError("Bu WhatsApp numarası başka bir yayındaki profilde kullanılıyor");
+  }
+}
+
 export async function loadPublishContext(profileId: string, now = new Date()) {
   const repo = getRepository();
   const profile = await mustGetProfile(profileId);
-  const [consents, verifications, media, reports, interests] = await Promise.all([
+  const [consents, verifications, media, reports, interests, policies] = await Promise.all([
     repo.listConsents(profileId),
     repo.listVerifications(profileId),
     repo.listMedia(profileId),
     repo.listReports({ profileId }),
     repo.listInterests(),
+    repo.listCountryPolicies(),
   ]);
+  const countryPublishable = isPublishable(policies.find((p) => p.code === countryOfPlate(profile.provincePlate)), now);
+  const phoneInUseElsewhere = profile.whatsappPhone ? await phoneUsedByOtherPublished(profile.id, profile.whatsappPhone) : false;
   const interestNames = interests.filter((i) => profile.interestIds.includes(i.id)).map((i) => i.name);
   const linkAllowlist = (process.env.BIO_LINK_ALLOWLIST ?? "").split(",").map((h) => h.trim()).filter(Boolean);
-  return { profile, consents, verifications, media, reports, interestNames, now, linkAllowlist };
+  return { profile, consents, verifications, media, reports, interestNames, now, linkAllowlist, countryPublishable, phoneInUseElsewhere };
 }
 
 function whatsAppFields(input: ProfileInput, current?: Profile) {
@@ -88,7 +111,8 @@ export async function createProfile(actor: Admin, input: ProfileInput): Promise<
     createdBy: actor.id,
   });
   const findings = scanProfileContent({ nickname: input.nickname, bio: input.bio });
-  await audit(actor, "profile.create", "profile", profile.id, { findings: findings.map((f) => f.rule) });
+  // Reşit olmayan / istismar göstergesi: denetim kaydında insan incelemesine yükseltme işareti.
+  await audit(actor, "profile.create", "profile", profile.id, { findings: findings.map((f) => f.rule), escalated: requiresEscalation(findings) });
   return profile;
 }
 
@@ -102,6 +126,7 @@ export async function updateProfile(actor: Admin, id: string, input: ProfileInpu
   const current = await mustGetProfile(id);
   if (current.status === "archived") throw new DomainError("Arşivlenmiş profil düzenlenemez; önce taslağa alın");
   const contact = whatsAppFields(input, current);
+  await assertPublishedConstraints(current, { provincePlate: input.provincePlate, whatsappPhone: contact.whatsappPhone });
   const contactChanged = (current.whatsappPhone ?? null) !== contact.whatsappPhone || (current.whatsappConsentAt ?? null) !== contact.whatsappConsentAt;
   const contentChanged =
     contactChanged ||
@@ -126,7 +151,8 @@ export async function updateProfile(actor: Admin, id: string, input: ProfileInpu
       ? { moderationStatus: "pending" as const, status: current.status === "published" ? ("in_review" as const) : current.status }
       : {}),
   });
-  await audit(actor, "profile.update", "profile", id, { requeued: requeue, contactChanged, whatsappPublicationAllowed: Boolean(contact.whatsappConsentAt) });
+  const findings = scanProfileContent({ nickname: input.nickname, bio: input.bio });
+  await audit(actor, "profile.update", "profile", id, { requeued: requeue, contactChanged, whatsappPublicationAllowed: Boolean(contact.whatsappConsentAt), findings: findings.map((f) => f.rule), escalated: requiresEscalation(findings) });
   if (requeue) await syncPublicMedia(id);
   return { profile, requeued: requeue };
 }

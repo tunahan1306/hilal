@@ -1,3 +1,5 @@
+import type { CountryCode } from "@/domain/countries";
+import type { CountryDecision, CountryPolicy, NewCountryDecision } from "@/domain/country-policy";
 import type { LocationData } from "@/domain/location-directory";
 import type { ProfileFilters } from "@/domain/filters";
 import type {
@@ -51,6 +53,12 @@ export type DailyViews = { day: string; views: number };
 export interface Repository {
   readonly kind: "supabase" | "memory";
   getLocations(): Promise<LocationData>;
+
+  // Ülke yayın kapısı (kamu okuması: durum; karar kaydı yalnızca yönetim)
+  listCountryPolicies(): Promise<CountryPolicy[]>;
+  listCountryDecisions(country?: CountryCode): Promise<CountryDecision[]>;
+  /** Yalnızca eklenir; ülke durumu bu kayıttan türetilir. Yetki (sahip rolü) servis katmanında denetlenir. */
+  addCountryDecision(input: NewCountryDecision): Promise<CountryDecision>;
 
   // Kamuya açık okuma (yalnızca yayındaki profiller)
   searchPublicProfiles(filters: ProfileFilters, opts: { limit: number; offset: number; cursor?: { publishedAt: string; id: string } }): Promise<SearchResult>;

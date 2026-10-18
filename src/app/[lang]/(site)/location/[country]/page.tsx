@@ -7,6 +7,8 @@ import { fmt } from "@/i18n/config";
 import { i18nPageMeta } from "@/i18n/metadata";
 import { getI18n } from "@/i18n/server";
 import { localizedPath } from "@/i18n/routes";
+import { CountryClosedNotice } from "@/components/site/location-page";
+import { isCountryPublishable } from "@/server/queries/country-policy";
 import { getLocationDirectory } from "@/server/queries/locations";
 import { getLocationCounts, profileCountFor } from "@/server/queries/public";
 
@@ -19,14 +21,16 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/location/[
   if (!isCountry(country)) return {};
   const { lang, m } = await getI18n();
   const name = countryName(country, lang);
-  return i18nPageMeta(lang, "location", { country }, fmt(m.places.metaTitle, { place: name }), fmt(m.places.metaDescription, { place: name }));
+  const meta = i18nPageMeta(lang, "location", { country }, fmt(m.places.metaTitle, { place: name }), fmt(m.places.metaDescription, { place: name }));
+  // Yayına açık olmayan pazarın dizini indekslenmez.
+  return (await isCountryPublishable(country)) ? meta : { ...meta, robots: { index: false, follow: true } };
 }
 
 /** Ülke dizini: bölgeler (il/eyalet) ve profil sayıları. */
 export default async function CountryPage({ params }: PageProps<"/[lang]/location/[country]">) {
   const { country } = await params;
   if (!isCountry(country)) notFound();
-  const [{ lang, m }, { listProvinces }, counts] = await Promise.all([getI18n(), getLocationDirectory(), getLocationCounts()]);
+  const [{ lang, m }, { listProvinces }, counts, open] = await Promise.all([getI18n(), getLocationDirectory(), getLocationCounts(), isCountryPublishable(country)]);
   const provinces = listProvinces(country);
   const level = m.places.levels[country];
   const byRegion = new Map<string, typeof provinces>();
@@ -41,6 +45,7 @@ export default async function CountryPage({ params }: PageProps<"/[lang]/locatio
         <h1 className="font-display mt-4 text-display-xl">{name}</h1>
         <p className="mt-4 text-lede text-muted-foreground">{level.regions}</p>
       </header>
+      {open ? null : <div className="mb-12"><CountryClosedNotice title={m.places.countryClosedTitle} text={m.places.countryClosedText} /></div>}
       <div className="grid gap-x-12 gap-y-14 md:grid-cols-2 xl:grid-cols-3">
         {groups.map(([region, list]) => (
           <section key={region} aria-labelledby={`r-${region}`}>

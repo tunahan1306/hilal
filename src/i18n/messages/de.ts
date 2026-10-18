@@ -8,6 +8,7 @@ export const de: DeepPartial<Messages> = {
     ogAdults: "Nur für Erwachsene (18+)",
   },
   common: {
+    exampleBadge: "Fiktives Beispiel",
     home: "Startseite",
     breadcrumb: "Brotkrumen",
     skipToContent: "Zum Inhalt springen",
@@ -50,6 +51,7 @@ export const de: DeepPartial<Messages> = {
     privacy: "Datenschutz",
   },
   home: {
+    noCountryOpen: "Die Veröffentlichung von Profilen ist derzeit in keinem Land freigegeben.",
     metaTitle: "Hilal — Soziales Entdecken in der Türkei und Europa",
     eyebrow: "Soziales Entdecken · 18+",
     otherCity: "Eine andere Stadt?",
@@ -85,6 +87,8 @@ export const de: DeepPartial<Messages> = {
     sourcesNote: "Bevölkerungs- und Gebietsdaten stammen aus den unten genannten Quellen und wurden für diese Website angepasst (Feldnamen, URL-Kürzel).",
   },
   places: {
+    countryClosedTitle: "In diesem Land ist die Veröffentlichung noch nicht freigegeben",
+    countryClosedText: "Für dieses Land liegt noch keine Veröffentlichungsentscheidung vor. Das Ortsverzeichnis dient nur der Information; es werden keine Profile angezeigt.",
     levels: {
       tr: { region: "Provinz", locality: "Bezirk", regions: "Provinzen", localities: "Bezirke" },
       nl: { region: "Provinz", locality: "Gemeinde", regions: "Provinzen", localities: "Gemeinden" },
@@ -146,6 +150,7 @@ export const de: DeepPartial<Messages> = {
   card: { sponsored: "Gesponsert", photoAlt: "Profilfoto von {name}", whatsappAria: "{name} über WhatsApp kontaktieren (neuer Tab)" },
   verified: { title: "Profil mit verifizierter Identität", label: "Identität verifiziert" },
   profile: {
+    exampleNotice: "Dieser Eintrag ist ein fiktives Beispiel. Er stellt keine reale Person dar, ist nicht verifiziert und enthält keine Kontaktdaten.",
     notFound: "Profil nicht gefunden",
     openCover: "Titelfoto im Vollbild öffnen",
     coverAlt: "Titelfoto von {name}",

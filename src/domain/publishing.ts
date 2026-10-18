@@ -28,7 +28,9 @@ export type PublishCheckId =
   | "moderation_approved"
   | "content_policy"
   | "no_critical_reports"
-  | "location";
+  | "location"
+  | "country_permitted"
+  | "contact_unique";
 
 export type PublishCheck = { id: PublishCheckId; label: string; passed: boolean; detail?: string };
 
@@ -46,6 +48,10 @@ export type PublishContext = {
   reports: ModerationReport[];
   interestNames: string[];
   now: Date;
+  /** Profilin ülkesi şu anda yayına açık mı (kayıtlı hukuki karar + geçerli gözden geçirme tarihi)? */
+  countryPublishable: boolean;
+  /** WhatsApp numarası başka bir yayındaki profilde kullanılıyor mu? (bir numara = bir profil) */
+  phoneInUseElsewhere?: boolean;
   /** Biyografide yayınlanabilecek harici bağlantı alan adları (varsayılan: hiçbiri) */
   linkAllowlist?: string[];
 };
@@ -135,6 +141,17 @@ export function evaluatePublishReadiness(ctx: PublishContext): PublishReadiness 
       id: "location",
       label: "İl bilgisi girildi",
       passed: profile.provincePlate > 0,
+    },
+    {
+      id: "country_permitted",
+      label: "Profilin ülkesi yayına açık (kayıtlı ülke kararı)",
+      passed: ctx.countryPublishable,
+      detail: ctx.countryPublishable ? undefined : "Bu ülke için geçerli bir yayın kararı yok (Yönetim → Ülkeler)",
+    },
+    {
+      id: "contact_unique",
+      label: "WhatsApp numarası başka bir yayındaki profilde kullanılmıyor",
+      passed: !ctx.phoneInUseElsewhere,
     },
   ];
 

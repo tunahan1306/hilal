@@ -1,17 +1,44 @@
-import { ageOn } from "./age";
+import { ageOn, isAdult } from "./age";
 import { getProvinceByPlate, listDistricts } from "./locations";
 import { isPubliclyDeliverable, orderMedia } from "./media";
-import { isVerified } from "./publishing";
+import { activeConsent, isVerified } from "./publishing";
 import { isSponsoredNow } from "./subscriptions";
 import type {
   Interest,
   MembershipPlan,
   Profile,
+  ProfileConsent,
   ProfileMedia,
   PublicProfile,
   Subscription,
   VerificationRecord,
 } from "./types";
+
+/**
+ * Kamuya açıklık kuralı; veritabanındaki profiles_public görünümünün birebir karşılığıdır
+ * (supabase/migrations/20261025000001_country_publication_gate.sql). Yayın anındaki
+ * kontroller sonradan bozulursa (rıza geri çekme, doğrulama iptali, ülke onayının geri
+ * alınması veya süresinin dolması) profil durum değişmeden kamuya kapanır.
+ */
+export function isPubliclyVisible(args: {
+  profile: Profile;
+  consents: ProfileConsent[];
+  verifications: VerificationRecord[];
+  countryPublishable: boolean;
+  now: Date;
+}): boolean {
+  const { profile, consents, verifications, now } = args;
+  return (
+    profile.status === "published" &&
+    Boolean(profile.publishedAt) &&
+    profile.moderationStatus === "approved" &&
+    isAdult(profile.birthDate, now) &&
+    args.countryPublishable &&
+    isVerified(verifications, "age") &&
+    Boolean(activeConsent(consents, "publication")) &&
+    Boolean(activeConsent(consents, "photo_rights"))
+  );
+}
 
 /**
  * Yönetim verisinden kamuya açık profil görünümünü üretir. Doğum tarihi,
@@ -22,13 +49,17 @@ export function toPublicProfile(args: {
   media: ProfileMedia[];
   interests: Interest[];
   verifications: VerificationRecord[];
+  consents: ProfileConsent[];
+  countryPublishable: boolean;
+  /** Numara başka bir yayındaki profilde / örnek kayıtta da kullanılıyorsa gösterilmez. */
+  phoneShared: boolean;
   subscription?: Subscription;
   plan?: MembershipPlan;
   now: Date;
 }): PublicProfile | null {
   const { profile, now } = args;
   const province = getProvinceByPlate(profile.provincePlate);
-  if (!province || profile.status !== "published" || !profile.publishedAt) return null;
+  if (!province || !profile.publishedAt || !isPubliclyVisible(args)) return null;
   const district = profile.districtSlug
     ? listDistricts(province.plate).find((d) => d.slug === profile.districtSlug) ?? null
     : null;
@@ -44,7 +75,7 @@ export function toPublicProfile(args: {
     interests: args.interests
       .filter((i) => profile.interestIds.includes(i.id))
       .map((i) => ({ slug: i.slug, name: i.name })),
-    whatsappPhone: profile.whatsappConsentAt ? profile.whatsappPhone ?? null : null,
+    whatsappPhone: profile.whatsappConsentAt && !args.phoneShared ? profile.whatsappPhone ?? null : null,
     verified: isVerified(args.verifications, "identity"),
     sponsored: isSponsoredNow(args.subscription, args.plan, now),
     bioDoc: profile.bioDoc,

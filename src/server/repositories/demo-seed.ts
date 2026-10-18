@@ -1,4 +1,5 @@
 import "server-only";
+import type { CountryDecision } from "@/domain/country-policy";
 import { DEFAULT_PLANS } from "@/domain/subscriptions";
 import { docFromPlainText, docToPlainText, type RichDoc } from "@/domain/rich-text";
 import { slugifyTr } from "@/domain/text";
@@ -146,6 +147,8 @@ export type DemoStore = {
   settings: import("@/domain/types").SiteSettings;
   views: Map<string, number>;
   privateFiles: Map<string, { data: Buffer; contentType: string }>;
+  /** Ülke yayın kararları (yalnızca eklenir). */
+  countryDecisions: CountryDecision[];
   counter: number;
 };
 
@@ -399,6 +402,19 @@ export function createDemoStore(now: Date): DemoStore {
       },
     ],
     adminSecrets: new Map(),
+    // Demo verisinde yalnızca Türkiye açıktır; NL/DE incelenmemiş durumda kalır (gerçek davranışla aynı varsayılan).
+    countryDecisions: [{
+      id: "cdec-demo-tr",
+      countryCode: "tr",
+      status: "permitted",
+      approverName: "DEMO — gerçek bir hukuki onay değildir",
+      evidenceRef: "DEMO-ONLY",
+      reviewDue: iso(365).slice(0, 10),
+      restrictions: null,
+      note: "Bellek içi demo verisi",
+      decidedBy: adminId,
+      decidedAt: iso(-30),
+    }],
     interests,
     profiles,
     media,

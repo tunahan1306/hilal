@@ -33,3 +33,19 @@ export function i18nOpenGraph<K extends RouteKey>(lang: Locale, route: K, params
 export function i18nPageMeta<K extends RouteKey>(lang: Locale, route: K, params: Params<K> | undefined, title: string, description?: string, extra: Metadata = {}): Metadata {
   return { title, description, alternates: i18nAlternates(lang, route, params), openGraph: i18nOpenGraph(lang, route, params, title, description), ...extra };
 }
+
+/**
+ * Yalnızca Türkçe aslı olan hukuki metinler: tüm dillerde canonical Türkçe asıl adrestir ve
+ * hreflang alternatifi YOKTUR (çevirisi olmayan sayfa için dil alternatifi bildirmek, noindex ve
+ * başka dile canonical ile çelişen sinyal üretir). Türkçe dışındaki kopyalar indekslenmez.
+ */
+export function legalPageMeta(lang: Locale, route: "privacy" | "terms", title: string, description?: string): Metadata {
+  const original = localizedPath("tr", route);
+  return {
+    title,
+    description,
+    alternates: { canonical: original },
+    openGraph: { type: "website", locale: OG_LOCALE.tr, siteName: SITE.name, url: original, title: `${title} | ${SITE.name}`, description },
+    ...(lang === "tr" ? {} : { robots: { index: false, follow: true } }),
+  };
+}

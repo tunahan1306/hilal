@@ -16,6 +16,7 @@ import { getI18n } from "@/i18n/server";
 import { localizedPath } from "@/i18n/routes";
 import { SITE, siteUrl } from "@/lib/site";
 import { cn } from "@/lib/utils";
+import { getPublishableCountries } from "@/server/queries/country-policy";
 import { getLocationDirectory } from "@/server/queries/locations";
 import { getFeaturedProfiles, getLocationCounts, istanbulSideCounts, profileCountFor } from "@/server/queries/public";
 
@@ -34,10 +35,12 @@ export default function HomePage({ searchParams }: PageProps<"/[lang]">) {
 }
 
 async function HomeContent({ searchParams }: Pick<PageProps<"/[lang]">, "searchParams">) {
-  const sp = await searchParams;
-  const country: CountryCode = isCountry(sp.ulke) ? sp.ulke : "tr";
+  const [sp, open] = await Promise.all([searchParams, getPublishableCountries()]);
+  // Yalnızca yayın kararı olan ülkeler sunulur; kapalı ülke istenirse ilk açık ülkeye düşülür.
+  const country: CountryCode = isCountry(sp.ulke) && open.includes(sp.ulke) ? sp.ulke : open.includes("tr") ? "tr" : open[0] ?? "tr";
+  const anyOpen = open.length > 0;
   const side = isIstanbulSide(sp.yaka) ? sp.yaka : DEFAULT_ISTANBUL_SIDE;
-  const istanbul = country === "tr";
+  const istanbul = anyOpen && country === "tr";
   const [{ lang, m }, { getProvince, listProvinces }, [featuredAll, counts]] = await Promise.all([
     getI18n(),
     getLocationDirectory(),
@@ -75,14 +78,14 @@ async function HomeContent({ searchParams }: Pick<PageProps<"/[lang]">, "searchP
       <div className="container-page grid gap-7 py-10 sm:py-14 lg:grid-cols-[1.3fr_1fr] lg:items-end">
         <div>
           <p className="eyebrow text-brand">{m.home.eyebrow}</p>
-          <nav aria-label={m.home.countryTabs} className="mt-4 flex flex-wrap gap-1.5">
-            {COUNTRY_CODES.map((c) => (
+          {open.length > 1 ? <nav aria-label={m.home.countryTabs} className="mt-4 flex flex-wrap gap-1.5">
+            {COUNTRY_CODES.filter((c) => open.includes(c)).map((c) => (
               <Link key={c} href={homeFor(c)} scroll={false} aria-current={c === country ? "page" : undefined}
                 className={cn("inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-xs uppercase tracking-wide transition-colors", c === country ? "border-foreground text-foreground" : "border-hairline text-muted-foreground hover:text-foreground")}>
                 {countryName(c, lang)} <span className="tabular-nums opacity-70">{countryCount(c)}</span>
               </Link>
             ))}
-          </nav>
+          </nav> : null}
           <h1 className="font-display mt-5 text-display-xl">{heading}</h1>
           {istanbul ? <div className="mt-6"><IstanbulSideTabs active={side} hrefFor={(s) => homeFor("tr", s)} counts={sideCounts} /></div> : null}
         </div>
@@ -95,7 +98,9 @@ async function HomeContent({ searchParams }: Pick<PageProps<"/[lang]">, "searchP
     </section>
     <section className="container-page py-9 sm:py-12" aria-label={fmt(m.home.countryProfiles, { place: heading })}>
       <Suspense fallback={<ProfileListingSkeleton />}>
-        {istanbul ? (
+        {!anyOpen ? (
+          <p role="status" className="border border-hairline bg-muted/50 p-6 text-sm text-muted-foreground">{m.home.noCountryOpen}</p>
+        ) : istanbul ? (
           <ProfileListing filters={{ il: ISTANBUL_SLUG, yaka: side, ilgi: [], dogrulanmis: false, sayfa: 1 }} mode={{ type: "location", country: "tr", il: ISTANBUL_SLUG }} />
         ) : (
           <ProfileListing filters={{ ulke: country, ilgi: [], dogrulanmis: false, sayfa: 1 }} mode={{ type: "explore" }} />

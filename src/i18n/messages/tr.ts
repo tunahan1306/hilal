@@ -6,6 +6,7 @@ export const tr = {
     ogAdults: "Yalnızca 18 yaş ve üzeri",
   },
   common: {
+    exampleBadge: "Kurgusal örnek",
     home: "Ana sayfa",
     breadcrumb: "Konum",
     skipToContent: "İçeriğe geç",
@@ -48,6 +49,7 @@ export const tr = {
     privacy: "Gizlilik",
   },
   home: {
+    noCountryOpen: "Şu anda hiçbir ülkede profil yayını açık değil.",
     metaTitle: "Hilal — Türkiye ve Avrupa'nın sosyal keşif platformu",
     eyebrow: "Sosyal keşif · 18+",
     otherCity: "Başka bir şehir mi?",
@@ -83,6 +85,8 @@ export const tr = {
     sourcesNote: "Nüfus ve idari bölünme verileri aşağıdaki kaynaklardan alınmış, bu site için uyarlanmıştır (alan adları, URL kısaltmaları).",
   },
   places: {
+    countryClosedTitle: "Bu ülkede yayın henüz açık değil",
+    countryClosedText: "Bu ülke için henüz bir yayın kararı verilmedi. Konum dizini yalnızca bilgi amaçlıdır; profil gösterilmez.",
     levels: {
       tr: { region: "İl", locality: "İlçe", regions: "İller", localities: "İlçeler" },
       nl: { region: "Eyalet", locality: "Belediye", regions: "Eyaletler", localities: "Belediyeler" },
@@ -144,6 +148,7 @@ export const tr = {
   card: { sponsored: "Sponsorlu", photoAlt: "{name} profil fotoğrafı", whatsappAria: "{name} WhatsApp iletişim (yeni sekme)" },
   verified: { title: "Kimliği doğrulanmış profil", label: "Kimliği doğrulandı" },
   profile: {
+    exampleNotice: "Bu kayıt kurgusal bir örnektir. Gerçek bir kişiyi temsil etmez, doğrulanmamıştır ve iletişim bilgisi içermez.",
     notFound: "Profil bulunamadı",
     openCover: "Kapak fotoğrafını tam ekran aç",
     coverAlt: "{name} kapak fotoğrafı",
