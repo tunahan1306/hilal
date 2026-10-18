@@ -411,8 +411,9 @@ export function createSupabaseRepository(): Repository {
       if (filters.dogrulanmis) q = q.eq("verified", true);
       if (ids) q = q.in("id", ids);
       if (cursor) q = q.or(`published_at.lt.${cursor.publishedAt},and(published_at.eq.${cursor.publishedAt},id.lt.${cursor.id})`);
+      // NULL published_at en sona: imleç her zaman geçerli bir zaman damgası taşır (C-15).
       const res = await q
-        .order("published_at", { ascending: false })
+        .order("published_at", { ascending: false, nullsFirst: false })
         .order("id", { ascending: false })
         .range(offset, offset + limit - 1);
       const rows = check(res) as Row[];

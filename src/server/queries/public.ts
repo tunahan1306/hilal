@@ -87,7 +87,7 @@ export async function discoverProfiles(filters: ProfileFilters, cursor?: import(
   const result = await getRepository().searchPublicProfiles({ ...filters, ilgi: [], sayfa: 1 }, { limit: PAGE_SIZE + 1, offset: 0, cursor });
   const items = result.items.slice(0, PAGE_SIZE);
   const last = items.at(-1);
-  return { items: items.map(toCardProfile), total: result.total, nextCursor: result.items.length > PAGE_SIZE && last ? encodeCursor({ publishedAt: last.publishedAt, id: last.id }) : null };
+  return { items: items.map(toCardProfile), total: result.total, nextCursor: result.items.length > PAGE_SIZE && last?.publishedAt ? encodeCursor({ publishedAt: last.publishedAt, id: last.id }) : null };
 }
 
 /** İstanbul yakalarının profil sayıları (ilçe sayımlarının toplamı). */
