@@ -116,3 +116,75 @@ export interface PaymentProvider {
 ```
 
 Changes from the current shape: (1) `amountTry` → `amountMinorUnits` + `currency`, since every processor above is multi-currency and none is TRY-specific; (2) added `"chargeback"` to the webhook status union, since all four processors treat chargebacks as a distinct event from a customer-initiated refund, and the existing audit-log/idempotency pattern in this codebase should record them separately. No other shape change needed — `getPaymentProvider()` should keep throwing `PaymentsDisabledError` until a real processor is contracted and legally reviewed, per the existing disabled-by-default posture.
+
+**Update (Module F, Phase 3):** the interface actually shipped in `src/server/payments.ts`
+followed `docs/transformation/02c_MODULE_ARCHITECTURE.md`'s shape instead (currency-aware
+`amountMinorUnits` + `idempotencyKey` on `createCheckout`/`verifyWebhook`, plus new
+`initiatePayout`/`chargeOneOff` methods for the creator-payout and tip/PPV flows) — it did
+**not** add `"chargeback"` to the webhook status union as proposed above. That's a genuine,
+still-open small gap worth folding in when a real processor is actually integrated: all four
+processors below are explicit that a chargeback is a distinct event from a customer refund,
+and `payment_transactions.status` (`'pending'|'succeeded'|'failed'|'refunded'`, see
+`src/domain/billing.ts`) has no slot for it either yet. `getPaymentProvider()` still always
+throws `PaymentsDisabledError` — this is a schema/interface note for whenever a provider is
+actually contracted, not a change made now.
+
+---
+
+## Shortlist & procurement readiness
+
+Not a recommendation — picking and contracting a processor is a business/legal decision for
+the user, informed by the per-country legal research in `docs/legal/`. This section exists so
+that decision can be made quickly once it's time, without re-deriving the trade-offs from
+scratch.
+
+### Pros / cons, from the research above
+
+| | Strongest for | Watch out for |
+|---|---|---|
+| **CCBill** | Best-documented public AUP of the four — you can actually read what's prohibited before applying. Long track record as a card-association-registered high-risk acquirer. | Fund holds of **6–12 months** after any suspension; no published country list, fee schedule, or payout timing — all negotiated at underwriting. |
+| **Segpay** | Clearest concrete number found in this whole research pass (a **$500/brand/year** high-risk card-network registration fee) and FCA/Central Bank of Ireland licensing (per vendor FAQ summary). 3DS2 support called out explicitly. | Its own FAQ page blocked automated fetch — the licensing claim and all fee/reserve estimates are secondhand and need direct re-verification before relying on them. |
+| **Verotel** | Only processor of the four with a **stated** payout cadence (daily) and a **named** list of SEPA-adjacent local methods (Direct Debit Europe, 9 countries) and card brands (incl. Discover, Diners, JCB). EU-headquartered (Amsterdam), relevant given most legally-scoped markets are EU/EEA. | Content policy, fees, and reserve/chargeback terms are all deferred to an unfetched Merchant Agreement — the readable public page is thinner on specifics than CCBill's. |
+| **Epoch** | Long-established name in digital/membership billing. | Essentially **nothing independently verifiable** came back from its own site in this research pass — do not shortlist seriously until a direct conversation produces real documentation. |
+
+### Questions to ask every payment-processor vendor directly
+
+These are the gaps this research pass could **not** close from public sources — ask them
+before signing anything:
+
+1. Exact published or quoted fee schedule (setup, per-transaction, monthly minimums) and
+   **rolling reserve percentage and release schedule**.
+2. Country/currency eligibility list for *merchant* incorporation, not just card acceptance —
+   none of the four publish this.
+3. Full content policy document (not just the public AUP summary) covering the specific
+   creator-subscription/tips/PPV model this platform uses — get it in writing, not a sales
+   call.
+4. Chargeback-rate threshold that triggers account review/termination, and what a
+   remediation plan looks like in practice.
+5. Payout cadence and the **first** payout timeline after go-live (distinct from steady-state
+   cadence — high-risk processors often hold the first N payouts longer).
+6. Exact KYC/KYB document list for the actual legal entity formed per
+   `docs/legal/COMPANY_FORMATION.md`, and expected underwriting turnaround time.
+7. Whether `chargeback` is reported as a distinct webhook event from `refund` (confirm before
+   finalizing the `PaymentProvider` interface this platform's integration will target — see
+   the open gap noted above).
+8. SCA/3DS2 support and how it's invoked for recurring creator-subscription billing
+   specifically (not just one-off checkout).
+
+### Procurement checklist (payments)
+
+- [ ] Legal entity formed per `docs/legal/COMPANY_FORMATION.md` in the jurisdiction the
+      merchant account will be domiciled in.
+- [ ] Direct written answers to all 8 questions above, from the processor's own compliance/
+      sales-engineering team (not a reseller).
+- [ ] Processor's content policy reviewed against this platform's actual creator-subscription/
+      tips/PPV model and confirmed in writing as acceptable.
+- [ ] Rolling-reserve and payout-hold terms modeled against expected cash flow before signing.
+- [ ] `PaymentProvider` interface (`src/server/payments.ts`) revisited against the chosen
+      vendor's actual webhook/checkout shape — including the `chargeback` gap noted above —
+      before writing a real implementation.
+- [ ] Legal review sign-off (the same gate already named in `src/server/payments.ts`'s own
+      header comment) completed and recorded, same ceremony as
+      `docs/legal/LAUNCH_APPROVAL_CHECKLIST.md`.
+- [ ] `getPaymentProvider()` only changed from "always throws" to a real implementation after
+      every item above is checked — not before.
