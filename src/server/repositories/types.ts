@@ -1,18 +1,35 @@
 import type { CountryCode } from "@/domain/countries";
 import type { CountryDecision, CountryPolicy, NewCountryDecision } from "@/domain/country-policy";
 import type { CountryFeatureDecision, CountryFeaturePolicy, NewCountryFeatureDecision, PolicyFeature } from "@/domain/policy";
-import type { AgeVerificationCheck, AppUser, ConsentRecord, NewAgeVerificationCheck, NewConsentRecord } from "@/domain/identity";
+import type { AgeVerificationCheck, AppUser, ConsentRecord, NewAgeVerificationCheck, NewConsentRecord, UserRole } from "@/domain/identity";
 import type {
   Conversation,
   Follow,
+  MediaAsset,
   Message,
   Notification,
+  NewPost,
+  Post,
+  PublicPost,
   PublicUserProfile,
   UserBlock,
   UserProfile,
   UserProfilePatch,
   NewUserProfile,
 } from "@/domain/social";
+import type {
+  ContentRights,
+  CreatorAccount,
+  CreatorAccountStatus,
+  CreatorPayout,
+  CreatorSubscription,
+  CreatorSubscriptionTier,
+  NewContentRights,
+  NewCreatorAccount,
+  NewCreatorPayout,
+  NewCreatorSubscription,
+  NewCreatorSubscriptionTier,
+} from "@/domain/creator";
 import type { LocationData } from "@/domain/location-directory";
 import type { ProfileFilters } from "@/domain/filters";
 import type {
@@ -119,6 +136,49 @@ export interface Repository {
   addNotification(input: { userId: string; type: Notification["type"]; payload: Record<string, unknown> }): Promise<Notification>;
   listNotifications(userId: string): Promise<Notification[]>;
   markNotificationRead(id: string, userId: string): Promise<void>;
+
+  // Modül B kapanışı — posts/media_assets (Modül C'nin content_rights'ıyla birlikte;
+  // bkz. 20261027000004_creator_platform.sql yorumu).
+  /** data zaten işlenmiş (EXIF temizlenmiş, yeniden kodlanmış) bayt dizisidir; depolama yazımı burada yapılır. */
+  createMediaAsset(input: { ownerId: string; data: Buffer; contentType: string; kind: MediaAsset["kind"]; width: number | null; height: number | null; durationSeconds: number | null }): Promise<MediaAsset>;
+  getMediaAsset(id: string): Promise<MediaAsset | null>;
+  listMediaAssetsByOwner(ownerId: string): Promise<MediaAsset[]>;
+
+  createPost(input: NewPost): Promise<Post>;
+  getPost(id: string): Promise<Post | null>;
+  listPostsByAuthor(authorId: string): Promise<Post[]>;
+  listPostMediaIds(postId: string): Promise<string[]>;
+  /** posts_public view ile birebir — yalnızca uygun ve (ücretliyse) tüm ekleri incelenmiş gönderiler. */
+  listPublicPostsByAuthor(authorId: string): Promise<PublicPost[]>;
+
+  // Modül C — creator platform
+  createCreatorAccount(input: NewCreatorAccount): Promise<CreatorAccount>;
+  getCreatorAccountByUserId(userId: string): Promise<CreatorAccount | null>;
+  getCreatorAccountById(id: string): Promise<CreatorAccount | null>;
+  listCreatorAccounts(filter?: { status?: CreatorAccountStatus }): Promise<CreatorAccount[]>;
+  /** Yalnızca onay/askıya alma geçişi; creator rolü senkronu veritabanı tetikleyicisinde (bkz. migration). */
+  updateCreatorAccountStatus(id: string, status: CreatorAccountStatus, actor: { approvedBy: string | null; approvedAt: string | null }): Promise<CreatorAccount>;
+
+  addUserRole(userId: string, role: UserRole): Promise<void>;
+  listUserRoles(userId: string): Promise<UserRole[]>;
+
+  addContentRights(input: NewContentRights): Promise<ContentRights>;
+  getContentRightsByMediaAsset(mediaAssetId: string): Promise<ContentRights | null>;
+  listContentRightsForMediaAssets(mediaAssetIds: string[]): Promise<ContentRights[]>;
+  reviewContentRights(id: string, reviewedBy: string, reviewedAt: string): Promise<ContentRights>;
+
+  createSubscriptionTier(input: NewCreatorSubscriptionTier): Promise<CreatorSubscriptionTier>;
+  listSubscriptionTiersByCreator(creatorId: string): Promise<CreatorSubscriptionTier[]>;
+  getSubscriptionTier(id: string): Promise<CreatorSubscriptionTier | null>;
+
+  /** Gerçek satın alma yolu yok (bkz. domain/creator.ts yorumu) — yalnızca test/Modül F hazırlığı için. */
+  addCreatorSubscription(input: NewCreatorSubscription): Promise<CreatorSubscription>;
+  listCreatorSubscriptionsBySubscriber(subscriberId: string): Promise<CreatorSubscription[]>;
+  getActiveSubscription(subscriberId: string, tierId: string): Promise<CreatorSubscription | null>;
+
+  /** Modül F'in gerçek payout akışına kadar yalnızca test amaçlı — hiçbir Server Action çağırmaz. */
+  addCreatorPayout(input: NewCreatorPayout): Promise<CreatorPayout>;
+  listCreatorPayouts(creatorId: string): Promise<CreatorPayout[]>;
 
   // Kamuya açık okuma (yalnızca yayındaki profiller)
   searchPublicProfiles(filters: ProfileFilters, opts: { limit: number; offset: number; cursor?: { publishedAt: string; id: string } }): Promise<SearchResult>;

@@ -6,7 +6,8 @@ import { countryOfPlate, type CountryCode } from "@/domain/countries";
 import { defaultPolicies, isPublishable, type CountryPolicy } from "@/domain/country-policy";
 import { defaultFeaturePolicies, isFeaturePermitted, type CountryFeaturePolicy, type PolicyFeature } from "@/domain/policy";
 import type { AppUser } from "@/domain/identity";
-import type { PublicUserProfile } from "@/domain/social";
+import type { MediaAsset, PublicUserProfile } from "@/domain/social";
+import type { ContentRights, CreatorAccount, CreatorSubscriptionTier } from "@/domain/creator";
 import { hashPassword, verifyPassword } from "@/server/auth/password";
 import { sideDistricts } from "@/domain/istanbul";
 import { effectiveStatus, isExpiringSoon } from "@/domain/subscriptions";
@@ -293,6 +294,166 @@ export function createMemoryRepository(): Repository {
     async markNotificationRead(id, userId) {
       const n = store().notifications.find((x) => x.id === id && x.userId === userId);
       if (n) n.readAt = new Date().toISOString();
+    },
+    async createMediaAsset(input) {
+      const s = store();
+      const id = nextId("media");
+      const path = `user-media/${input.ownerId}/${id}.webp`;
+      s.privateFiles.set(path, { data: input.data, contentType: input.contentType });
+      const row: MediaAsset = {
+        id,
+        ownerId: input.ownerId,
+        storagePath: path,
+        url: `/${path}`,
+        kind: input.kind,
+        width: input.width,
+        height: input.height,
+        durationSeconds: input.durationSeconds,
+        status: "ready",
+        rightsConfirmed: false,
+        moderationStatus: "pending",
+        createdAt: new Date().toISOString(),
+      };
+      s.mediaAssets.push(row);
+      return clone(row);
+    },
+    async getMediaAsset(id) {
+      return clone(store().mediaAssets.find((m) => m.id === id) ?? null);
+    },
+    async listMediaAssetsByOwner(ownerId) {
+      return clone(store().mediaAssets.filter((m) => m.ownerId === ownerId));
+    },
+    async createPost(input) {
+      const s = store();
+      const now = new Date().toISOString();
+      const row = { id: nextId("post"), authorId: input.authorId, body: input.body, visibility: input.visibility, paid: input.paid, moderationStatus: "pending" as const, createdAt: now, updatedAt: now };
+      s.posts.push(row);
+      for (const mediaAssetId of input.mediaAssetIds) s.postMedia.push({ postId: row.id, mediaAssetId });
+      return clone(row);
+    },
+    async getPost(id) {
+      return clone(store().posts.find((p) => p.id === id) ?? null);
+    },
+    async listPostsByAuthor(authorId) {
+      return clone(
+        store()
+          .posts.filter((p) => p.authorId === authorId)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      );
+    },
+    async listPostMediaIds(postId) {
+      return store()
+        .postMedia.filter((pm) => pm.postId === postId)
+        .map((pm) => pm.mediaAssetId);
+    },
+    async listPublicPostsByAuthor(authorId) {
+      const s = store();
+      const profile = s.userProfiles.find((p) => p.userId === authorId);
+      if (!profile || profile.moderationStatus !== "approved") return [];
+      const policy = countryFeaturePolicies().find((x) => x.countryCode === profile.countryCode && x.feature === "digital_content");
+      if (!isFeaturePermitted(policy)) return [];
+      const rightsReviewed = (mediaAssetId: string) => s.contentRights.some((r) => r.mediaAssetId === mediaAssetId && r.reviewedAt !== null);
+      return clone(
+        s.posts
+          .filter((p) => p.authorId === authorId && p.moderationStatus === "approved" && p.visibility === "public")
+          .filter((p) => {
+            if (!p.paid) return true;
+            const mediaIds = s.postMedia.filter((pm) => pm.postId === p.id).map((pm) => pm.mediaAssetId);
+            return mediaIds.every(rightsReviewed);
+          })
+          .map((p) => ({ id: p.id, authorId: p.authorId, body: p.body, paid: p.paid, createdAt: p.createdAt }))
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      );
+    },
+    async createCreatorAccount(input) {
+      const s = store();
+      const row: CreatorAccount = { id: nextId("creator"), userId: input.userId, legalName: input.legalName, countryCode: input.countryCode, status: "pending", approvedBy: null, approvedAt: null, createdAt: new Date().toISOString() };
+      s.creatorAccounts.push(row);
+      return clone(row);
+    },
+    async getCreatorAccountByUserId(userId) {
+      return clone(store().creatorAccounts.find((c) => c.userId === userId) ?? null);
+    },
+    async getCreatorAccountById(id) {
+      return clone(store().creatorAccounts.find((c) => c.id === id) ?? null);
+    },
+    async listCreatorAccounts(filter) {
+      return clone(store().creatorAccounts.filter((c) => !filter?.status || c.status === filter.status));
+    },
+    async updateCreatorAccountStatus(id, status, actor) {
+      const c = must(
+        store().creatorAccounts.find((x) => x.id === id),
+        "Creator hesabı",
+      );
+      c.status = status;
+      c.approvedBy = actor.approvedBy;
+      c.approvedAt = actor.approvedAt;
+      // Veritabanında bu satırı creator_accounts_sync_role tetikleyicisi yazar.
+      if (status === "active") store().userRoles.push({ userId: c.userId, role: "creator" });
+      return clone(c);
+    },
+    async addUserRole(userId, role) {
+      const s = store();
+      if (!s.userRoles.some((r) => r.userId === userId && r.role === role)) s.userRoles.push({ userId, role });
+    },
+    async listUserRoles(userId) {
+      return store()
+        .userRoles.filter((r) => r.userId === userId)
+        .map((r) => r.role);
+    },
+    async addContentRights(input) {
+      const s = store();
+      const row: ContentRights = { id: nextId("rights"), mediaAssetId: input.mediaAssetId, rightsType: input.rightsType, evidencePath: input.evidencePath, confirmedAt: new Date().toISOString(), reviewedBy: null, reviewedAt: null };
+      s.contentRights.push(row);
+      return clone(row);
+    },
+    async getContentRightsByMediaAsset(mediaAssetId) {
+      return clone(store().contentRights.find((r) => r.mediaAssetId === mediaAssetId) ?? null);
+    },
+    async listContentRightsForMediaAssets(mediaAssetIds) {
+      return clone(store().contentRights.filter((r) => mediaAssetIds.includes(r.mediaAssetId)));
+    },
+    async reviewContentRights(id, reviewedBy, reviewedAt) {
+      const r = must(
+        store().contentRights.find((x) => x.id === id),
+        "Hak kaydı",
+      );
+      r.reviewedBy = reviewedBy;
+      r.reviewedAt = reviewedAt;
+      return clone(r);
+    },
+    async createSubscriptionTier(input) {
+      const s = store();
+      const row: CreatorSubscriptionTier = { id: nextId("tier"), creatorId: input.creatorId, name: input.name, priceAmount: input.priceAmount, priceCurrency: input.priceCurrency, description: input.description, active: true, createdAt: new Date().toISOString() };
+      s.creatorSubscriptionTiers.push(row);
+      return clone(row);
+    },
+    async listSubscriptionTiersByCreator(creatorId) {
+      return clone(store().creatorSubscriptionTiers.filter((t) => t.creatorId === creatorId));
+    },
+    async getSubscriptionTier(id) {
+      return clone(store().creatorSubscriptionTiers.find((t) => t.id === id) ?? null);
+    },
+    async addCreatorSubscription(input) {
+      const s = store();
+      const row = { ...input, id: nextId("csub"), createdAt: new Date().toISOString() };
+      s.creatorSubscriptions.push(row);
+      return clone(row);
+    },
+    async listCreatorSubscriptionsBySubscriber(subscriberId) {
+      return clone(store().creatorSubscriptions.filter((x) => x.subscriberId === subscriberId));
+    },
+    async getActiveSubscription(subscriberId, tierId) {
+      return clone(store().creatorSubscriptions.find((x) => x.subscriberId === subscriberId && x.tierId === tierId && x.status === "active") ?? null);
+    },
+    async addCreatorPayout(input) {
+      const s = store();
+      const row = { ...input, id: nextId("payout"), createdAt: new Date().toISOString() };
+      s.creatorPayouts.push(row);
+      return clone(row);
+    },
+    async listCreatorPayouts(creatorId) {
+      return clone(store().creatorPayouts.filter((p) => p.creatorId === creatorId));
     },
     async getLocations() { const provinces = listProvinces(); return { provinces, districts: provinces.flatMap((p) => listDistricts(p.plate)) }; },
 

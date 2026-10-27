@@ -6,12 +6,14 @@ import { DomainError } from "@/server/services/errors";
 import {
   blockUser,
   createOwnProfile,
+  createPost,
   followUser,
   markNotificationRead,
   sendMessage,
   unblockUser,
   unfollowUser,
   updateOwnProfile,
+  uploadMediaAsset,
 } from "@/server/services/social";
 
 export type SocialState = { message: string } | null;
@@ -93,4 +95,19 @@ export async function sendMessageAction(_prev: SocialState, formData: FormData):
 export async function markNotificationReadAction(formData: FormData): Promise<void> {
   const actor = await assertUser();
   await markNotificationRead(actor, String(formData.get("notificationId") ?? ""));
+}
+
+/** Gönderi oluşturma — isteğe bağlı tek bir görsel eki; önce medya yüklenir, sonra gönderiye eklenir. */
+export async function createPostAction(_prev: SocialState, formData: FormData): Promise<SocialState> {
+  return run(async () => {
+    const actor = await assertUser();
+    const file = formData.get("file");
+    const mediaAssetIds: string[] = [];
+    if (file instanceof File && file.size > 0) {
+      const media = await uploadMediaAsset(actor, Buffer.from(await file.arrayBuffer()));
+      mediaAssetIds.push(media.id);
+    }
+    await createPost(actor, { body: String(formData.get("body") ?? ""), mediaAssetIds, paid: formData.get("paid") === "on" });
+    return "Gönderi paylaşıldı.";
+  });
 }

@@ -15,6 +15,7 @@ import { DomainError } from "@/server/services/errors";
 import * as profiles from "@/server/services/profiles";
 import * as moderation from "@/server/services/moderation";
 import * as subscriptions from "@/server/services/subscriptions";
+import * as creator from "@/server/services/creator";
 import { recordCountryDecision } from "@/server/services/countries";
 import { recordFeaturePolicyDecision } from "@/server/services/policy";
 import { updatePrivacyRequestStatus } from "@/server/services/privacy";
@@ -359,6 +360,28 @@ export async function featureDecisionAction(_p: ActionResult, fd: FormData): Pro
     },
     // Bu yeni modüllerin hiçbiri kamuya açık önbellekli bir okuma yolu sunmuyor henüz
     // (B/C/F implementasyonu bekliyor); erken invalidasyon gereksiz ağ çağrısı olur.
+    { invalidate: false },
+  );
+}
+
+/** Modül C — creator hesabı onayı/askıya alınması (herhangi bir yönetici; owner şartı yok). */
+export async function creatorAccountStatusAction(id: string, op: "approve" | "suspend"): Promise<ActionResult> {
+  return run(
+    async (admin) => {
+      const row = op === "approve" ? await creator.approveCreatorAccount(admin, id) : await creator.suspendCreatorAccount(admin, id);
+      return `Creator hesabı ${row.status === "active" ? "onaylandı" : "askıya alındı"}.`;
+    },
+    { invalidate: false },
+  );
+}
+
+/** Modül C — içerik hakkı incelemesi; reviewed_by dolana kadar ücretli gönderi yayına giremez (bkz. posts_public). */
+export async function contentRightsReviewAction(id: string): Promise<ActionResult> {
+  return run(
+    async (admin) => {
+      await creator.reviewContentRights(admin, id);
+      return "Hak kaydı incelendi.";
+    },
     { invalidate: false },
   );
 }

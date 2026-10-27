@@ -1,8 +1,9 @@
 import "server-only";
 import type { CountryDecision } from "@/domain/country-policy";
 import type { CountryFeatureDecision } from "@/domain/policy";
-import type { AgeVerificationCheck, AppUser, ConsentRecord } from "@/domain/identity";
-import type { Conversation, ConversationParticipant, Follow, Message, Notification, UserBlock, UserProfile } from "@/domain/social";
+import type { AgeVerificationCheck, AppUser, ConsentRecord, UserRole } from "@/domain/identity";
+import type { Conversation, ConversationParticipant, Follow, MediaAsset, Message, Notification, Post, UserBlock, UserProfile } from "@/domain/social";
+import type { ContentRights, CreatorAccount, CreatorPayout, CreatorSubscription, CreatorSubscriptionTier } from "@/domain/creator";
 import type { PasswordHash } from "@/server/auth/password";
 import { DEFAULT_PLANS } from "@/domain/subscriptions";
 import { docFromPlainText, docToPlainText, type RichDoc } from "@/domain/rich-text";
@@ -171,6 +172,17 @@ export type DemoStore = {
   conversationParticipants: ConversationParticipant[];
   messages: Message[];
   notifications: Notification[];
+  /** Modül A — kullanıcı rolleri (creator onayıyla senkronize edilir, bkz. memory.ts updateCreatorAccountStatus). */
+  userRoles: { userId: string; role: UserRole }[];
+  /** Modül B kapanışı + Modül C — posts/media_assets Modül C'nin content_rights'ıyla birlikte ele alınmıştı. */
+  mediaAssets: MediaAsset[];
+  posts: Post[];
+  postMedia: { postId: string; mediaAssetId: string }[];
+  creatorAccounts: CreatorAccount[];
+  contentRights: ContentRights[];
+  creatorSubscriptionTiers: CreatorSubscriptionTier[];
+  creatorSubscriptions: CreatorSubscription[];
+  creatorPayouts: CreatorPayout[];
   counter: number;
 };
 
@@ -452,6 +464,15 @@ export function createDemoStore(now: Date): DemoStore {
     conversationParticipants: [],
     messages: [],
     notifications: [],
+    userRoles: [],
+    mediaAssets: [],
+    posts: [],
+    postMedia: [],
+    creatorAccounts: [],
+    contentRights: [],
+    creatorSubscriptionTiers: [],
+    creatorSubscriptions: [],
+    creatorPayouts: [],
     interests,
     profiles,
     media,
