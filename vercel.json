@@ -13,7 +13,8 @@
   ],
   "git": {
     "deploymentEnabled": {
-      "feature/hilal-global-v2": false
+      "feature/hilal-global-v2": false,
+      "feature/hilal-global-platform": false
     }
   }
 }
