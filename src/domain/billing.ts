@@ -7,7 +7,7 @@
 export const PAYMENT_TRANSACTION_KINDS = ["subscription_charge", "tip", "ppv_purchase", "payout", "refund"] as const;
 export type PaymentTransactionKind = (typeof PAYMENT_TRANSACTION_KINDS)[number];
 
-export const PAYMENT_TRANSACTION_STATUSES = ["pending", "succeeded", "failed", "refunded"] as const;
+export const PAYMENT_TRANSACTION_STATUSES = ["pending", "succeeded", "failed", "refunded", "chargeback"] as const;
 export type PaymentTransactionStatus = (typeof PAYMENT_TRANSACTION_STATUSES)[number];
 
 /**

@@ -12,7 +12,7 @@ describe("Modül F — PaymentProvider (saf)", () => {
 
   it("işlem türü/durumu sabitleri 02a_DATA_MODEL.md ile birebir", () => {
     expect(PAYMENT_TRANSACTION_KINDS).toEqual(["subscription_charge", "tip", "ppv_purchase", "payout", "refund"]);
-    expect(PAYMENT_TRANSACTION_STATUSES).toEqual(["pending", "succeeded", "failed", "refunded"]);
+    expect(PAYMENT_TRANSACTION_STATUSES).toEqual(["pending", "succeeded", "failed", "refunded", "chargeback"]);
   });
 });
 

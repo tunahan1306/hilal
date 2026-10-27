@@ -129,6 +129,13 @@ and `payment_transactions.status` (`'pending'|'succeeded'|'failed'|'refunded'`, 
 throws `PaymentsDisabledError` — this is a schema/interface note for whenever a provider is
 actually contracted, not a change made now.
 
+**Update (pre-procurement prep):** this gap is now closed at the schema/interface level —
+`PaymentProvider.verifyWebhook`'s status union and `PAYMENT_TRANSACTION_STATUSES`
+(`src/domain/billing.ts`) both include `"chargeback"`, and migration
+`20261027000008_payment_chargeback_status.sql` adds it to the `payment_transaction_status`
+Postgres enum. `getPaymentProvider()` is unchanged and still always throws
+`PaymentsDisabledError` — no payment flow is enabled by this.
+
 ---
 
 ## Shortlist & procurement readiness

@@ -35,7 +35,10 @@ export interface PaymentProvider {
 
   verifyWebhook(rawBody: string, signature: string): Promise<{
     externalRef: string;
-    status: "paid" | "failed" | "refunded";
+    /** "chargeback" iadeden (refunded) ayrı bir olaydır — dört sağlayıcı da (bkz.
+     * docs/payments/PROVIDER_COMPARISON.md) bunu müşteri kaynaklı iadeden farklı
+     * raporlar; defterde de ayrı bir durum olarak tutulur (bkz. domain/billing.ts). */
+    status: "paid" | "failed" | "refunded" | "chargeback";
     /** Sağlayıcı bunu olduğu gibi geri yansıtır; servis katmanı externalRef değil bu alan üzerinden upsert eder. */
     idempotencyKey: string;
   }>;
