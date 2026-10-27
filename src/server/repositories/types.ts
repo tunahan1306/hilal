@@ -1,7 +1,39 @@
 import type { CountryCode } from "@/domain/countries";
 import type { CountryDecision, CountryPolicy, NewCountryDecision } from "@/domain/country-policy";
+import type { CountryFeatureDecision, CountryFeaturePolicy, NewCountryFeatureDecision, PolicyFeature } from "@/domain/policy";
+import type { AgeVerificationCheck, AppUser, AppUserStatus, ConsentRecord, NewAgeVerificationCheck, NewConsentRecord, UserRole } from "@/domain/identity";
+import type {
+  Conversation,
+  Follow,
+  MediaAsset,
+  Message,
+  Notification,
+  NewPost,
+  Post,
+  PublicPost,
+  PublicUserProfile,
+  UserBlock,
+  UserProfile,
+  UserProfilePatch,
+  NewUserProfile,
+} from "@/domain/social";
+import type {
+  ContentRights,
+  CreatorAccount,
+  CreatorAccountStatus,
+  CreatorPayout,
+  CreatorSubscription,
+  CreatorSubscriptionTier,
+  NewContentRights,
+  NewCreatorAccount,
+  NewCreatorPayout,
+  NewCreatorSubscription,
+  NewCreatorSubscriptionTier,
+} from "@/domain/creator";
 import type { LocationData } from "@/domain/location-directory";
 import type { ProfileFilters } from "@/domain/filters";
+import type { ModerationContentType } from "@/domain/moderation";
+import type { NewPaymentTransaction, NewWebhookEvent, PaymentTransaction, PaymentTransactionKind, WebhookEvent } from "@/domain/billing";
 import type {
   Admin,
   AuditLog,
@@ -9,6 +41,7 @@ import type {
   MembershipPlan,
   ModerationAction,
   ModerationReport,
+  NewSecurityEvent,
   ContactCategory,
   ContactMessage,
   ContactStatus,
@@ -28,6 +61,21 @@ export type NewProfile = Omit<
   "id" | "createdAt" | "updatedAt" | "publishedAt" | "archivedAt" | "moderatedAt" | "moderatedBy" | "moderationNote"
 >;
 export type ProfilePatch = Partial<Omit<Profile, "id" | "createdAt" | "createdBy">>;
+
+/**
+ * contentType/contentId isteğe bağlıdır: verilmezse repository bunları 'profile'/profileId
+ * olarak türetir — admin-küratörlü keşif ürününün mevcut, değişmemiş çağrı şekli
+ * (yalnızca profileId verir) böylece kırılmadan content_ref_present kısıtını karşılar.
+ * Modül B/C içeriği için profileId null, contentType/contentId açıkça verilir.
+ */
+export type NewModerationReport = Omit<ModerationReport, "id" | "createdAt" | "updatedAt" | "status" | "resolution" | "contentType" | "contentId"> & {
+  contentType?: ModerationContentType;
+  contentId?: string;
+};
+export type NewModerationAction = Omit<ModerationAction, "id" | "createdAt" | "contentType" | "contentId"> & {
+  contentType?: ModerationContentType;
+  contentId?: string;
+};
 
 export type SearchResult = { items: PublicProfile[]; total: number };
 export type LocationCount = { plate: number; districtSlug: string | null; count: number };
@@ -59,6 +107,100 @@ export interface Repository {
   listCountryDecisions(country?: CountryCode): Promise<CountryDecision[]>;
   /** Yalnızca eklenir; ülke durumu bu kayıttan türetilir. Yetki (sahip rolü) servis katmanında denetlenir. */
   addCountryDecision(input: NewCountryDecision): Promise<CountryDecision>;
+
+  // Modül G — genelleştirilmiş ülke×özellik politika motoru (country-policy.ts'ten AYRI;
+  // yalnızca yeni modüllerin (B/C/F) özelliklerini yönetir, keşif ürününe dokunmaz).
+  listCountryFeaturePolicies(): Promise<CountryFeaturePolicy[]>;
+  listCountryFeatureDecisions(country?: CountryCode, feature?: PolicyFeature): Promise<CountryFeatureDecision[]>;
+  /** Yalnızca eklenir; politika durumu bu kayıttan türetilir. Yetki (sahip rolü) servis katmanında denetlenir. */
+  addCountryFeatureDecision(input: NewCountryFeatureDecision): Promise<CountryFeatureDecision>;
+
+  // Modül A — son kullanıcı kimliği (app_users; admins'ten AYRI, farklı güven modeli).
+  // id, Supabase modunda auth.users.id ile birebir; memory modunda repository üretir.
+  createAppUser(input: { id: string; email: string }): Promise<AppUser>;
+  getAppUserById(id: string): Promise<AppUser | null>;
+  getAppUserByEmail(email: string): Promise<AppUser | null>;
+  markAppUserEmailVerified(id: string, verifiedAt: string): Promise<void>;
+  addConsentRecord(input: NewConsentRecord): Promise<ConsentRecord>;
+  listConsentRecords(userId: string): Promise<ConsentRecord[]>;
+  /** Yalnızca sağlayıcı entegrasyonunun sonucunu kaydeder; ham belge/biyometrik veri asla geçmez. */
+  addAgeVerificationCheck(input: NewAgeVerificationCheck): Promise<AgeVerificationCheck>;
+  listAgeVerificationChecks(userId: string): Promise<AgeVerificationCheck[]>;
+
+  // Modül B — sosyal platform (user_profiles; admin-küratörlü profiles'tan AYRI).
+  createUserProfile(input: NewUserProfile): Promise<UserProfile>;
+  getUserProfileByUserId(userId: string): Promise<UserProfile | null>;
+  getUserProfileByHandle(handle: string): Promise<UserProfile | null>;
+  /** Modül E — content_type='user_profile' şikâyetinin hedefini çözmek için (contentId, user_profiles.id'dir, userId değil). */
+  getUserProfileById(id: string): Promise<UserProfile | null>;
+  updateUserProfile(userId: string, patch: UserProfilePatch): Promise<UserProfile>;
+  /** user_profiles_public view'ı üzerinden — fail-closed politika+yaş doğrulama kapısı burada uygulanır. */
+  getPublicUserProfile(userId: string): Promise<PublicUserProfile | null>;
+
+  addFollow(followerId: string, followeeId: string): Promise<Follow>;
+  removeFollow(followerId: string, followeeId: string): Promise<void>;
+  listFollowing(userId: string): Promise<string[]>;
+  listFollowers(userId: string): Promise<string[]>;
+
+  addBlock(blockerId: string, blockedId: string): Promise<UserBlock>;
+  removeBlock(blockerId: string, blockedId: string): Promise<void>;
+  /** Her iki yönde de — isBlockedEitherWay ile birlikte kullanılır. */
+  listBlocksInvolving(userId: string): Promise<UserBlock[]>;
+
+  /** 1:1 konuşma — ikili zaten varsa onu döndürür, yoksa oluşturur. */
+  startOrGetConversation(userA: string, userB: string): Promise<Conversation>;
+  listConversationParticipants(conversationId: string): Promise<string[]>;
+  addMessage(input: { conversationId: string; senderId: string; body: string }): Promise<Message>;
+  listMessages(conversationId: string, opts: { limit: number }): Promise<Message[]>;
+  /** Modül E — content_type='message' şikâyetinin hedefini çözmek için. */
+  getMessageById(id: string): Promise<Message | null>;
+
+  addNotification(input: { userId: string; type: Notification["type"]; payload: Record<string, unknown> }): Promise<Notification>;
+  listNotifications(userId: string): Promise<Notification[]>;
+  markNotificationRead(id: string, userId: string): Promise<void>;
+
+  // Modül B kapanışı — posts/media_assets (Modül C'nin content_rights'ıyla birlikte;
+  // bkz. 20261027000004_creator_platform.sql yorumu).
+  /** data zaten işlenmiş (EXIF temizlenmiş, yeniden kodlanmış) bayt dizisidir; depolama yazımı burada yapılır. */
+  createMediaAsset(input: { ownerId: string; data: Buffer; contentType: string; kind: MediaAsset["kind"]; width: number | null; height: number | null; durationSeconds: number | null }): Promise<MediaAsset>;
+  getMediaAsset(id: string): Promise<MediaAsset | null>;
+  listMediaAssetsByOwner(ownerId: string): Promise<MediaAsset[]>;
+
+  createPost(input: NewPost): Promise<Post>;
+  getPost(id: string): Promise<Post | null>;
+  listPostsByAuthor(authorId: string): Promise<Post[]>;
+  listPostMediaIds(postId: string): Promise<string[]>;
+  /** posts_public view ile birebir — yalnızca uygun ve (ücretliyse) tüm ekleri incelenmiş gönderiler. */
+  listPublicPostsByAuthor(authorId: string): Promise<PublicPost[]>;
+
+  // Modül C — creator platform
+  createCreatorAccount(input: NewCreatorAccount): Promise<CreatorAccount>;
+  getCreatorAccountByUserId(userId: string): Promise<CreatorAccount | null>;
+  getCreatorAccountById(id: string): Promise<CreatorAccount | null>;
+  listCreatorAccounts(filter?: { status?: CreatorAccountStatus }): Promise<CreatorAccount[]>;
+  /** Yalnızca onay/askıya alma geçişi; creator rolü senkronu veritabanı tetikleyicisinde (bkz. migration). */
+  updateCreatorAccountStatus(id: string, status: CreatorAccountStatus, actor: { approvedBy: string | null; approvedAt: string | null }): Promise<CreatorAccount>;
+
+  addUserRole(userId: string, role: UserRole): Promise<void>;
+  listUserRoles(userId: string): Promise<UserRole[]>;
+
+  addContentRights(input: NewContentRights): Promise<ContentRights>;
+  getContentRightsByMediaAsset(mediaAssetId: string): Promise<ContentRights | null>;
+  listContentRightsForMediaAssets(mediaAssetIds: string[]): Promise<ContentRights[]>;
+  reviewContentRights(id: string, reviewedBy: string, reviewedAt: string): Promise<ContentRights>;
+
+  createSubscriptionTier(input: NewCreatorSubscriptionTier): Promise<CreatorSubscriptionTier>;
+  listSubscriptionTiersByCreator(creatorId: string): Promise<CreatorSubscriptionTier[]>;
+  getSubscriptionTier(id: string): Promise<CreatorSubscriptionTier | null>;
+
+  /** Gerçek satın alma yolu yok (bkz. domain/creator.ts yorumu) — yalnızca test/Modül F hazırlığı için. */
+  addCreatorSubscription(input: NewCreatorSubscription): Promise<CreatorSubscription>;
+  listCreatorSubscriptionsBySubscriber(subscriberId: string): Promise<CreatorSubscription[]>;
+  getActiveSubscription(subscriberId: string, tierId: string): Promise<CreatorSubscription | null>;
+
+  /** Modül F'in gerçek payout akışına kadar yalnızca test amaçlı — hiçbir Server Action çağırmaz. */
+  addCreatorPayout(input: NewCreatorPayout): Promise<CreatorPayout>;
+  listCreatorPayouts(creatorId: string): Promise<CreatorPayout[]>;
 
   // Kamuya açık okuma (yalnızca yayındaki profiller)
   searchPublicProfiles(filters: ProfileFilters, opts: { limit: number; offset: number; cursor?: { publishedAt: string; id: string } }): Promise<SearchResult>;
@@ -102,16 +244,33 @@ export interface Repository {
   listExpiredVerificationDocuments(now: string): Promise<VerificationRecord[]>;
   clearVerificationDocument(id: string): Promise<void>;
 
-  // Moderasyon
-  listReports(filter?: { status?: ModerationReport["status"]; profileId?: string }): Promise<ModerationReport[]>;
+  // Moderasyon (Modül E — genelleştirildi; content_type='profile' admin-küratörlü ürün için değişmedi)
+  listReports(filter?: { status?: ModerationReport["status"]; profileId?: string; contentType?: ModerationContentType; contentId?: string }): Promise<ModerationReport[]>;
   getReport(id: string): Promise<ModerationReport | null>;
-  createReport(input: Omit<ModerationReport, "id" | "createdAt" | "updatedAt" | "status" | "resolution">): Promise<ModerationReport>;
+  createReport(input: NewModerationReport): Promise<ModerationReport>;
   updateReport(id: string, patch: Partial<Pick<ModerationReport, "status" | "resolution">>): Promise<ModerationReport>;
   countRecentReportsByHash(hash: string, sinceIso: string): Promise<number>;
   countRecentReportsForProfile(profileId: string, sinceIso: string): Promise<number>;
+  /** Modül B/C içeriği için — countRecentReportsForProfile'ın genelleştirilmiş eşdeğeri. */
+  countRecentReportsForContent(contentType: ModerationContentType, contentId: string, sinceIso: string): Promise<number>;
   countRecentModerationActions(type: ModerationAction["type"], sinceIso: string): Promise<number>;
-  listModerationActions(filter: { reportId?: string; profileId?: string }): Promise<ModerationAction[]>;
-  addModerationAction(input: Omit<ModerationAction, "id" | "createdAt">): Promise<ModerationAction>;
+  listModerationActions(filter: { reportId?: string; profileId?: string; contentType?: ModerationContentType; contentId?: string }): Promise<ModerationAction[]>;
+  addModerationAction(input: NewModerationAction): Promise<ModerationAction>;
+  /** user_profiles/posts/media_assets ortak moderation_status sütununu ayarlar — triyaj + (ileride) proaktif onay için tek yazma yolu. */
+  setContentModerationStatus(contentType: Extract<ModerationContentType, "user_profile" | "post" | "media_asset" | "message">, contentId: string, status: "approved" | "rejected", reviewedBy: string): Promise<void>;
+  /** Modül E — hesap askıya alma triyaj eylemi (app_users.status). */
+  updateAppUserStatus(userId: string, status: AppUserStatus, actorId: string | null): Promise<void>;
+
+  // Modül F — ödeme defteri (yalnızca şema; bkz. src/server/payments.ts başlığındaki tasarım
+  // kararı notu). PaymentProvider her zaman PaymentsDisabledError fırlattığı için bu metotları
+  // çağıran hiçbir Server Action yoktur — gerçek bir sağlayıcı sözleşme imzalanana kadar atıl kalır.
+  addPaymentTransaction(input: NewPaymentTransaction): Promise<PaymentTransaction>;
+  /** idempotency_key tekilliği — webhook'un en-az-bir-kez teslimatı asla çift satır oluşturmaz. */
+  getPaymentTransactionByIdempotencyKey(key: string): Promise<PaymentTransaction | null>;
+  listPaymentTransactions(filter?: { payerId?: string; payeeCreatorId?: string; kind?: PaymentTransactionKind }): Promise<PaymentTransaction[]>;
+  /** (provider_name, external_event_id) üzerinde idempotent ekleme; isNew=false ise olay zaten işlenmiştir, tekrar işlenmez. */
+  recordWebhookEvent(input: NewWebhookEvent): Promise<{ event: WebhookEvent; isNew: boolean }>;
+  markWebhookEventProcessed(id: string, processedAt: string): Promise<void>;
 
   // Abonelikler
   listPlans(): Promise<MembershipPlan[]>;
@@ -123,6 +282,9 @@ export interface Repository {
   // Denetim
   addAuditLog(input: Omit<AuditLog, "id" | "createdAt">): Promise<void>;
   listAuditLogs(opts: { limit: number; entityId?: string }): Promise<AuditLog[]>;
+  /** audit_logs'un son kullanıcı/anon/sistem eşdeğeri — bkz. domain/types.ts NewSecurityEvent yorumu. */
+  addSecurityEvent(input: NewSecurityEvent): Promise<void>;
+  listSecurityEvents(opts: { limit: number; actorId?: string }): Promise<(NewSecurityEvent & { id: string; createdAt: string })[]>;
 
   // KVKK talepleri
   createPrivacyRequest(input: Omit<PrivacyRequest, "id" | "createdAt" | "status" | "completedAt">): Promise<PrivacyRequest>;

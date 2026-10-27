@@ -2,6 +2,18 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { COUNTRY_CODES, countryOfPlate, isCountry, plateRange, type CountryCode } from "@/domain/countries";
 import { defaultPolicies, PUBLICATION_STATUSES, type CountryDecision, type CountryPolicy, type PublicationStatus } from "@/domain/country-policy";
+import { defaultFeaturePolicies, FEATURE_POLICY_STATUSES, POLICY_FEATURES, type CountryFeatureDecision, type CountryFeaturePolicy, type FeaturePolicyStatus, type PolicyFeature } from "@/domain/policy";
+import type { AgeVerificationCheck, AgeVerificationStatus, AppUser, AppUserStatus, ConsentRecord, ConsentRecordType, UserRole } from "@/domain/identity";
+import type { Conversation, MediaAsset, Message, Notification, Post, ProfileVisibility, PublicPost, PublicUserProfile, UserBlock, UserProfile } from "@/domain/social";
+import type {
+  ContentRights,
+  CreatorAccount,
+  CreatorAccountStatus,
+  CreatorPayout,
+  CreatorSubscription,
+  CreatorSubscriptionTier,
+} from "@/domain/creator";
+import type { PaymentTransaction, WebhookEvent } from "@/domain/billing";
 import { sideDistricts } from "@/domain/istanbul";
 import { effectiveStatus, isExpiringSoon } from "@/domain/subscriptions";
 import type {
@@ -205,7 +217,9 @@ const toVerification = (r: Row): VerificationRecord => ({
 
 const toReport = (r: Row): ModerationReport => ({
   id: r.id as string,
-  profileId: r.profile_id as string,
+  profileId: (r.profile_id as string) ?? null,
+  contentType: r.content_type as ModerationReport["contentType"],
+  contentId: r.content_id as string,
   category: r.category as ModerationReport["category"],
   description: r.description as string,
   reporterEmail: (r.reporter_email as string) ?? null,
@@ -219,7 +233,9 @@ const toReport = (r: Row): ModerationReport => ({
 const toAction = (r: Row): ModerationAction => ({
   id: r.id as string,
   reportId: (r.report_id as string) ?? null,
-  profileId: r.profile_id as string,
+  profileId: (r.profile_id as string) ?? null,
+  contentType: r.content_type as ModerationAction["contentType"],
+  contentId: r.content_id as string,
   type: r.type as ModerationAction["type"],
   note: (r.note as string) ?? null,
   actorId: (r.actor_id as string) ?? null,
@@ -393,6 +409,241 @@ function toDecision(r: Row): CountryDecision {
   };
 }
 
+function toFeatureDecision(r: Row): CountryFeatureDecision {
+  return {
+    id: String(r.id),
+    countryCode: String(r.country_code) as CountryCode,
+    feature: String(r.feature_code) as PolicyFeature,
+    status: String(r.status) as FeaturePolicyStatus,
+    approverName: String(r.approver_name),
+    evidenceRef: r.evidence_ref === null ? null : String(r.evidence_ref),
+    reviewDue: r.review_due === null ? null : String(r.review_due),
+    restrictions: r.restrictions === null ? null : String(r.restrictions),
+    note: r.note === null ? null : String(r.note),
+    decidedBy: String(r.decided_by),
+    decidedAt: String(r.decided_at),
+  };
+}
+
+function toAppUser(r: Row): AppUser {
+  return {
+    id: String(r.id),
+    email: String(r.email),
+    emailVerifiedAt: r.email_verified_at === null ? null : String(r.email_verified_at),
+    status: String(r.status) as AppUserStatus,
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function toConsentRecord(r: Row): ConsentRecord {
+  return {
+    id: String(r.id),
+    userId: String(r.user_id),
+    type: String(r.type) as ConsentRecordType,
+    grantedAt: String(r.granted_at),
+    revokedAt: r.revoked_at === null ? null : String(r.revoked_at),
+    method: String(r.method),
+    evidenceRef: r.evidence_ref === null ? null : String(r.evidence_ref),
+    createdAt: String(r.created_at),
+  };
+}
+
+function toAgeVerificationCheck(r: Row): AgeVerificationCheck {
+  return {
+    id: String(r.id),
+    userId: String(r.user_id),
+    provider: String(r.provider),
+    providerRef: String(r.provider_ref),
+    status: String(r.status) as AgeVerificationStatus,
+    checkedAt: r.checked_at === null ? null : String(r.checked_at),
+    expiresAt: r.expires_at === null ? null : String(r.expires_at),
+    note: r.note === null ? null : String(r.note),
+    createdAt: String(r.created_at),
+  };
+}
+
+function toUserProfile(r: Row): UserProfile {
+  return {
+    id: String(r.id),
+    userId: String(r.user_id),
+    handle: String(r.handle),
+    displayName: String(r.display_name),
+    bio: r.bio === null ? null : String(r.bio),
+    birthDate: String(r.birth_date),
+    countryCode: String(r.country_code),
+    visibility: String(r.visibility) as ProfileVisibility,
+    moderationStatus: String(r.moderation_status) as UserProfile["moderationStatus"],
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function toPublicUserProfile(r: Row): PublicUserProfile {
+  return {
+    id: String(r.id),
+    userId: String(r.user_id),
+    handle: String(r.handle),
+    displayName: String(r.display_name),
+    bio: r.bio === null ? null : String(r.bio),
+    age: Number(r.age),
+    countryCode: String(r.country_code),
+    createdAt: String(r.created_at),
+  };
+}
+
+function toMessage(r: Row): Message {
+  return {
+    id: String(r.id),
+    conversationId: String(r.conversation_id),
+    senderId: String(r.sender_id),
+    body: String(r.body),
+    createdAt: String(r.created_at),
+    deletedAt: r.deleted_at === null ? null : String(r.deleted_at),
+    moderationStatus: String(r.moderation_status) as Message["moderationStatus"],
+  };
+}
+
+function toNotification(r: Row): Notification {
+  return {
+    id: String(r.id),
+    userId: String(r.user_id),
+    type: String(r.type) as Notification["type"],
+    payload: (r.payload ?? {}) as Record<string, unknown>,
+    readAt: r.read_at === null ? null : String(r.read_at),
+    createdAt: String(r.created_at),
+  };
+}
+
+function toMediaAsset(r: Row): MediaAsset {
+  return {
+    id: String(r.id),
+    ownerId: String(r.owner_id),
+    storagePath: String(r.storage_path),
+    url: String(r.url),
+    kind: String(r.kind) as MediaAsset["kind"],
+    width: r.width === null ? null : Number(r.width),
+    height: r.height === null ? null : Number(r.height),
+    durationSeconds: r.duration_seconds === null ? null : Number(r.duration_seconds),
+    status: String(r.status) as MediaAsset["status"],
+    rightsConfirmed: Boolean(r.rights_confirmed),
+    moderationStatus: String(r.moderation_status) as MediaAsset["moderationStatus"],
+    createdAt: String(r.created_at),
+  };
+}
+
+function toPost(r: Row): Post {
+  return {
+    id: String(r.id),
+    authorId: String(r.author_id),
+    body: String(r.body),
+    visibility: String(r.visibility) as ProfileVisibility,
+    paid: Boolean(r.paid),
+    moderationStatus: String(r.moderation_status) as Post["moderationStatus"],
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function toPublicPost(r: Row): PublicPost {
+  return { id: String(r.id), authorId: String(r.author_id), body: String(r.body), paid: Boolean(r.paid), createdAt: String(r.created_at) };
+}
+
+function toCreatorAccount(r: Row): CreatorAccount {
+  return {
+    id: String(r.id),
+    userId: String(r.user_id),
+    legalName: String(r.legal_name),
+    countryCode: String(r.country_code),
+    status: String(r.status) as CreatorAccountStatus,
+    approvedBy: r.approved_by === null ? null : String(r.approved_by),
+    approvedAt: r.approved_at === null ? null : String(r.approved_at),
+    createdAt: String(r.created_at),
+  };
+}
+
+function toContentRights(r: Row): ContentRights {
+  return {
+    id: String(r.id),
+    mediaAssetId: String(r.media_asset_id),
+    rightsType: String(r.rights_type) as ContentRights["rightsType"],
+    evidencePath: r.evidence_path === null ? null : String(r.evidence_path),
+    confirmedAt: String(r.confirmed_at),
+    reviewedBy: r.reviewed_by === null ? null : String(r.reviewed_by),
+    reviewedAt: r.reviewed_at === null ? null : String(r.reviewed_at),
+  };
+}
+
+function toSubscriptionTier(r: Row): CreatorSubscriptionTier {
+  return {
+    id: String(r.id),
+    creatorId: String(r.creator_id),
+    name: String(r.name),
+    priceAmount: Number(r.price_amount),
+    priceCurrency: String(r.price_currency),
+    description: r.description === null ? null : String(r.description),
+    active: Boolean(r.active),
+    createdAt: String(r.created_at),
+  };
+}
+
+function toCreatorSubscription(r: Row): CreatorSubscription {
+  return {
+    id: String(r.id),
+    subscriberId: String(r.subscriber_id),
+    tierId: String(r.tier_id),
+    status: String(r.status) as CreatorSubscription["status"],
+    startsAt: String(r.starts_at),
+    endsAt: String(r.ends_at),
+    autoRenew: Boolean(r.auto_renew),
+    externalRef: r.external_ref === null ? null : String(r.external_ref),
+    createdAt: String(r.created_at),
+  };
+}
+
+function toCreatorPayout(r: Row): CreatorPayout {
+  return {
+    id: String(r.id),
+    creatorId: String(r.creator_id),
+    periodStart: String(r.period_start),
+    periodEnd: String(r.period_end),
+    grossAmount: Number(r.gross_amount),
+    platformFeeAmount: Number(r.platform_fee_amount),
+    netAmount: Number(r.net_amount),
+    status: String(r.status) as CreatorPayout["status"],
+    externalRef: r.external_ref === null ? null : String(r.external_ref),
+    createdAt: String(r.created_at),
+  };
+}
+
+function toPaymentTransaction(r: Row): PaymentTransaction {
+  return {
+    id: String(r.id),
+    kind: String(r.kind) as PaymentTransaction["kind"],
+    payerId: r.payer_id === null ? null : String(r.payer_id),
+    payeeCreatorId: r.payee_creator_id === null ? null : String(r.payee_creator_id),
+    amountMinorUnits: Number(r.amount_minor_units),
+    currency: String(r.currency),
+    status: String(r.status) as PaymentTransaction["status"],
+    providerName: String(r.provider_name),
+    externalRef: r.external_ref === null ? null : String(r.external_ref),
+    idempotencyKey: String(r.idempotency_key),
+    metadata: (r.metadata ?? {}) as Record<string, unknown>,
+    createdAt: String(r.created_at),
+  };
+}
+
+function toWebhookEvent(r: Row): WebhookEvent {
+  return {
+    id: String(r.id),
+    providerName: String(r.provider_name),
+    externalEventId: String(r.external_event_id),
+    payload: (r.payload ?? {}) as Record<string, unknown>,
+    processedAt: r.processed_at === null ? null : String(r.processed_at),
+    createdAt: String(r.created_at),
+  };
+}
+
 export function createSupabaseRepository(): Repository {
   return {
     kind: "supabase",
@@ -422,6 +673,459 @@ export function createSupabaseRepository(): Repository {
         decided_by: input.decidedBy,
       }).select("*").single()) as Row;
       return toDecision(row);
+    },
+    async listCountryFeaturePolicies(): Promise<CountryFeaturePolicy[]> {
+      const rows = check(await anon().from("country_feature_policies").select("country_code, feature_code, status, review_due, decision_id")) as Row[];
+      return defaultFeaturePolicies().map((base) => {
+        const r = rows.find((x) => x.country_code === base.countryCode && x.feature_code === base.feature);
+        const status = r ? String(r.status) : undefined;
+        if (!r || !status || !(FEATURE_POLICY_STATUSES as readonly string[]).includes(status)) return base;
+        return {
+          countryCode: base.countryCode,
+          feature: base.feature,
+          status: status as CountryFeaturePolicy["status"],
+          reviewDue: r.review_due === null ? null : String(r.review_due),
+          decisionId: r.decision_id === null ? null : String(r.decision_id),
+        };
+      });
+    },
+    async listCountryFeatureDecisions(country?: CountryCode, feature?: PolicyFeature) {
+      let q = service().from("country_feature_decisions").select("*").order("decided_at", { ascending: false }).limit(200);
+      if (country) q = q.eq("country_code", country);
+      if (feature) q = q.eq("feature_code", feature);
+      return (check(await q) as Row[])
+        .map(toFeatureDecision)
+        .filter((d) => isCountry(d.countryCode) && COUNTRY_CODES.includes(d.countryCode) && (POLICY_FEATURES as readonly string[]).includes(d.feature));
+    },
+    async addCountryFeatureDecision(input) {
+      const row = check(await service().from("country_feature_decisions").insert({
+        country_code: input.countryCode,
+        feature_code: input.feature,
+        status: input.status,
+        approver_name: input.approverName,
+        evidence_ref: input.evidenceRef,
+        review_due: input.reviewDue,
+        restrictions: input.restrictions,
+        note: input.note,
+        decided_by: input.decidedBy,
+      }).select("*").single()) as Row;
+      return toFeatureDecision(row);
+    },
+    async createAppUser(input): Promise<AppUser> {
+      const row = check(await service().from("app_users").insert({ id: input.id, email: input.email }).select("*").single()) as Row;
+      return toAppUser(row);
+    },
+    async getAppUserById(id): Promise<AppUser | null> {
+      const { data, error } = await service().from("app_users").select("*").eq("id", id).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toAppUser(data as Row) : null;
+    },
+    async getAppUserByEmail(email): Promise<AppUser | null> {
+      // email, citext (zaten büyük/küçük harf duyarsız) — ilike KULLANMA: '_'/'%' SQL joker
+      // karakteri olarak yorumlanır ve yanlış hesabı eşleştirebilir (ör. a_b@x.com, axb@x.com'u eşler).
+      const { data, error } = await service().from("app_users").select("*").eq("email", email).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toAppUser(data as Row) : null;
+    },
+    async markAppUserEmailVerified(id, verifiedAt): Promise<void> {
+      check(await service().from("app_users").update({ email_verified_at: verifiedAt }).eq("id", id).select("id"));
+    },
+    async addConsentRecord(input): Promise<ConsentRecord> {
+      const row = check(await service().from("consent_records").insert({
+        user_id: input.userId,
+        type: input.type,
+        evidence_ref: input.evidenceRef,
+        method: input.method,
+        revoked_at: input.revokedAt ?? null,
+      }).select("*").single()) as Row;
+      return toConsentRecord(row);
+    },
+    async listConsentRecords(userId): Promise<ConsentRecord[]> {
+      const rows = check(await service().from("consent_records").select("*").eq("user_id", userId)) as Row[];
+      return rows.map(toConsentRecord);
+    },
+    async addAgeVerificationCheck(input): Promise<AgeVerificationCheck> {
+      const row = check(await service().from("age_verification_checks").insert({
+        user_id: input.userId,
+        provider: input.provider,
+        provider_ref: input.providerRef,
+        status: input.status,
+        checked_at: input.checkedAt,
+        expires_at: input.expiresAt,
+        note: input.note,
+      }).select("*").single()) as Row;
+      return toAgeVerificationCheck(row);
+    },
+    async listAgeVerificationChecks(userId): Promise<AgeVerificationCheck[]> {
+      const rows = check(await service().from("age_verification_checks").select("*").eq("user_id", userId).order("created_at", { ascending: false })) as Row[];
+      return rows.map(toAgeVerificationCheck);
+    },
+    async createUserProfile(input): Promise<UserProfile> {
+      const row = check(await service().from("user_profiles").insert({
+        user_id: input.userId,
+        handle: input.handle,
+        display_name: input.displayName,
+        bio: input.bio,
+        birth_date: input.birthDate,
+        country_code: input.countryCode,
+        visibility: input.visibility,
+      }).select("*").single()) as Row;
+      return toUserProfile(row);
+    },
+    async getUserProfileByUserId(userId): Promise<UserProfile | null> {
+      const { data, error } = await service().from("user_profiles").select("*").eq("user_id", userId).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toUserProfile(data as Row) : null;
+    },
+    async getUserProfileByHandle(handle): Promise<UserProfile | null> {
+      // handle, citext (zaten büyük/küçük harf duyarsız) — ilike KULLANMA: handle regex'i '_'e
+      // izin verir ve ilike bunu joker karakter sayar, yanlış kullanıcıyı eşleştirebilir.
+      const { data, error } = await service().from("user_profiles").select("*").eq("handle", handle).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toUserProfile(data as Row) : null;
+    },
+    async getUserProfileById(id): Promise<UserProfile | null> {
+      const { data, error } = await service().from("user_profiles").select("*").eq("id", id).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toUserProfile(data as Row) : null;
+    },
+    async updateUserProfile(userId, patch): Promise<UserProfile> {
+      const payload: Row = {};
+      if (patch.displayName !== undefined) payload.display_name = patch.displayName;
+      if (patch.bio !== undefined) payload.bio = patch.bio;
+      if (patch.visibility !== undefined) payload.visibility = patch.visibility;
+      const row = check(await service().from("user_profiles").update(payload).eq("user_id", userId).select("*").single()) as Row;
+      return toUserProfile(row);
+    },
+    async getPublicUserProfile(userId): Promise<PublicUserProfile | null> {
+      const { data, error } = await anon().from("user_profiles_public").select("*").eq("user_id", userId).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toPublicUserProfile(data as Row) : null;
+    },
+    async addFollow(followerId, followeeId) {
+      const row = check(await service().from("follows").insert({ follower_id: followerId, followee_id: followeeId }).select("*").single()) as Row;
+      return { followerId: String(row.follower_id), followeeId: String(row.followee_id), createdAt: String(row.created_at) };
+    },
+    async removeFollow(followerId, followeeId) {
+      check(await service().from("follows").delete().eq("follower_id", followerId).eq("followee_id", followeeId).select("follower_id"));
+    },
+    async listFollowing(userId) {
+      const rows = check(await service().from("follows").select("followee_id").eq("follower_id", userId)) as Row[];
+      return rows.map((r) => String(r.followee_id));
+    },
+    async listFollowers(userId) {
+      const rows = check(await service().from("follows").select("follower_id").eq("followee_id", userId)) as Row[];
+      return rows.map((r) => String(r.follower_id));
+    },
+    async addBlock(blockerId, blockedId) {
+      const row = check(await service().from("user_blocks").insert({ blocker_id: blockerId, blocked_id: blockedId }).select("*").single()) as Row;
+      return { blockerId: String(row.blocker_id), blockedId: String(row.blocked_id), createdAt: String(row.created_at) };
+    },
+    async removeBlock(blockerId, blockedId) {
+      check(await service().from("user_blocks").delete().eq("blocker_id", blockerId).eq("blocked_id", blockedId).select("blocker_id"));
+    },
+    async listBlocksInvolving(userId): Promise<UserBlock[]> {
+      const rows = check(await service().from("user_blocks").select("*").or(`blocker_id.eq.${userId},blocked_id.eq.${userId}`)) as Row[];
+      return rows.map((r) => ({ blockerId: String(r.blocker_id), blockedId: String(r.blocked_id), createdAt: String(r.created_at) }));
+    },
+    async startOrGetConversation(userA, userB): Promise<Conversation> {
+      const mine = check(await service().from("conversation_participants").select("conversation_id").eq("user_id", userA)) as Row[];
+      const ids = mine.map((r) => String(r.conversation_id));
+      if (ids.length) {
+        const match = check(
+          await service().from("conversation_participants").select("conversation_id").eq("user_id", userB).in("conversation_id", ids),
+        ) as Row[];
+        if (match[0]) {
+          const conv = check(await service().from("conversations").select("*").eq("id", String(match[0].conversation_id)).single()) as Row;
+          return { id: String(conv.id), createdAt: String(conv.created_at) };
+        }
+      }
+      const conv = check(await service().from("conversations").insert({}).select("*").single()) as Row;
+      check(await service().from("conversation_participants").insert([
+        { conversation_id: conv.id, user_id: userA },
+        { conversation_id: conv.id, user_id: userB },
+      ]));
+      return { id: String(conv.id), createdAt: String(conv.created_at) };
+    },
+    async listConversationParticipants(conversationId) {
+      const rows = check(await service().from("conversation_participants").select("user_id").eq("conversation_id", conversationId)) as Row[];
+      return rows.map((r) => String(r.user_id));
+    },
+    async addMessage(input): Promise<Message> {
+      const row = check(await service().from("messages").insert({ conversation_id: input.conversationId, sender_id: input.senderId, body: input.body }).select("*").single()) as Row;
+      return toMessage(row);
+    },
+    async listMessages(conversationId, { limit }): Promise<Message[]> {
+      // Yalnızca kullanıcı tarafı okuma yolu: silinmiş veya moderasyonla reddedilmiş mesaj
+      // katılımcılara hiç gösterilmez (admin triyajı getMessageById'yi kullanır, burayı değil).
+      const rows = check(
+        await service()
+          .from("messages")
+          .select("*")
+          .eq("conversation_id", conversationId)
+          .is("deleted_at", null)
+          .neq("moderation_status", "rejected")
+          .order("created_at", { ascending: false })
+          .limit(limit),
+      ) as Row[];
+      return rows.map(toMessage).reverse();
+    },
+    async getMessageById(id): Promise<Message | null> {
+      const { data, error } = await service().from("messages").select("*").eq("id", id).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toMessage(data as Row) : null;
+    },
+    async addNotification(input): Promise<Notification> {
+      const row = check(await service().from("notifications").insert({ user_id: input.userId, type: input.type, payload: input.payload }).select("*").single()) as Row;
+      return toNotification(row);
+    },
+    async listNotifications(userId): Promise<Notification[]> {
+      const rows = check(await service().from("notifications").select("*").eq("user_id", userId).order("created_at", { ascending: false })) as Row[];
+      return rows.map(toNotification);
+    },
+    async markNotificationRead(id, userId) {
+      check(await service().from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id).eq("user_id", userId).select("id"));
+    },
+    async createMediaAsset(input): Promise<MediaAsset> {
+      const path = `${input.ownerId}/${crypto.randomUUID()}.webp`;
+      check(await service().storage.from("user-media").upload(path, input.data, { contentType: input.contentType, upsert: false }));
+      const url = service().storage.from("user-media").getPublicUrl(path).data.publicUrl;
+      const row = check(
+        await service()
+          .from("media_assets")
+          .insert({
+            owner_id: input.ownerId,
+            storage_path: `user-media/${path}`,
+            url,
+            kind: input.kind,
+            width: input.width,
+            height: input.height,
+            duration_seconds: input.durationSeconds,
+            status: "ready",
+          })
+          .select("*")
+          .single(),
+      ) as Row;
+      return toMediaAsset(row);
+    },
+    async getMediaAsset(id): Promise<MediaAsset | null> {
+      const { data, error } = await service().from("media_assets").select("*").eq("id", id).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toMediaAsset(data as Row) : null;
+    },
+    async listMediaAssetsByOwner(ownerId): Promise<MediaAsset[]> {
+      const rows = check(await service().from("media_assets").select("*").eq("owner_id", ownerId).order("created_at", { ascending: false })) as Row[];
+      return rows.map(toMediaAsset);
+    },
+    async createPost(input): Promise<Post> {
+      const row = check(
+        await service().from("posts").insert({ author_id: input.authorId, body: input.body, visibility: input.visibility, paid: input.paid }).select("*").single(),
+      ) as Row;
+      if (input.mediaAssetIds.length) {
+        check(await service().from("post_media").insert(input.mediaAssetIds.map((mediaAssetId, position) => ({ post_id: row.id, media_asset_id: mediaAssetId, position }))));
+      }
+      return toPost(row);
+    },
+    async getPost(id): Promise<Post | null> {
+      const { data, error } = await service().from("posts").select("*").eq("id", id).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toPost(data as Row) : null;
+    },
+    async listPostsByAuthor(authorId): Promise<Post[]> {
+      const rows = check(await service().from("posts").select("*").eq("author_id", authorId).order("created_at", { ascending: false })) as Row[];
+      return rows.map(toPost);
+    },
+    async listPostMediaIds(postId) {
+      const rows = check(await service().from("post_media").select("media_asset_id").eq("post_id", postId).order("position")) as Row[];
+      return rows.map((r) => String(r.media_asset_id));
+    },
+    async listPublicPostsByAuthor(authorId): Promise<PublicPost[]> {
+      const rows = check(await anon().from("posts_public").select("*").eq("author_id", authorId).order("created_at", { ascending: false })) as Row[];
+      return rows.map(toPublicPost);
+    },
+    async createCreatorAccount(input): Promise<CreatorAccount> {
+      const row = check(
+        await service().from("creator_accounts").insert({ user_id: input.userId, legal_name: input.legalName, country_code: input.countryCode }).select("*").single(),
+      ) as Row;
+      return toCreatorAccount(row);
+    },
+    async getCreatorAccountByUserId(userId): Promise<CreatorAccount | null> {
+      const { data, error } = await service().from("creator_accounts").select("*").eq("user_id", userId).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toCreatorAccount(data as Row) : null;
+    },
+    async getCreatorAccountById(id): Promise<CreatorAccount | null> {
+      const { data, error } = await service().from("creator_accounts").select("*").eq("id", id).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toCreatorAccount(data as Row) : null;
+    },
+    async listCreatorAccounts(filter): Promise<CreatorAccount[]> {
+      let q = service().from("creator_accounts").select("*");
+      if (filter?.status) q = q.eq("status", filter.status);
+      return (check(await q) as Row[]).map(toCreatorAccount);
+    },
+    async updateCreatorAccountStatus(id, status, actor): Promise<CreatorAccount> {
+      const row = check(
+        await service().from("creator_accounts").update({ status, approved_by: actor.approvedBy, approved_at: actor.approvedAt }).eq("id", id).select("*").single(),
+      ) as Row;
+      // Veritabanında bu satırı creator_accounts_sync_role tetikleyicisi yazar.
+      return toCreatorAccount(row);
+    },
+    async addUserRole(userId, role): Promise<void> {
+      check(await service().from("user_roles").upsert({ user_id: userId, role }, { onConflict: "user_id,role" }));
+    },
+    async listUserRoles(userId): Promise<UserRole[]> {
+      const rows = check(await service().from("user_roles").select("role").eq("user_id", userId)) as Row[];
+      return rows.map((r) => String(r.role) as UserRole);
+    },
+    async addContentRights(input): Promise<ContentRights> {
+      const row = check(
+        await service()
+          .from("content_rights")
+          .insert({ media_asset_id: input.mediaAssetId, rights_type: input.rightsType, evidence_path: input.evidencePath })
+          .select("*")
+          .single(),
+      ) as Row;
+      return toContentRights(row);
+    },
+    async getContentRightsByMediaAsset(mediaAssetId): Promise<ContentRights | null> {
+      const { data, error } = await service().from("content_rights").select("*").eq("media_asset_id", mediaAssetId).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toContentRights(data as Row) : null;
+    },
+    async listContentRightsForMediaAssets(mediaAssetIds): Promise<ContentRights[]> {
+      if (!mediaAssetIds.length) return [];
+      const rows = check(await service().from("content_rights").select("*").in("media_asset_id", mediaAssetIds)) as Row[];
+      return rows.map(toContentRights);
+    },
+    async reviewContentRights(id, reviewedBy, reviewedAt): Promise<ContentRights> {
+      const row = check(await service().from("content_rights").update({ reviewed_by: reviewedBy, reviewed_at: reviewedAt }).eq("id", id).select("*").single()) as Row;
+      return toContentRights(row);
+    },
+    async createSubscriptionTier(input): Promise<CreatorSubscriptionTier> {
+      const row = check(
+        await service()
+          .from("creator_subscription_tiers")
+          .insert({ creator_id: input.creatorId, name: input.name, price_amount: input.priceAmount, price_currency: input.priceCurrency, description: input.description })
+          .select("*")
+          .single(),
+      ) as Row;
+      return toSubscriptionTier(row);
+    },
+    async listSubscriptionTiersByCreator(creatorId): Promise<CreatorSubscriptionTier[]> {
+      const rows = check(await service().from("creator_subscription_tiers").select("*").eq("creator_id", creatorId)) as Row[];
+      return rows.map(toSubscriptionTier);
+    },
+    async getSubscriptionTier(id): Promise<CreatorSubscriptionTier | null> {
+      const { data, error } = await service().from("creator_subscription_tiers").select("*").eq("id", id).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toSubscriptionTier(data as Row) : null;
+    },
+    async addCreatorSubscription(input): Promise<CreatorSubscription> {
+      const row = check(
+        await service()
+          .from("creator_subscriptions")
+          .insert({
+            subscriber_id: input.subscriberId,
+            tier_id: input.tierId,
+            status: input.status,
+            starts_at: input.startsAt,
+            ends_at: input.endsAt,
+            auto_renew: input.autoRenew,
+            external_ref: input.externalRef,
+          })
+          .select("*")
+          .single(),
+      ) as Row;
+      return toCreatorSubscription(row);
+    },
+    async listCreatorSubscriptionsBySubscriber(subscriberId): Promise<CreatorSubscription[]> {
+      const rows = check(await service().from("creator_subscriptions").select("*").eq("subscriber_id", subscriberId)) as Row[];
+      return rows.map(toCreatorSubscription);
+    },
+    async getActiveSubscription(subscriberId, tierId): Promise<CreatorSubscription | null> {
+      const { data, error } = await service()
+        .from("creator_subscriptions")
+        .select("*")
+        .eq("subscriber_id", subscriberId)
+        .eq("tier_id", tierId)
+        .eq("status", "active")
+        .maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toCreatorSubscription(data as Row) : null;
+    },
+    async addCreatorPayout(input): Promise<CreatorPayout> {
+      const row = check(
+        await service()
+          .from("creator_payouts")
+          .insert({
+            creator_id: input.creatorId,
+            period_start: input.periodStart,
+            period_end: input.periodEnd,
+            gross_amount: input.grossAmount,
+            platform_fee_amount: input.platformFeeAmount,
+            net_amount: input.netAmount,
+            status: input.status,
+            external_ref: input.externalRef,
+          })
+          .select("*")
+          .single(),
+      ) as Row;
+      return toCreatorPayout(row);
+    },
+    async listCreatorPayouts(creatorId): Promise<CreatorPayout[]> {
+      const rows = check(await service().from("creator_payouts").select("*").eq("creator_id", creatorId)) as Row[];
+      return rows.map(toCreatorPayout);
+    },
+    async addPaymentTransaction(input): Promise<PaymentTransaction> {
+      const row = check(
+        await service()
+          .from("payment_transactions")
+          .insert({
+            kind: input.kind,
+            payer_id: input.payerId,
+            payee_creator_id: input.payeeCreatorId,
+            amount_minor_units: input.amountMinorUnits,
+            currency: input.currency,
+            status: input.status,
+            provider_name: input.providerName,
+            external_ref: input.externalRef,
+            idempotency_key: input.idempotencyKey,
+            metadata: input.metadata,
+          })
+          .select("*")
+          .single(),
+      ) as Row;
+      return toPaymentTransaction(row);
+    },
+    async getPaymentTransactionByIdempotencyKey(key): Promise<PaymentTransaction | null> {
+      const { data, error } = await service().from("payment_transactions").select("*").eq("idempotency_key", key).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toPaymentTransaction(data as Row) : null;
+    },
+    async listPaymentTransactions(filter): Promise<PaymentTransaction[]> {
+      let q = service().from("payment_transactions").select("*").order("created_at", { ascending: false });
+      if (filter?.payerId) q = q.eq("payer_id", filter.payerId);
+      if (filter?.payeeCreatorId) q = q.eq("payee_creator_id", filter.payeeCreatorId);
+      if (filter?.kind) q = q.eq("kind", filter.kind);
+      return (check(await q) as Row[]).map(toPaymentTransaction);
+    },
+    async recordWebhookEvent(input): Promise<{ event: WebhookEvent; isNew: boolean }> {
+      // Tek bir atomik "ekle yoksa yok say" — iki eşzamanlı teslimat arasındaki yarış
+      // durumuna karşı da güvenli (check-then-insert değil).
+      const upserted = await service()
+        .from("webhook_events")
+        .upsert({ provider_name: input.providerName, external_event_id: input.externalEventId, payload: input.payload }, { onConflict: "provider_name,external_event_id", ignoreDuplicates: true })
+        .select("*")
+        .maybeSingle();
+      if (upserted.error) throw new DbError(upserted.error.message, upserted.error.code);
+      if (upserted.data) return { event: toWebhookEvent(upserted.data as Row), isNew: true };
+      const { data, error } = await service().from("webhook_events").select("*").eq("provider_name", input.providerName).eq("external_event_id", input.externalEventId).single();
+      if (error) throw new DbError(error.message, error.code);
+      return { event: toWebhookEvent(data as Row), isNew: false };
+    },
+    async markWebhookEventProcessed(id, processedAt): Promise<void> {
+      check(await service().from("webhook_events").update({ processed_at: processedAt }).eq("id", id).select("id"));
     },
     async getLocations() {
       const cities = check(await anon().from("cities").select("*").order("plate")) as Row[];
@@ -657,6 +1361,8 @@ export function createSupabaseRepository(): Repository {
       let q = service().from("moderation_reports").select("*").order("created_at", { ascending: false });
       if (filter?.status) q = q.eq("status", filter.status);
       if (filter?.profileId) q = q.eq("profile_id", filter.profileId);
+      if (filter?.contentType) q = q.eq("content_type", filter.contentType);
+      if (filter?.contentId) q = q.eq("content_id", filter.contentId);
       return (check(await q) as Row[]).map(toReport);
     },
     async getReport(id) {
@@ -669,6 +1375,10 @@ export function createSupabaseRepository(): Repository {
           .from("moderation_reports")
           .insert({
             profile_id: input.profileId,
+            // content_type/content_id verilmezse DB tetikleyicisi (enforce_moderation_content_ref)
+            // 'profile'/profileId'den türetir — bkz. 20261027000005 migration.
+            content_type: input.contentType,
+            content_id: input.contentId,
             category: input.category,
             description: input.description,
             reporter_email: input.reporterEmail,
@@ -684,6 +1394,16 @@ export function createSupabaseRepository(): Repository {
     },
     async countRecentReportsForProfile(profileId, sinceIso) {
       const res = await service().from("moderation_reports").select("id", { count: "exact", head: true }).eq("profile_id", profileId).gte("created_at", sinceIso);
+      if (res.error) throw new Error(res.error.message);
+      return res.count ?? 0;
+    },
+    async countRecentReportsForContent(contentType, contentId, sinceIso) {
+      const res = await service()
+        .from("moderation_reports")
+        .select("id", { count: "exact", head: true })
+        .eq("content_type", contentType)
+        .eq("content_id", contentId)
+        .gte("created_at", sinceIso);
       if (res.error) throw new Error(res.error.message);
       return res.count ?? 0;
     },
@@ -705,17 +1425,34 @@ export function createSupabaseRepository(): Repository {
       let q = service().from("moderation_actions").select("*").order("created_at", { ascending: false });
       if (filter.reportId) q = q.eq("report_id", filter.reportId);
       if (filter.profileId) q = q.eq("profile_id", filter.profileId);
+      if (filter.contentType) q = q.eq("content_type", filter.contentType);
+      if (filter.contentId) q = q.eq("content_id", filter.contentId);
       return (check(await q) as Row[]).map(toAction);
     },
     async addModerationAction(input) {
       const r = check(
         await service()
           .from("moderation_actions")
-          .insert({ report_id: input.reportId, profile_id: input.profileId, type: input.type, note: input.note, actor_id: input.actorId })
+          .insert({
+            report_id: input.reportId,
+            profile_id: input.profileId,
+            content_type: input.contentType,
+            content_id: input.contentId,
+            type: input.type,
+            note: input.note,
+            actor_id: input.actorId,
+          })
           .select()
           .single(),
       ) as Row;
       return toAction(r);
+    },
+    async setContentModerationStatus(contentType, contentId, status) {
+      const table = contentType === "user_profile" ? "user_profiles" : contentType === "post" ? "posts" : contentType === "message" ? "messages" : "media_assets";
+      check(await service().from(table).update({ moderation_status: status }).eq("id", contentId).select("id"));
+    },
+    async updateAppUserStatus(userId, status) {
+      check(await service().from("app_users").update({ status }).eq("id", userId).select("id"));
     },
 
     async listPlans() {
@@ -766,6 +1503,26 @@ export function createSupabaseRepository(): Repository {
           .from("audit_logs")
           .insert({ actor_id: input.actorId, action: input.action, entity_type: input.entityType, entity_id: input.entityId, metadata: input.metadata }),
       );
+    },
+    async addSecurityEvent(input) {
+      check(
+        await service()
+          .from("security_events")
+          .insert({ event_type: input.eventType, actor_type: input.actorType, actor_id: input.actorId, metadata: input.metadata }),
+      );
+    },
+    async listSecurityEvents({ limit, actorId }) {
+      let q = service().from("security_events").select("*").order("created_at", { ascending: false }).limit(limit);
+      if (actorId) q = q.eq("actor_id", actorId);
+      const rows = check(await q) as Row[];
+      return rows.map((r) => ({
+        id: String(r.id),
+        eventType: String(r.event_type),
+        actorType: String(r.actor_type) as "user" | "admin" | "anon" | "system",
+        actorId: r.actor_id === null ? null : String(r.actor_id),
+        metadata: (r.metadata ?? {}) as Record<string, unknown>,
+        createdAt: String(r.created_at),
+      }));
     },
     async listAuditLogs({ limit, entityId }) {
       let q = service().from("audit_logs").select("*").order("created_at", { ascending: false }).limit(limit);

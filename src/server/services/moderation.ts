@@ -76,6 +76,9 @@ export async function submitReport(raw: unknown, fingerprint: string): Promise<{
 async function mustGetReport(id: string): Promise<ModerationReport> {
   const r = await getRepository().getReport(id);
   if (!r) throw new DomainError("Şikâyet bulunamadı", "not_found");
+  // Bu modül yalnızca admin-küratörlü keşif ürününün profil şikâyetlerini işler; Modül B/C
+  // içeriği src/server/services/content-moderation.ts'teki genelleştirilmiş triyaj üzerinden yönetilir.
+  if (r.contentType !== "profile") throw new DomainError("Bu şikâyet bir profil için değil; genelleştirilmiş triyaj kullanın", "wrong_content_type");
   return r;
 }
 
@@ -101,7 +104,7 @@ export async function resolveReport(actor: Admin, id: string, decision: "remove"
   const repo = getRepository();
   const report = await mustGetReport(id);
   if (report.status === "resolved" || report.status === "rejected") throw new DomainError("Şikâyet zaten sonuçlandırılmış");
-  const profile = await repo.getProfile(report.profileId);
+  const profile = await repo.getProfile(report.profileId!);
   if (decision === "remove") {
     if (profile && profile.status === "published") await repo.updateProfile(profile.id, { status: "unpublished" });
     if (profile) await repo.updateProfile(profile.id, { moderationStatus: "rejected", moderationNote: note, moderatedBy: actor.id, moderatedAt: new Date().toISOString() });

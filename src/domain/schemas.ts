@@ -12,14 +12,15 @@ import {
   VERIFICATION_TYPES,
 } from "./types";
 
-const trimmed = (min: number, max: number, label: string) =>
+/** Diğer modüllerin de kullanması için dışa açık — bkz. src/server/services/social.ts, content-moderation.ts. */
+export const trimmed = (min: number, max: number, label: string) =>
   z
     .string()
     .trim()
     .min(min, `${label} en az ${min} karakter olmalı`)
     .max(max, `${label} en fazla ${max} karakter olabilir`);
 
-const noHtml = (s: string) => !/[<>]/.test(s);
+export const noHtml = (s: string) => !/[<>]/.test(s);
 
 export const profileInputSchema = z.object({
   nickname: trimmed(2, 40, "Takma ad")

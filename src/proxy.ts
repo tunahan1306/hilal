@@ -9,6 +9,8 @@ import { validLocation, validPublicProfile } from "@/server/location-path";
 const LANG_COOKIE = "hilal_lang";
 /** Yaş kapısının arkasındaki rotalar (profil içeriği gösterenler). */
 const GATED = new Set<ParsedPath["route"]>(["home", "explore", "location", "profile"]);
+/** Modül A — son kullanıcı hesap alanı: admin gibi dil önek mantığının dışında, henüz yerelleştirilmemiş statik rotalar. */
+const USER_AREA_PATHS = ["/giris", "/kayit", "/hesap", "/dogrula", "/kullanici"];
 
 /**
  * Proxy:
@@ -22,6 +24,7 @@ export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   if (pathname.startsWith("/admin")) return adminProxy(request);
+  if (USER_AREA_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return NextResponse.next();
 
   const media = pathname.startsWith("/demo/") || pathname.startsWith("/media/") || pathname === "/_next/image";
   if (media) {

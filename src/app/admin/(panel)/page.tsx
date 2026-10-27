@@ -5,7 +5,8 @@ import { PageHeader } from "@/components/admin/page-header";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { ViewsChart } from "@/components/admin/views-chart";
 import { isExpiringSoon } from "@/domain/subscriptions";
-import { CRITICAL_REPORT_CATEGORIES, PRIVACY_REQUEST_LABELS, REPORT_CATEGORY_LABELS } from "@/domain/types";
+import { isCriticalReport, PRIVACY_REQUEST_LABELS, REPORT_CATEGORY_LABELS } from "@/domain/types";
+import { MODERATION_CONTENT_TYPE_LABELS } from "@/domain/moderation";
 import { formatDate, formatNumber } from "@/lib/site";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
@@ -33,10 +34,11 @@ export default async function DashboardPage() {
     ...reports
       .filter((r) => ["open", "in_review", "appealed"].includes(r.status))
       .map((r) => {
-        const critical = CRITICAL_REPORT_CATEGORIES.includes(r.category);
+        const critical = isCriticalReport(r);
         return {
           key: r.id, priority: critical ? 0 : 2, kind: critical ? "Kritik şikâyet" : "Şikâyet",
-          title: nameOf.get(r.profileId) ?? "Silinmiş profil", detail: REPORT_CATEGORY_LABELS[r.category],
+          title: r.contentType === "profile" ? (nameOf.get(r.profileId ?? "") ?? "Silinmiş profil") : `${MODERATION_CONTENT_TYPE_LABELS[r.contentType]} #${r.contentId.slice(0, 8)}`,
+          detail: REPORT_CATEGORY_LABELS[r.category],
           href: `/admin/sikayetler/${r.id}`, tone: critical ? "danger" : "warning", at: r.createdAt,
         } satisfies QueueItem;
       }),

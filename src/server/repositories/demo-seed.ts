@@ -1,5 +1,11 @@
 import "server-only";
 import type { CountryDecision } from "@/domain/country-policy";
+import type { CountryFeatureDecision } from "@/domain/policy";
+import type { AgeVerificationCheck, AppUser, ConsentRecord, UserRole } from "@/domain/identity";
+import type { Conversation, ConversationParticipant, Follow, MediaAsset, Message, Notification, Post, UserBlock, UserProfile } from "@/domain/social";
+import type { ContentRights, CreatorAccount, CreatorPayout, CreatorSubscription, CreatorSubscriptionTier } from "@/domain/creator";
+import type { PaymentTransaction, WebhookEvent } from "@/domain/billing";
+import type { PasswordHash } from "@/server/auth/password";
 import { DEFAULT_PLANS } from "@/domain/subscriptions";
 import { docFromPlainText, docToPlainText, type RichDoc } from "@/domain/rich-text";
 import { slugifyTr } from "@/domain/text";
@@ -141,6 +147,7 @@ export type DemoStore = {
   plans: MembershipPlan[];
   subscriptions: Subscription[];
   audit: import("@/domain/types").AuditLog[];
+  securityEvents: (import("@/domain/types").NewSecurityEvent & { id: string; createdAt: string })[];
   privacy: import("@/domain/types").PrivacyRequest[];
   contact: import("@/domain/types").ContactMessage[];
   seo: SeoPage[];
@@ -149,6 +156,38 @@ export type DemoStore = {
   privateFiles: Map<string, { data: Buffer; contentType: string }>;
   /** Ülke yayın kararları (yalnızca eklenir). */
   countryDecisions: CountryDecision[];
+  /** Modül G — ülke×özellik politika kararları (yalnızca eklenir; varsayılan boş = fail-closed). */
+  featureDecisions: CountryFeatureDecision[];
+  /** Modül A — son kullanıcı hesapları (admins'ten AYRI). */
+  users: AppUser[];
+  /** Yalnızca demo modu: Supabase Auth olmadığında şifre karşılaştırması için (kullanıcı id -> hash). */
+  userCredentials: Map<string, PasswordHash>;
+  /** Yalnızca demo modu: gerçek e-posta gönderimi yoktur, doğrulama jetonu bellekte tutulur. */
+  emailVerificationTokens: Map<string, string>;
+  consentRecords: ConsentRecord[];
+  ageVerificationChecks: AgeVerificationCheck[];
+  /** Modül B — sosyal platform (admin-küratörlü profiles'tan AYRI). */
+  userProfiles: UserProfile[];
+  follows: Follow[];
+  userBlocks: UserBlock[];
+  conversations: Conversation[];
+  conversationParticipants: ConversationParticipant[];
+  messages: Message[];
+  notifications: Notification[];
+  /** Modül A — kullanıcı rolleri (creator onayıyla senkronize edilir, bkz. memory.ts updateCreatorAccountStatus). */
+  userRoles: { userId: string; role: UserRole }[];
+  /** Modül B kapanışı + Modül C — posts/media_assets Modül C'nin content_rights'ıyla birlikte ele alınmıştı. */
+  mediaAssets: MediaAsset[];
+  posts: Post[];
+  postMedia: { postId: string; mediaAssetId: string }[];
+  creatorAccounts: CreatorAccount[];
+  contentRights: ContentRights[];
+  creatorSubscriptionTiers: CreatorSubscriptionTier[];
+  creatorSubscriptions: CreatorSubscription[];
+  creatorPayouts: CreatorPayout[];
+  /** Modül F — yalnızca şema; gerçek sağlayıcı olmadan hiçbir satır gerçek bir satın almayla oluşamaz. */
+  paymentTransactions: PaymentTransaction[];
+  webhookEvents: WebhookEvent[];
   counter: number;
 };
 
@@ -342,6 +381,8 @@ export function createDemoStore(now: Date): DemoStore {
     {
       id: id("rep", 1),
       profileId: profiles[3].id,
+      contentType: "profile",
+      contentId: profiles[3].id,
       category: "fake_profile",
       description: "Bu profilin başka bir sitedeki fotoğrafları kullandığını düşünüyorum. (demo)",
       reporterEmail: null,
@@ -354,6 +395,8 @@ export function createDemoStore(now: Date): DemoStore {
     {
       id: id("rep", 2),
       profileId: profiles[8].id,
+      contentType: "profile",
+      contentId: profiles[8].id,
       category: "other",
       description: "Profil açıklamasında yazım hatası var, bilgi amaçlı. (demo)",
       reporterEmail: null,
@@ -415,6 +458,32 @@ export function createDemoStore(now: Date): DemoStore {
       decidedBy: adminId,
       decidedAt: iso(-30),
     }],
+    // Yeni modüllerin (B/C/F) hiçbiri için henüz bir karar yok — demo verisinde de fail-closed.
+    featureDecisions: [],
+    // Modül A: demo verisinde henüz kayıtlı son kullanıcı yok; kayıt akışıyla eklenir.
+    users: [],
+    userCredentials: new Map(),
+    emailVerificationTokens: new Map(),
+    consentRecords: [],
+    ageVerificationChecks: [],
+    userProfiles: [],
+    follows: [],
+    userBlocks: [],
+    conversations: [],
+    conversationParticipants: [],
+    messages: [],
+    notifications: [],
+    userRoles: [],
+    mediaAssets: [],
+    posts: [],
+    postMedia: [],
+    creatorAccounts: [],
+    contentRights: [],
+    creatorSubscriptionTiers: [],
+    creatorSubscriptions: [],
+    creatorPayouts: [],
+    paymentTransactions: [],
+    webhookEvents: [],
     interests,
     profiles,
     media,
@@ -425,6 +494,7 @@ export function createDemoStore(now: Date): DemoStore {
     plans,
     subscriptions,
     audit: [],
+    securityEvents: [],
     privacy: [],
     contact: [],
     seo,

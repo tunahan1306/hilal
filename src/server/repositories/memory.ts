@@ -4,6 +4,11 @@ import { getProvince, listProvinces, listDistricts } from "@/domain/locations";
 import { toPublicProfile } from "@/domain/projection";
 import { countryOfPlate, type CountryCode } from "@/domain/countries";
 import { defaultPolicies, isPublishable, type CountryPolicy } from "@/domain/country-policy";
+import { defaultFeaturePolicies, isFeaturePermitted, type CountryFeaturePolicy, type PolicyFeature } from "@/domain/policy";
+import type { AppUser } from "@/domain/identity";
+import type { MediaAsset, PublicUserProfile } from "@/domain/social";
+import type { ContentRights, CreatorAccount, CreatorSubscriptionTier } from "@/domain/creator";
+import { hashPassword, verifyPassword } from "@/server/auth/password";
 import { sideDistricts } from "@/domain/istanbul";
 import { effectiveStatus, isExpiringSoon } from "@/domain/subscriptions";
 import type { Profile, PublicProfile } from "@/domain/types";
@@ -38,11 +43,27 @@ function must<T>(v: T | undefined | null, what: string): T {
 
 const clone = <T>(v: T): T => structuredClone(v);
 
+/** addUserRole ile aynı idempotent mantık — gerçek DB'deki on conflict do nothing'in bellek karşılığı. */
+function grantUserRole(userId: string, role: "member" | "creator"): void {
+  const s = store();
+  if (!s.userRoles.some((r) => r.userId === userId && r.role === role)) s.userRoles.push({ userId, role });
+}
+
 function countryPolicies(): CountryPolicy[] {
   const decisions = store().countryDecisions;
   return defaultPolicies().map((base) => {
     const last = decisions.filter((d) => d.countryCode === base.code).sort((a, b) => b.decidedAt.localeCompare(a.decidedAt))[0];
     return last ? { code: base.code, status: last.status, reviewDue: last.reviewDue, decisionId: last.id } : base;
+  });
+}
+
+function countryFeaturePolicies(): CountryFeaturePolicy[] {
+  const decisions = store().featureDecisions;
+  return defaultFeaturePolicies().map((base) => {
+    // decidedAt milisaniye çözünürlüğünde olduğundan (iki karar aynı ms içinde eklenebilir),
+    // "en son karar" eklenme sırasına göre belirlenir (string sıralamaya göre değil).
+    const last = decisions.findLast((d) => d.countryCode === base.countryCode && d.feature === base.feature);
+    return last ? { countryCode: base.countryCode, feature: base.feature, status: last.status, reviewDue: last.reviewDue, decisionId: last.id } : base;
   });
 }
 
@@ -94,6 +115,407 @@ export function createMemoryRepository(): Repository {
       // Veritabanında bu kaydı apply_country_decision tetikleyicisi yazar.
       s.audit.push({ id: nextId("aud"), actorId: input.decidedBy, action: "country.publication_decision", entityType: "country", entityId: input.countryCode, metadata: { decision_id: row.id, status: row.status, review_due: row.reviewDue, approver_name: row.approverName }, createdAt: row.decidedAt });
       return clone(row);
+    },
+    async listCountryFeaturePolicies() {
+      return clone(countryFeaturePolicies());
+    },
+    async listCountryFeatureDecisions(country?: CountryCode, feature?: PolicyFeature) {
+      return clone(
+        store()
+          .featureDecisions.filter((d) => (!country || d.countryCode === country) && (!feature || d.feature === feature))
+          .sort((a, b) => b.decidedAt.localeCompare(a.decidedAt)),
+      );
+    },
+    async addCountryFeatureDecision(input) {
+      const s = store();
+      const row = { ...input, id: nextId("fdec"), decidedAt: new Date().toISOString() };
+      s.featureDecisions.push(row);
+      // Veritabanında bu kaydı apply_country_feature_decision tetikleyicisi yazar.
+      s.audit.push({
+        id: nextId("aud"),
+        actorId: input.decidedBy,
+        action: "country_feature.policy_decision",
+        entityType: "country_feature_policy",
+        entityId: `${input.countryCode}:${input.feature}`,
+        metadata: { decision_id: row.id, country_code: row.countryCode, feature_code: row.feature, status: row.status, review_due: row.reviewDue, approver_name: row.approverName },
+        createdAt: row.decidedAt,
+      });
+      return clone(row);
+    },
+    async createAppUser(input) {
+      const s = store();
+      const now = new Date().toISOString();
+      const row: AppUser = { id: input.id, email: input.email, emailVerifiedAt: null, status: "active", createdAt: now, updatedAt: now };
+      s.users.push(row);
+      return clone(row);
+    },
+    async getAppUserById(id) {
+      return clone(store().users.find((u) => u.id === id) ?? null);
+    },
+    async getAppUserByEmail(email) {
+      return clone(store().users.find((u) => u.email.toLowerCase() === email.toLowerCase()) ?? null);
+    },
+    async markAppUserEmailVerified(id, verifiedAt) {
+      const u = store().users.find((x) => x.id === id);
+      if (u) {
+        u.emailVerifiedAt = verifiedAt;
+        u.updatedAt = verifiedAt;
+      }
+    },
+    async addConsentRecord(input) {
+      const s = store();
+      const row = { ...input, id: nextId("cons"), grantedAt: new Date().toISOString(), revokedAt: input.revokedAt ?? null, createdAt: new Date().toISOString() };
+      s.consentRecords.push(row);
+      return clone(row);
+    },
+    async listConsentRecords(userId) {
+      return clone(store().consentRecords.filter((c) => c.userId === userId));
+    },
+    async addAgeVerificationCheck(input) {
+      const s = store();
+      const row = { ...input, id: nextId("avc"), createdAt: new Date().toISOString() };
+      s.ageVerificationChecks.push(row);
+      return clone(row);
+    },
+    async listAgeVerificationChecks(userId) {
+      return clone(store().ageVerificationChecks.filter((c) => c.userId === userId));
+    },
+    async createUserProfile(input) {
+      const s = store();
+      const now = new Date().toISOString();
+      const row = { ...input, id: nextId("uprof"), moderationStatus: "pending" as const, createdAt: now, updatedAt: now };
+      s.userProfiles.push(row);
+      return clone(row);
+    },
+    async getUserProfileByUserId(userId) {
+      return clone(store().userProfiles.find((p) => p.userId === userId) ?? null);
+    },
+    async getUserProfileByHandle(handle) {
+      return clone(store().userProfiles.find((p) => p.handle.toLowerCase() === handle.toLowerCase()) ?? null);
+    },
+    async getUserProfileById(id) {
+      return clone(store().userProfiles.find((p) => p.id === id) ?? null);
+    },
+    async updateUserProfile(userId, patch) {
+      const p = must(
+        store().userProfiles.find((x) => x.userId === userId),
+        "Profil",
+      );
+      Object.assign(p, patch, { updatedAt: new Date().toISOString() });
+      return clone(p);
+    },
+    async getPublicUserProfile(userId): Promise<PublicUserProfile | null> {
+      const s = store();
+      const p = s.userProfiles.find((x) => x.userId === userId);
+      if (!p || p.moderationStatus !== "approved" || p.visibility !== "public") return null;
+      // Hesabı askıya alınmış (bkz. Modül E suspend_account triyajı) kullanıcının profili
+      // kamuya kapalı kalır — yalnızca girişi engellemek yetmez.
+      const owner = s.users.find((u) => u.id === userId);
+      if (!owner || owner.status !== "active") return null;
+      const age = Math.floor((Date.now() - new Date(p.birthDate).getTime()) / (365.2425 * 86_400_000));
+      if (age < 18) return null;
+      const policy = countryFeaturePolicies().find((x) => x.countryCode === p.countryCode && x.feature === "social_profiles");
+      if (!isFeaturePermitted(policy)) return null;
+      const now = new Date();
+      const verified = s.ageVerificationChecks.some(
+        (v) => v.userId === userId && v.status === "approved" && (!v.expiresAt || new Date(v.expiresAt) >= now),
+      );
+      if (!verified) return null;
+      return clone({ id: p.id, userId: p.userId, handle: p.handle, displayName: p.displayName, bio: p.bio, age, countryCode: p.countryCode, createdAt: p.createdAt });
+    },
+    async addFollow(followerId, followeeId) {
+      const s = store();
+      const row = { followerId, followeeId, createdAt: new Date().toISOString() };
+      s.follows.push(row);
+      return clone(row);
+    },
+    async removeFollow(followerId, followeeId) {
+      const s = store();
+      s.follows = s.follows.filter((f) => !(f.followerId === followerId && f.followeeId === followeeId));
+    },
+    async listFollowing(userId) {
+      return store()
+        .follows.filter((f) => f.followerId === userId)
+        .map((f) => f.followeeId);
+    },
+    async listFollowers(userId) {
+      return store()
+        .follows.filter((f) => f.followeeId === userId)
+        .map((f) => f.followerId);
+    },
+    async addBlock(blockerId, blockedId) {
+      const s = store();
+      const row = { blockerId, blockedId, createdAt: new Date().toISOString() };
+      s.userBlocks.push(row);
+      return clone(row);
+    },
+    async removeBlock(blockerId, blockedId) {
+      const s = store();
+      s.userBlocks = s.userBlocks.filter((b) => !(b.blockerId === blockerId && b.blockedId === blockedId));
+    },
+    async listBlocksInvolving(userId) {
+      return clone(store().userBlocks.filter((b) => b.blockerId === userId || b.blockedId === userId));
+    },
+    async startOrGetConversation(userA, userB) {
+      const s = store();
+      const existing = s.conversations.find((c) => {
+        const participants = s.conversationParticipants.filter((p) => p.conversationId === c.id).map((p) => p.userId);
+        return participants.length === 2 && participants.includes(userA) && participants.includes(userB);
+      });
+      if (existing) return clone(existing);
+      const now = new Date().toISOString();
+      const conversation = { id: nextId("conv"), createdAt: now };
+      s.conversations.push(conversation);
+      s.conversationParticipants.push(
+        { conversationId: conversation.id, userId: userA, joinedAt: now, lastReadAt: null },
+        { conversationId: conversation.id, userId: userB, joinedAt: now, lastReadAt: null },
+      );
+      return clone(conversation);
+    },
+    async listConversationParticipants(conversationId) {
+      return store()
+        .conversationParticipants.filter((p) => p.conversationId === conversationId)
+        .map((p) => p.userId);
+    },
+    async addMessage(input) {
+      const s = store();
+      const row = { ...input, id: nextId("msg"), createdAt: new Date().toISOString(), deletedAt: null, moderationStatus: "approved" as const };
+      s.messages.push(row);
+      return clone(row);
+    },
+    async listMessages(conversationId, { limit }) {
+      // Yalnızca kullanıcı tarafı okuma yolu: silinmiş veya moderasyonla reddedilmiş mesaj
+      // katılımcılara hiç gösterilmez (admin triyajı getMessageById'yi kullanır, burayı değil).
+      return clone(
+        store()
+          .messages.filter((m) => m.conversationId === conversationId && m.deletedAt === null && m.moderationStatus !== "rejected")
+          .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+          .slice(-limit),
+      );
+    },
+    async getMessageById(id) {
+      return clone(store().messages.find((m) => m.id === id) ?? null);
+    },
+    async addNotification(input) {
+      const s = store();
+      const row = { ...input, id: nextId("notif"), readAt: null, createdAt: new Date().toISOString() };
+      s.notifications.push(row);
+      return clone(row);
+    },
+    async listNotifications(userId) {
+      return clone(
+        store()
+          .notifications.filter((n) => n.userId === userId)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      );
+    },
+    async markNotificationRead(id, userId) {
+      const n = store().notifications.find((x) => x.id === id && x.userId === userId);
+      if (n) n.readAt = new Date().toISOString();
+    },
+    async createMediaAsset(input) {
+      const s = store();
+      const id = nextId("media");
+      const path = `user-media/${input.ownerId}/${id}.webp`;
+      s.privateFiles.set(path, { data: input.data, contentType: input.contentType });
+      const row: MediaAsset = {
+        id,
+        ownerId: input.ownerId,
+        storagePath: path,
+        url: `/${path}`,
+        kind: input.kind,
+        width: input.width,
+        height: input.height,
+        durationSeconds: input.durationSeconds,
+        status: "ready",
+        rightsConfirmed: false,
+        moderationStatus: "pending",
+        createdAt: new Date().toISOString(),
+      };
+      s.mediaAssets.push(row);
+      return clone(row);
+    },
+    async getMediaAsset(id) {
+      return clone(store().mediaAssets.find((m) => m.id === id) ?? null);
+    },
+    async listMediaAssetsByOwner(ownerId) {
+      return clone(store().mediaAssets.filter((m) => m.ownerId === ownerId));
+    },
+    async createPost(input) {
+      const s = store();
+      const now = new Date().toISOString();
+      const row = { id: nextId("post"), authorId: input.authorId, body: input.body, visibility: input.visibility, paid: input.paid, moderationStatus: "pending" as const, createdAt: now, updatedAt: now };
+      s.posts.push(row);
+      for (const mediaAssetId of input.mediaAssetIds) s.postMedia.push({ postId: row.id, mediaAssetId });
+      return clone(row);
+    },
+    async getPost(id) {
+      return clone(store().posts.find((p) => p.id === id) ?? null);
+    },
+    async listPostsByAuthor(authorId) {
+      return clone(
+        store()
+          .posts.filter((p) => p.authorId === authorId)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      );
+    },
+    async listPostMediaIds(postId) {
+      return store()
+        .postMedia.filter((pm) => pm.postId === postId)
+        .map((pm) => pm.mediaAssetId);
+    },
+    async listPublicPostsByAuthor(authorId) {
+      const s = store();
+      const profile = s.userProfiles.find((p) => p.userId === authorId);
+      if (!profile || profile.moderationStatus !== "approved") return [];
+      // Hesabı askıya alınmış yazarın gönderileri kamuya kapalı kalır (user_profiles_public ile aynı gerekçe).
+      const author = s.users.find((u) => u.id === authorId);
+      if (!author || author.status !== "active") return [];
+      const policy = countryFeaturePolicies().find((x) => x.countryCode === profile.countryCode && x.feature === "digital_content");
+      if (!isFeaturePermitted(policy)) return [];
+      const rightsReviewed = (mediaAssetId: string) => s.contentRights.some((r) => r.mediaAssetId === mediaAssetId && r.reviewedAt !== null);
+      const mediaRejected = (mediaAssetId: string) => s.mediaAssets.some((m) => m.id === mediaAssetId && m.moderationStatus === "rejected");
+      return clone(
+        s.posts
+          .filter((p) => p.authorId === authorId && p.moderationStatus === "approved" && p.visibility === "public")
+          .filter((p) => {
+            const mediaIds = s.postMedia.filter((pm) => pm.postId === p.id).map((pm) => pm.mediaAssetId);
+            // Tek bir medyası reddedilmiş bir gönderi (ücretli olsun olmasın) hiç görünmez —
+            // triageContentReport'un media_asset'e özel "remove_content" eylemi artık etkili olur.
+            if (mediaIds.some(mediaRejected)) return false;
+            if (!p.paid) return true;
+            // Sıfır medyalı ücretli gönderi hak incelemesi kapısını hiç görmeden geçemez (vacuous-true savunması).
+            return mediaIds.length > 0 && mediaIds.every(rightsReviewed);
+          })
+          .map((p) => ({ id: p.id, authorId: p.authorId, body: p.body, paid: p.paid, createdAt: p.createdAt }))
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      );
+    },
+    async createCreatorAccount(input) {
+      const s = store();
+      const row: CreatorAccount = { id: nextId("creator"), userId: input.userId, legalName: input.legalName, countryCode: input.countryCode, status: "pending", approvedBy: null, approvedAt: null, createdAt: new Date().toISOString() };
+      s.creatorAccounts.push(row);
+      return clone(row);
+    },
+    async getCreatorAccountByUserId(userId) {
+      return clone(store().creatorAccounts.find((c) => c.userId === userId) ?? null);
+    },
+    async getCreatorAccountById(id) {
+      return clone(store().creatorAccounts.find((c) => c.id === id) ?? null);
+    },
+    async listCreatorAccounts(filter) {
+      return clone(store().creatorAccounts.filter((c) => !filter?.status || c.status === filter.status));
+    },
+    async updateCreatorAccountStatus(id, status, actor) {
+      const c = must(
+        store().creatorAccounts.find((x) => x.id === id),
+        "Creator hesabı",
+      );
+      c.status = status;
+      c.approvedBy = actor.approvedBy;
+      c.approvedAt = actor.approvedAt;
+      // Veritabanında bu satırı creator_accounts_sync_role tetikleyicisi yazar.
+      if (status === "active") grantUserRole(c.userId, "creator");
+      return clone(c);
+    },
+    async addUserRole(userId, role) {
+      grantUserRole(userId, role);
+    },
+    async listUserRoles(userId) {
+      return store()
+        .userRoles.filter((r) => r.userId === userId)
+        .map((r) => r.role);
+    },
+    async addContentRights(input) {
+      const s = store();
+      const row: ContentRights = { id: nextId("rights"), mediaAssetId: input.mediaAssetId, rightsType: input.rightsType, evidencePath: input.evidencePath, confirmedAt: new Date().toISOString(), reviewedBy: null, reviewedAt: null };
+      s.contentRights.push(row);
+      return clone(row);
+    },
+    async getContentRightsByMediaAsset(mediaAssetId) {
+      return clone(store().contentRights.find((r) => r.mediaAssetId === mediaAssetId) ?? null);
+    },
+    async listContentRightsForMediaAssets(mediaAssetIds) {
+      return clone(store().contentRights.filter((r) => mediaAssetIds.includes(r.mediaAssetId)));
+    },
+    async reviewContentRights(id, reviewedBy, reviewedAt) {
+      const r = must(
+        store().contentRights.find((x) => x.id === id),
+        "Hak kaydı",
+      );
+      r.reviewedBy = reviewedBy;
+      r.reviewedAt = reviewedAt;
+      return clone(r);
+    },
+    async createSubscriptionTier(input) {
+      const s = store();
+      const row: CreatorSubscriptionTier = { id: nextId("tier"), creatorId: input.creatorId, name: input.name, priceAmount: input.priceAmount, priceCurrency: input.priceCurrency, description: input.description, active: true, createdAt: new Date().toISOString() };
+      s.creatorSubscriptionTiers.push(row);
+      return clone(row);
+    },
+    async listSubscriptionTiersByCreator(creatorId) {
+      return clone(store().creatorSubscriptionTiers.filter((t) => t.creatorId === creatorId));
+    },
+    async getSubscriptionTier(id) {
+      return clone(store().creatorSubscriptionTiers.find((t) => t.id === id) ?? null);
+    },
+    async addCreatorSubscription(input) {
+      const s = store();
+      const row = { ...input, id: nextId("csub"), createdAt: new Date().toISOString() };
+      s.creatorSubscriptions.push(row);
+      return clone(row);
+    },
+    async listCreatorSubscriptionsBySubscriber(subscriberId) {
+      return clone(store().creatorSubscriptions.filter((x) => x.subscriberId === subscriberId));
+    },
+    async getActiveSubscription(subscriberId, tierId) {
+      return clone(store().creatorSubscriptions.find((x) => x.subscriberId === subscriberId && x.tierId === tierId && x.status === "active") ?? null);
+    },
+    async addCreatorPayout(input) {
+      const s = store();
+      const row = { ...input, id: nextId("payout"), createdAt: new Date().toISOString() };
+      s.creatorPayouts.push(row);
+      return clone(row);
+    },
+    async listCreatorPayouts(creatorId) {
+      return clone(store().creatorPayouts.filter((p) => p.creatorId === creatorId));
+    },
+    async addPaymentTransaction(input) {
+      const s = store();
+      if (s.paymentTransactions.some((t) => t.idempotencyKey === input.idempotencyKey)) {
+        throw new Error("addPaymentTransaction: idempotencyKey zaten kullanılmış");
+      }
+      const row = { ...input, id: nextId("txn"), createdAt: new Date().toISOString() };
+      s.paymentTransactions.push(row);
+      return clone(row);
+    },
+    async getPaymentTransactionByIdempotencyKey(key) {
+      return clone(store().paymentTransactions.find((t) => t.idempotencyKey === key) ?? null);
+    },
+    async listPaymentTransactions(filter) {
+      return clone(
+        store().paymentTransactions.filter(
+          (t) =>
+            (!filter?.payerId || t.payerId === filter.payerId) &&
+            (!filter?.payeeCreatorId || t.payeeCreatorId === filter.payeeCreatorId) &&
+            (!filter?.kind || t.kind === filter.kind),
+        ),
+      ).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+    async recordWebhookEvent(input) {
+      const s = store();
+      const existing = s.webhookEvents.find((e) => e.providerName === input.providerName && e.externalEventId === input.externalEventId);
+      if (existing) return { event: clone(existing), isNew: false };
+      const row = { ...input, id: nextId("whe"), processedAt: null, createdAt: new Date().toISOString() };
+      s.webhookEvents.push(row);
+      return { event: clone(row), isNew: true };
+    },
+    async markWebhookEventProcessed(id, processedAt) {
+      const e = must(
+        store().webhookEvents.find((x) => x.id === id),
+        "Webhook olayı",
+      );
+      e.processedAt = processedAt;
     },
     async getLocations() { const provinces = listProvinces(); return { provinces, districts: provinces.flatMap((p) => listDistricts(p.plate)) }; },
 
@@ -277,7 +699,11 @@ export function createMemoryRepository(): Repository {
     async listReports(filter) {
       return clone(
         store().reports.filter(
-          (r) => (!filter?.status || r.status === filter.status) && (!filter?.profileId || r.profileId === filter.profileId),
+          (r) =>
+            (!filter?.status || r.status === filter.status) &&
+            (!filter?.profileId || r.profileId === filter.profileId) &&
+            (!filter?.contentType || r.contentType === filter.contentType) &&
+            (!filter?.contentId || r.contentId === filter.contentId),
         ),
       ).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
@@ -286,7 +712,12 @@ export function createMemoryRepository(): Repository {
     },
     async createReport(input) {
       const now = new Date().toISOString();
-      const row = { ...input, id: nextId("rep"), status: "open" as const, resolution: null, createdAt: now, updatedAt: now };
+      // Admin-küratörlü ürünün mevcut çağrı şekli (yalnızca profileId) burada 'profile'/profileId'ye
+      // türetilir — enforce_moderation_content_ref() tetikleyicisiyle aynı garanti, uygulama katmanında.
+      const contentType = input.contentType ?? "profile";
+      const contentId = input.contentId ?? input.profileId;
+      if (!contentId) throw new Error("createReport: contentId veya profileId gerekli");
+      const row = { ...input, contentType, contentId, id: nextId("rep"), status: "open" as const, resolution: null, createdAt: now, updatedAt: now };
       store().reports.push(row);
       return clone(row);
     },
@@ -298,6 +729,9 @@ export function createMemoryRepository(): Repository {
     async countRecentReportsForProfile(profileId, sinceIso) {
       return store().reports.filter((r) => r.profileId === profileId && r.createdAt >= sinceIso).length;
     },
+    async countRecentReportsForContent(contentType, contentId, sinceIso) {
+      return store().reports.filter((r) => r.contentType === contentType && r.contentId === contentId && r.createdAt >= sinceIso).length;
+    },
     async countRecentModerationActions(type, sinceIso) {
       return store().actions.filter((a) => a.type === type && a.createdAt >= sinceIso).length;
     },
@@ -307,14 +741,42 @@ export function createMemoryRepository(): Repository {
     async listModerationActions(filter) {
       return clone(
         store().actions.filter(
-          (a) => (!filter.reportId || a.reportId === filter.reportId) && (!filter.profileId || a.profileId === filter.profileId),
+          (a) =>
+            (!filter.reportId || a.reportId === filter.reportId) &&
+            (!filter.profileId || a.profileId === filter.profileId) &&
+            (!filter.contentType || a.contentType === filter.contentType) &&
+            (!filter.contentId || a.contentId === filter.contentId),
         ),
       ).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
     async addModerationAction(input) {
-      const row = { ...input, id: nextId("act"), createdAt: new Date().toISOString() };
+      const contentType = input.contentType ?? "profile";
+      const contentId = input.contentId ?? input.profileId;
+      if (!contentId) throw new Error("addModerationAction: contentId veya profileId gerekli");
+      const row = { ...input, contentType, contentId, id: nextId("act"), createdAt: new Date().toISOString() };
       store().actions.push(row);
       return clone(row);
+    },
+    async setContentModerationStatus(contentType, contentId, status) {
+      const s = store();
+      if (contentType === "user_profile") {
+        const p = must(s.userProfiles.find((x) => x.id === contentId), "Profil");
+        p.moderationStatus = status;
+      } else if (contentType === "post") {
+        const p = must(s.posts.find((x) => x.id === contentId), "Gönderi");
+        p.moderationStatus = status;
+      } else if (contentType === "media_asset") {
+        const m = must(s.mediaAssets.find((x) => x.id === contentId), "Medya");
+        m.moderationStatus = status;
+      } else if (contentType === "message") {
+        const m = must(s.messages.find((x) => x.id === contentId), "Mesaj");
+        m.moderationStatus = status;
+      }
+    },
+    async updateAppUserStatus(userId, status) {
+      const u = must(store().users.find((x) => x.id === userId), "Kullanıcı");
+      u.status = status;
+      u.updatedAt = new Date().toISOString();
     },
 
     async listPlans() {
@@ -341,6 +803,17 @@ export function createMemoryRepository(): Repository {
 
     async addAuditLog(input) {
       store().audit.push({ ...input, id: nextId("aud"), createdAt: new Date().toISOString() });
+    },
+    async addSecurityEvent(input) {
+      store().securityEvents.push({ ...input, id: nextId("sev"), createdAt: new Date().toISOString() });
+    },
+    async listSecurityEvents({ limit, actorId }) {
+      return clone(
+        store()
+          .securityEvents.filter((e) => !actorId || e.actorId === actorId)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+          .slice(0, limit),
+      );
     },
     async listAuditLogs({ limit, entityId }) {
       return clone(store().audit.filter((a) => !entityId || a.entityId === entityId))
@@ -474,6 +947,34 @@ export function createMemoryRepository(): Repository {
       return clone(store().admins.find((a) => a.email.toLowerCase() === email.toLowerCase()) ?? null);
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Modül A — demo modu şifre saklama. Yalnızca Supabase yapılandırılmadığında
+// kullanılır (Supabase modunda şifreyi Supabase Auth saklar; bu fonksiyonlar hiç
+// çağrılmaz). Admin girişinin demo-credentials.ts'teki tek sabit hesabından farklı
+// olarak burada gerçekten çok kullanıcılı, kendi kendine kayıt olunan bir mağaza var.
+export function setDemoUserPassword(userId: string, password: string): void {
+  store().userCredentials.set(userId, hashPassword(password));
+}
+
+export function verifyDemoUserPassword(userId: string, password: string): boolean {
+  const stored = store().userCredentials.get(userId);
+  return Boolean(stored) && verifyPassword(password, stored!);
+}
+
+/** Demo modunda gerçek e-posta gönderilmez; jeton burada tutulur ve doğrulama bununla yapılır. */
+export function issueDemoEmailVerificationToken(userId: string): string {
+  const token = crypto.randomUUID().replace(/-/g, "");
+  store().emailVerificationTokens.set(userId, token);
+  return token;
+}
+
+export function consumeDemoEmailVerificationToken(userId: string, token: string): boolean {
+  const expected = store().emailVerificationTokens.get(userId);
+  if (!expected || expected !== token) return false;
+  store().emailVerificationTokens.delete(userId);
+  return true;
 }
 
 

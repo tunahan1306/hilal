@@ -1,3 +1,5 @@
+import type { ModerationContentType } from "./moderation";
+
 export const PROFILE_STATUSES = ["draft", "in_review", "published", "unpublished", "archived"] as const;
 export type ProfileStatus = (typeof PROFILE_STATUSES)[number];
 
@@ -136,6 +138,8 @@ export const REPORT_CATEGORIES = [
   "suspected_minor",
   "paid_sexual_services",
   "personal_data",
+  "spam",
+  "csam_suspected",
   "other",
 ] as const;
 export type ReportCategory = (typeof REPORT_CATEGORIES)[number];
@@ -148,23 +152,54 @@ export const REPORT_CATEGORY_LABELS: Record<ReportCategory, string> = {
   suspected_minor: "Reşit olmayan kişi şüphesi",
   paid_sexual_services: "Ücretli cinsel hizmet tanıtımı",
   personal_data: "Kişisel veri ihlali",
+  // Modül E — yeni modüllerin (B/C) içeriği için eklendi (bkz. 02a_DATA_MODEL.md).
+  spam: "Spam",
+  csam_suspected: "Çocuk istismarı şüphesi",
   other: "Diğer",
 };
 
-/** Bu kategorilerde gelen şikâyet profili otomatik olarak yayından kaldırır. */
+/** Bu kategorilerde gelen şikâyet, profil-dışı içerikte de EN YÜKSEK öncelikle ele alınır. */
+export const CRITICAL_CONTENT_REPORT_CATEGORIES: readonly ReportCategory[] = ["csam_suspected", "suspected_minor", "harassment"];
+
+/**
+ * Bu kategorilerde gelen şikâyet profili otomatik olarak yayından kaldırır (bkz.
+ * src/server/services/moderation.ts submitReport). csam_suspected Modül E'de eklendi —
+ * suspected_minor ile aynı ciddiyette, aynı otomatik kaldırma ve yayın-engeli davranışını
+ * miras alır (bkz. enforce_publish_preconditions() — 20261027000005 migration'da da
+ * güncellendi, aynı liste veritabanı seviyesinde de uygulanır).
+ */
 export const CRITICAL_REPORT_CATEGORIES: readonly ReportCategory[] = [
   "suspected_minor",
   "paid_sexual_services",
   "impersonation",
   "unauthorized_photo",
+  "csam_suspected",
 ];
+
+/**
+ * Bir şikâyet, içerik tipine göre doğru kritik kategori listesiyle değerlendirilir — profil
+ * şikâyetleri CRITICAL_REPORT_CATEGORIES (auto-unpublish breaker'a bağlı), diğer tüm Modül B/C
+ * içeriği CRITICAL_CONTENT_REPORT_CATEGORIES ile. Admin gösterge paneli ve şikâyet listesi
+ * bu tek fonksiyonu çağırır (bkz. src/app/admin/(panel)/page.tsx, sikayetler/page.tsx).
+ */
+export function isCriticalReport(r: { category: ReportCategory; contentType: ModerationContentType }): boolean {
+  return r.contentType === "profile" ? CRITICAL_REPORT_CATEGORIES.includes(r.category) : CRITICAL_CONTENT_REPORT_CATEGORIES.includes(r.category);
+}
 
 export const REPORT_STATUSES = ["open", "in_review", "resolved", "rejected", "appealed"] as const;
 export type ReportStatus = (typeof REPORT_STATUSES)[number];
 
+/**
+ * profileId yalnızca content_type='profile' satırlarında doludur (admin-küratörlü keşif
+ * ürünü — src/server/services/moderation.ts, DEĞİŞMEDİ). content_type/content_id YENİ
+ * modüllerin (B/C) her içeriği için zorunludur; 'profile' satırlarında content_id =
+ * profileId olarak ikili yazılır (bkz. 20261027000005_moderation_generalization.sql).
+ */
 export type ModerationReport = {
   id: string;
-  profileId: string;
+  profileId: string | null;
+  contentType: ModerationContentType;
+  contentId: string;
   category: ReportCategory;
   description: string;
   reporterEmail: string | null;
@@ -187,6 +222,10 @@ export const MODERATION_ACTION_TYPES = [
   "appeal_accepted",
   "appeal_rejected",
   "auto_unpublished",
+  // Modül E — genelleştirilmiş triyaj (yeni modüllerin içeriği için; bkz. src/server/services/content-moderation.ts).
+  "warning_issued",
+  "content_rejected",
+  "account_suspended",
 ] as const;
 export type ModerationActionType = (typeof MODERATION_ACTION_TYPES)[number];
 
@@ -201,12 +240,17 @@ export const MODERATION_ACTION_LABELS: Record<ModerationActionType, string> = {
   appeal_accepted: "İtiraz kabul edildi",
   appeal_rejected: "İtiraz reddedildi",
   auto_unpublished: "Otomatik yayından kaldırma",
+  warning_issued: "Uyarı gönderildi",
+  content_rejected: "İçerik reddedildi",
+  account_suspended: "Hesap askıya alındı",
 };
 
 export type ModerationAction = {
   id: string;
   reportId: string | null;
-  profileId: string;
+  profileId: string | null;
+  contentType: ModerationContentType;
+  contentId: string;
   type: ModerationActionType;
   note: string | null;
   actorId: string | null;
@@ -257,6 +301,22 @@ export type AuditLog = {
   entityId: string | null;
   metadata: Record<string, unknown>;
   createdAt: string;
+};
+
+export const SECURITY_EVENT_ACTOR_TYPES = ["user", "admin", "anon", "system"] as const;
+export type SecurityEventActorType = (typeof SECURITY_EVENT_ACTOR_TYPES)[number];
+
+/**
+ * Modül A'nın security_events tablosu (20261027000001 migration) — audit_logs'un son
+ * kullanıcı/anon/sistem eşdeğeri (audit_logs.actor_id yalnızca admins(id)'e referans verir).
+ * Phase 5'te ilk gerçek yazarı: Modül B/C'nin yeni serbest metin alanlarına (bio/mesaj/gönderi)
+ * içerik politikası taramasının (domain/content-policy.ts) kaydı — bkz. src/server/services/social.ts.
+ */
+export type NewSecurityEvent = {
+  eventType: string;
+  actorType: SecurityEventActorType;
+  actorId: string | null;
+  metadata: Record<string, unknown>;
 };
 
 export const PRIVACY_REQUEST_TYPES = ["removal", "access", "deletion", "correction", "objection"] as const;

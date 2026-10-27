@@ -204,6 +204,8 @@ export const nl: DeepPartial<Messages> = {
       suspected_minor: "Vermoedelijk minderjarig",
       paid_sexual_services: "Promotie van betaalde seksuele diensten",
       personal_data: "Schending van persoonsgegevens",
+      spam: "Spam",
+      csam_suspected: "Vermoeden van kindermisbruik",
       other: "Overig",
     },
   },
