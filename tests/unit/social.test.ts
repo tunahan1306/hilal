@@ -51,6 +51,13 @@ async function makeUser(email: string) {
   return createAppUserRecord({ id, email });
 }
 
+/** Mesaj gönderebilmek için profil + ülkede izinli private_messaging gerekir (fail-closed). */
+async function makeMessenger(email: string, handle: string) {
+  const user = await makeUser(email);
+  await createOwnProfile(user, { handle, displayName: handle, birthDate: "1990-01-01", countryCode: "nl" });
+  return user;
+}
+
 describe("profil (bellek deposu + servis)", () => {
   it("18 yaşından küçük profil oluşturamaz; aynı handle iki kez kullanılamaz", async () => {
     const user = await makeUser("a@test.local");
@@ -101,6 +108,20 @@ describe("takip ve engelleme (bellek deposu + servis)", () => {
     expect(await createMemoryRepository().listFollowing(a.id)).toEqual([]);
   });
 
+  it("aynı kullanıcıyı iki kez takip etmek/engellemek tekrar bildirim veya kopya satır oluşturmaz (idempotent — çift tıklama/yeniden gönderim)", async () => {
+    const a = await makeUser("idem-a@test.local");
+    const b = await makeUser("idem-b@test.local");
+    await followUser(a, { targetUserId: b.id });
+    await followUser(a, { targetUserId: b.id });
+    const repo = createMemoryRepository();
+    expect(await repo.listFollowing(a.id)).toEqual([b.id]);
+    expect(await repo.listNotifications(b.id)).toHaveLength(1);
+
+    await blockUser(a, { targetUserId: b.id });
+    await blockUser(a, { targetUserId: b.id });
+    expect((await repo.listBlocksInvolving(a.id)).filter((x) => x.blockerId === a.id && x.blockedId === b.id)).toHaveLength(1);
+  });
+
   it("engelleme karşılıklı takibi temizler ve yeniden takibi engeller", async () => {
     const a = await makeUser("a@test.local");
     const b = await makeUser("b@test.local");
@@ -121,10 +142,33 @@ describe("takip ve engelleme (bellek deposu + servis)", () => {
 });
 
 describe("mesajlaşma (bellek deposu + servis)", () => {
+  it("profili olmayan kullanıcı mesaj gönderemez (fail-closed — ülke kapısı asla atlanmaz)", async () => {
+    const a = await makeUser("profilsiz@test.local");
+    const b = await makeUser("hedef@test.local");
+    await expect(sendMessage(a, { targetUserId: b.id, body: "merhaba" })).rejects.toThrow(/sosyal profil oluşturmalısınız/);
+  });
+
+  it("ülkede private_messaging izinli değilken mesaj engellenir", async () => {
+    const a = await makeMessenger("a2@test.local", "kullanici_a2");
+    const b = await makeUser("hedef2@test.local");
+    await expect(sendMessage(a, { targetUserId: b.id, body: "merhaba" })).rejects.toThrow(/henüz izinli değil/);
+  });
+
   it("engellenen taraf mesaj gönderemez; katılımcı olmayan mesajları okuyamaz", async () => {
-    const a = await makeUser("a@test.local");
+    const a = await makeMessenger("a@test.local", "kullanici_a");
     const b = await makeUser("b@test.local");
     const c = await makeUser("c@test.local");
+    await recordFeaturePolicyDecision(owner, {
+      countryCode: "nl",
+      feature: "private_messaging",
+      status: "permitted",
+      approverName: "Test",
+      evidenceRef: "REF-1",
+      reviewDue: day(30),
+      restrictions: "",
+      note: "",
+      confirm: "nl:private_messaging",
+    });
     const msg = await sendMessage(a, { targetUserId: b.id, body: "merhaba" });
     expect(msg.senderId).toBe(a.id);
 
@@ -137,14 +181,74 @@ describe("mesajlaşma (bellek deposu + servis)", () => {
     await expect(listConversationMessages(c, conversation)).rejects.toThrow(/erişiminiz yok/);
   });
 
-  it("aynı iki kullanıcı arasında ikinci mesaj aynı konuşmaya düşer (yeni konuşma açılmaz)", async () => {
-    const a = await makeUser("a@test.local");
-    const b = await makeUser("b@test.local");
+  it("aynı iki kullanıcı arasında ikinci mesaj aynı konuşmaya düşer (yeni konuşma açılmaz); reddedilen/silinen mesaj okuma yolunda görünmez", async () => {
+    const a = await makeMessenger("a3@test.local", "kullanici_a3");
+    const b = await makeMessenger("b3@test.local", "kullanici_b3");
+    await recordFeaturePolicyDecision(owner, {
+      countryCode: "nl",
+      feature: "private_messaging",
+      status: "permitted",
+      approverName: "Test",
+      evidenceRef: "REF-1",
+      reviewDue: day(30),
+      restrictions: "",
+      note: "",
+      confirm: "nl:private_messaging",
+    });
     await sendMessage(a, { targetUserId: b.id, body: "bir" });
-    await sendMessage(b, { targetUserId: a.id, body: "iki" });
+    const second = await sendMessage(b, { targetUserId: a.id, body: "iki" });
     const repo = createMemoryRepository();
     const conv = await repo.startOrGetConversation(a.id, b.id);
-    const messages = await repo.listMessages(conv.id, { limit: 50 });
-    expect(messages).toHaveLength(2);
+    expect(await repo.listMessages(conv.id, { limit: 50 })).toHaveLength(2);
+
+    // Modül E triyajı (remove_content) moderation_status'u 'rejected' yapar — okuma yolu artık onu hiç döndürmez.
+    await repo.setContentModerationStatus("message", second.id, "rejected", owner.id);
+    const afterRemoval = await repo.listMessages(conv.id, { limit: 50 });
+    expect(afterRemoval).toHaveLength(1);
+    expect(afterRemoval[0]!.id).not.toBe(second.id);
+  });
+});
+
+describe("içerik politikası tarayıcısı serbest metinlere uygulanır (bellek deposu + servis)", () => {
+  it("bio/mesaj/gönderi metninde yükseltme gerektiren bir örüntü security_events'e kaydedilir", async () => {
+    const repo = createMemoryRepository();
+    const a = await makeMessenger("scan-a@test.local", "tarama_a");
+    const b = await makeMessenger("scan-b@test.local", "tarama_b");
+    await recordFeaturePolicyDecision(owner, {
+      countryCode: "nl",
+      feature: "private_messaging",
+      status: "permitted",
+      approverName: "Test",
+      evidenceRef: "REF-1",
+      reviewDue: day(30),
+      restrictions: "",
+      note: "",
+      confirm: "nl:private_messaging",
+    });
+
+    await sendMessage(a, { targetUserId: b.id, body: "Barely legal schoolgirl" });
+    const events = await repo.listSecurityEvents({ limit: 10, actorId: a.id });
+    expect(events).toHaveLength(1);
+    expect(events[0]!.eventType).toBe("content_policy.message_body");
+    expect(events[0]!.metadata.escalated).toBe(true);
+  });
+
+  it("zararsız metin hiçbir olay kaydetmez", async () => {
+    const repo = createMemoryRepository();
+    const a = await makeMessenger("scan-c@test.local", "tarama_c");
+    const b = await makeUser("scan-d@test.local");
+    await recordFeaturePolicyDecision(owner, {
+      countryCode: "nl",
+      feature: "private_messaging",
+      status: "permitted",
+      approverName: "Test",
+      evidenceRef: "REF-1",
+      reviewDue: day(30),
+      restrictions: "",
+      note: "",
+      confirm: "nl:private_messaging",
+    });
+    await sendMessage(a, { targetUserId: b.id, body: "Bugün hava çok güzel, parkta yürüyüş yaptım." });
+    expect(await repo.listSecurityEvents({ limit: 10, actorId: a.id })).toEqual([]);
   });
 });

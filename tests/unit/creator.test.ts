@@ -77,6 +77,10 @@ describe("creator hesabı başvuru/onay akışı (bellek deposu + servis)", () =
     await suspendCreatorAccount(owner, account.id);
     const after = await repo.getCreatorAccountById(account.id);
     expect(after!.status).toBe("suspended");
+
+    // Yeniden onaylama creator rolünü kopyalamaz (gerçek DB'deki on conflict do nothing ile aynı davranış).
+    await approveCreatorAccount(owner, account.id);
+    expect((await repo.listUserRoles(user.id)).filter((r) => r === "creator")).toHaveLength(1);
   });
 
   it("yalnızca onaylı creator abonelik planı oluşturabilir; plan ülke izni olmadan kamuya görünmez", async () => {
@@ -179,5 +183,57 @@ describe("içerik hakları ve ücretli gönderi yayın kapısı (bellek deposu +
     // moderation_status varsayılan 'pending' — admin onayı olmadan posts_public'te görünmez (bellek deposu eşdeğeri).
     expect(await getPublicPostsByHandle("creator_dort", null)).toEqual([]);
     await repo.getPost(post.id); // sadece erişilebilirlik kontrolü
+  });
+
+  it("sıfır medyalı ücretli gönderi reddedilir (allMediaRightsReviewed([]) vacuous-true savunması)", async () => {
+    const creatorUser = await makeUser("creator5@test.local");
+    const account = await applyCreatorAccount(creatorUser, { legalName: "Creator Beş BV", countryCode: "nl" });
+    await approveCreatorAccount(owner, account.id);
+    await recordFeaturePolicyDecision(owner, {
+      countryCode: "nl",
+      feature: "digital_content",
+      status: "permitted",
+      approverName: "Test",
+      evidenceRef: "REF-1",
+      reviewDue: day(30),
+      restrictions: "",
+      note: "",
+      confirm: "nl:digital_content",
+    });
+    await expect(createPost(creatorUser, { body: "sadece metin ama ücretli", mediaAssetIds: [], paid: true })).rejects.toThrow(/en az bir medya/);
+  });
+
+  it("hesabı askıya alınan yazarın gönderisi kamuya kapanır; bir medya reddedilince onu taşıyan gönderi de kapanır", async () => {
+    const repo = createMemoryRepository();
+    const author = await makeUser("creator6@test.local");
+    const authorProfile = await createOwnProfile(author, { handle: "creator_alti", displayName: "Creator Altı", birthDate: "1990-01-01", countryCode: "nl" });
+    await repo.setContentModerationStatus("user_profile", authorProfile.id, "approved", owner.id);
+    await recordFeaturePolicyDecision(owner, {
+      countryCode: "nl",
+      feature: "digital_content",
+      status: "permitted",
+      approverName: "Test",
+      evidenceRef: "REF-1",
+      reviewDue: day(30),
+      restrictions: "",
+      note: "",
+      confirm: "nl:digital_content",
+    });
+    const post = await createPost(author, { body: "görünür gönderi", mediaAssetIds: [], paid: false });
+    await repo.setContentModerationStatus("post", post.id, "approved", owner.id);
+    expect(await getPublicPostsByHandle("creator_alti", null)).toHaveLength(1);
+
+    await repo.updateAppUserStatus(author.id, "suspended", owner.id);
+    expect(await getPublicPostsByHandle("creator_alti", null)).toEqual([]);
+    await repo.updateAppUserStatus(author.id, "active", owner.id);
+    expect(await getPublicPostsByHandle("creator_alti", null)).toHaveLength(1);
+
+    const media = await uploadMediaAsset(author, await sharp({ create: { width: 4, height: 4, channels: 3, background: { r: 1, g: 1, b: 1 } } }).webp().toBuffer());
+    const postWithMedia = await createPost(author, { body: "medyalı gönderi", mediaAssetIds: [media.id], paid: false });
+    await repo.setContentModerationStatus("post", postWithMedia.id, "approved", owner.id);
+    expect(await getPublicPostsByHandle("creator_alti", null)).toHaveLength(2);
+
+    await repo.setContentModerationStatus("media_asset", media.id, "rejected", owner.id);
+    expect(await getPublicPostsByHandle("creator_alti", null)).toHaveLength(1);
   });
 });

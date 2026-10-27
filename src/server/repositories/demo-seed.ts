@@ -147,6 +147,7 @@ export type DemoStore = {
   plans: MembershipPlan[];
   subscriptions: Subscription[];
   audit: import("@/domain/types").AuditLog[];
+  securityEvents: (import("@/domain/types").NewSecurityEvent & { id: string; createdAt: string })[];
   privacy: import("@/domain/types").PrivacyRequest[];
   contact: import("@/domain/types").ContactMessage[];
   seo: SeoPage[];
@@ -493,6 +494,7 @@ export function createDemoStore(now: Date): DemoStore {
     plans,
     subscriptions,
     audit: [],
+    securityEvents: [],
     privacy: [],
     contact: [],
     seo,

@@ -1,7 +1,9 @@
 "use server";
 
+import { z } from "zod";
 import { assertUser } from "@/server/auth/user-session";
 import { DomainError } from "@/server/services/errors";
+import { logError } from "@/server/log";
 import { PaymentsDisabledError } from "@/server/payments";
 import {
   applyCreatorAccount,
@@ -17,9 +19,11 @@ async function run(fn: () => Promise<void | string>): Promise<CreatorState> {
     const message = await fn();
     return message ? { message } : null;
   } catch (e) {
+    if (e instanceof z.ZodError) return { message: e.issues[0]?.message ?? "Formdaki bilgileri kontrol edin." };
     if (e instanceof PaymentsDisabledError) return { message: e.message };
     if (e instanceof DomainError) return { message: e.message };
-    throw e;
+    logError("creator.action", e);
+    return { message: "Beklenmeyen bir hata oluştu." };
   }
 }
 

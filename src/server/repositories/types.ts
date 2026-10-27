@@ -41,6 +41,7 @@ import type {
   MembershipPlan,
   ModerationAction,
   ModerationReport,
+  NewSecurityEvent,
   ContactCategory,
   ContactMessage,
   ContactStatus,
@@ -281,6 +282,9 @@ export interface Repository {
   // Denetim
   addAuditLog(input: Omit<AuditLog, "id" | "createdAt">): Promise<void>;
   listAuditLogs(opts: { limit: number; entityId?: string }): Promise<AuditLog[]>;
+  /** audit_logs'un son kullanıcı/anon/sistem eşdeğeri — bkz. domain/types.ts NewSecurityEvent yorumu. */
+  addSecurityEvent(input: NewSecurityEvent): Promise<void>;
+  listSecurityEvents(opts: { limit: number; actorId?: string }): Promise<(NewSecurityEvent & { id: string; createdAt: string })[]>;
 
   // KVKK talepleri
   createPrivacyRequest(input: Omit<PrivacyRequest, "id" | "createdAt" | "status" | "completedAt">): Promise<PrivacyRequest>;

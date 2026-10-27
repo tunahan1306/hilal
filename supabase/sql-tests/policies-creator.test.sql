@@ -99,6 +99,12 @@ begin
   end if;
 end $$;
 
+-- Phase 5 düzeltmesi: creator_subscription_tiers RLS'i artık paid_subscriptions'ın bu ülkede
+-- izinli olmasını da şart koşuyor (bkz. 20261027000007 migration) — bu test dosyasındaki
+-- sonraki görünürlük testlerinin anlamlı olması için önce izin verilir.
+insert into country_feature_decisions (country_code, feature_code, status, approver_name, evidence_ref, review_due, decided_by)
+values ('nl', 'paid_subscriptions', 'permitted', 'Sentetik Hukuk Test', 'TEST-CREATOR-2', current_date + 30, '00000000-0000-0000-0000-0000000000a1');
+
 -- 15.7 Abonelik tier'ı: yalnızca aktif (active=true) planlar herkese açık okunur.
 insert into creator_subscription_tiers (id, creator_id, name, price_amount, price_currency, active)
 values

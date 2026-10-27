@@ -4,7 +4,7 @@ import { FilterChips } from "@/components/admin/filter-chips";
 import { PageHeader } from "@/components/admin/page-header";
 import { REPORT_STATUS_LABELS, REPORT_STATUS_TONE, StatusBadge } from "@/components/admin/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CRITICAL_REPORT_CATEGORIES, REPORT_CATEGORY_LABELS, type ReportStatus } from "@/domain/types";
+import { isCriticalReport, REPORT_CATEGORY_LABELS, type ReportStatus } from "@/domain/types";
 import { MODERATION_CONTENT_TYPE_LABELS } from "@/domain/moderation";
 import { formatDate } from "@/lib/site";
 import { requireAdmin } from "@/server/auth/session";
@@ -20,7 +20,14 @@ export default async function ReportsPage({ searchParams }: PageProps<"/admin/si
   const [reports, profiles] = await Promise.all([repo.listReports(), repo.listProfiles()]);
   const nameOf = new Map(profiles.map((p) => [p.id, p.nickname]));
   const order: ReportStatus[] = ["open", "appealed", "in_review", "resolved", "rejected"];
-  const sorted = reports.filter((r) => !filter || r.status === filter).sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status) || b.createdAt.localeCompare(a.createdAt));
+  const sorted = reports
+    .filter((r) => !filter || r.status === filter)
+    .sort(
+      (a, b) =>
+        order.indexOf(a.status) - order.indexOf(b.status) ||
+        Number(isCriticalReport(b)) - Number(isCriticalReport(a)) ||
+        b.createdAt.localeCompare(a.createdAt),
+    );
   return (
     <>
       <PageHeader title="Şikâyetler" description="Kritik kategorilerde profil otomatik olarak yayından kaldırılır; karar ve itirazlar kayıt altındadır." />
@@ -44,7 +51,7 @@ export default async function ReportsPage({ searchParams }: PageProps<"/admin/si
                 </TableCell>
                 <TableCell>
                   {REPORT_CATEGORY_LABELS[r.category]}
-                  {CRITICAL_REPORT_CATEGORIES.includes(r.category) ? <StatusBadge tone="danger" className="ml-2">Kritik</StatusBadge> : null}
+                  {isCriticalReport(r) ? <StatusBadge tone="danger" className="ml-2">Kritik</StatusBadge> : null}
                 </TableCell>
                 <TableCell><StatusBadge tone={REPORT_STATUS_TONE[r.status]}>{REPORT_STATUS_LABELS[r.status]}</StatusBadge></TableCell>
                 <TableCell className="text-muted-foreground">{formatDate(r.createdAt, { dateStyle: "medium" })}</TableCell>

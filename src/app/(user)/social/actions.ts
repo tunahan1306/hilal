@@ -1,8 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { assertUser } from "@/server/auth/user-session";
 import { DomainError } from "@/server/services/errors";
+import { logError } from "@/server/log";
 import { clientFingerprint } from "@/server/rate-limit";
 import { submitContentReport } from "@/server/services/content-moderation";
 import {
@@ -25,8 +27,10 @@ async function run(fn: () => Promise<void | string>): Promise<SocialState> {
     const message = await fn();
     return message ? { message } : null;
   } catch (e) {
+    if (e instanceof z.ZodError) return { message: e.issues[0]?.message ?? "Formdaki bilgileri kontrol edin." };
     if (e instanceof DomainError) return { message: e.message };
-    throw e;
+    logError("social.action", e);
+    return { message: "Beklenmeyen bir hata oluştu." };
   }
 }
 

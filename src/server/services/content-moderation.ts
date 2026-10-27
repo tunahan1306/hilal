@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { REPORT_CATEGORIES, type Admin, type ModerationReport } from "@/domain/types";
 import { CONTENT_TRIAGE_ACTIONS, REPORTABLE_CONTENT_TYPES, type ContentTriageAction, type ModerationContentType } from "@/domain/moderation";
+import { noHtml, trimmed } from "@/domain/schemas";
 import { getRepository } from "../repositories";
 import { sharedRateLimit } from "../rate-limit";
 import { audit } from "./audit";
@@ -17,7 +18,7 @@ export const submitContentReportInputSchema = z.object({
   contentType: z.enum(REPORTABLE_CONTENT_TYPES),
   contentId: z.string().trim().min(1, "İçerik kimliği gerekli"),
   category: z.enum(REPORT_CATEGORIES),
-  description: z.string().trim().min(10, "Açıklama en az 10 karakter olmalı").max(1000),
+  description: trimmed(10, 1000, "Açıklama").refine(noHtml, "HTML karakterleri kullanılamaz"),
   reporterEmail: z
     .string()
     .trim()
@@ -27,37 +28,37 @@ export const submitContentReportInputSchema = z.object({
 });
 export type SubmitContentReportInput = z.input<typeof submitContentReportInputSchema>;
 
-async function assertContentExists(repo: ReturnType<typeof getRepository>, contentType: Exclude<ModerationContentType, "profile">, contentId: string): Promise<void> {
-  const exists = await (async () => {
-    switch (contentType) {
-      case "user_profile":
-        return Boolean(await repo.getUserProfileById(contentId));
-      case "post":
-        return Boolean(await repo.getPost(contentId));
-      case "message":
-        return Boolean(await repo.getMessageById(contentId));
-      case "media_asset":
-        return Boolean(await repo.getMediaAsset(contentId));
-      case "creator_account":
-        return Boolean(await repo.getCreatorAccountById(contentId));
-    }
-  })();
-  if (!exists) throw new DomainError("Bildirilen içerik bulunamadı", "not_found");
-}
-
-/** İçeriğin sahibi app_user — "suspend_account" triyaj eyleminin hedefi. message/creator_account dahil tüm tiplerde çözülür. */
-async function resolveContentOwner(repo: ReturnType<typeof getRepository>, contentType: Exclude<ModerationContentType, "profile">, contentId: string): Promise<string | null> {
+/**
+ * İçeriğin var olup olmadığını VE (varsa) sahibi app_user'ı tek sorguda çözer — var olma
+ * kontrolü (submitContentReport) ile sahip çözümü (triageContentReport'un warn/suspend_account
+ * eylemleri) ayrı ayrı sorgu yapmaz, aynı beş-tip switch'i tek yerde tutar.
+ */
+async function resolveContentTarget(
+  repo: ReturnType<typeof getRepository>,
+  contentType: Exclude<ModerationContentType, "profile">,
+  contentId: string,
+): Promise<{ exists: boolean; ownerId: string | null }> {
   switch (contentType) {
-    case "user_profile":
-      return (await repo.getUserProfileById(contentId))?.userId ?? null;
-    case "post":
-      return (await repo.getPost(contentId))?.authorId ?? null;
-    case "message":
-      return (await repo.getMessageById(contentId))?.senderId ?? null;
-    case "media_asset":
-      return (await repo.getMediaAsset(contentId))?.ownerId ?? null;
-    case "creator_account":
-      return (await repo.getCreatorAccountById(contentId))?.userId ?? null;
+    case "user_profile": {
+      const row = await repo.getUserProfileById(contentId);
+      return { exists: Boolean(row), ownerId: row?.userId ?? null };
+    }
+    case "post": {
+      const row = await repo.getPost(contentId);
+      return { exists: Boolean(row), ownerId: row?.authorId ?? null };
+    }
+    case "message": {
+      const row = await repo.getMessageById(contentId);
+      return { exists: Boolean(row), ownerId: row?.senderId ?? null };
+    }
+    case "media_asset": {
+      const row = await repo.getMediaAsset(contentId);
+      return { exists: Boolean(row), ownerId: row?.ownerId ?? null };
+    }
+    case "creator_account": {
+      const row = await repo.getCreatorAccountById(contentId);
+      return { exists: Boolean(row), ownerId: row?.userId ?? null };
+    }
   }
 }
 
@@ -76,7 +77,7 @@ export async function submitContentReport(raw: SubmitContentReportInput, fingerp
   const recentByHash = await repo.countRecentReportsByHash(fingerprint, new Date(Date.now() - HOUR).toISOString());
   if (recentByHash >= CONTENT_REPORTS_PER_HOUR) throw new RateLimitedError();
 
-  await assertContentExists(repo, input.contentType, input.contentId);
+  if (!(await resolveContentTarget(repo, input.contentType, input.contentId)).exists) throw new DomainError("Bildirilen içerik bulunamadı", "not_found");
   const since = new Date(Date.now() - HOUR).toISOString();
   if ((await repo.countRecentReportsForContent(input.contentType, input.contentId, since)) >= CONTENT_REPORTS_PER_TARGET_PER_HOUR) {
     throw new DomainError("Bu içerik için çok sayıda bildirim alındı ve inceleme sürüyor. Teşekkür ederiz.", "rate_limited");
@@ -129,7 +130,7 @@ export async function triageContentReport(actor: Admin, reportId: string, raw: T
       break;
     }
     case "warn": {
-      const ownerId = await resolveContentOwner(repo, contentType, report.contentId);
+      const { ownerId } = await resolveContentTarget(repo, contentType, report.contentId);
       if (ownerId) {
         await repo.addNotification({ userId: ownerId, type: "moderation_warning", payload: { reportId, contentType, note: input.note ?? null } });
       }
@@ -148,7 +149,7 @@ export async function triageContentReport(actor: Admin, reportId: string, raw: T
       break;
     }
     case "suspend_account": {
-      const ownerId = await resolveContentOwner(repo, contentType, report.contentId);
+      const { ownerId } = await resolveContentTarget(repo, contentType, report.contentId);
       if (!ownerId) throw new DomainError("İçerik sahibi bulunamadı", "not_found");
       await repo.updateAppUserStatus(ownerId, "suspended", actor.id);
       await repo.updateReport(reportId, { status: "resolved", resolution: input.note ?? "Hesap askıya alındı" });

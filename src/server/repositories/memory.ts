@@ -43,6 +43,12 @@ function must<T>(v: T | undefined | null, what: string): T {
 
 const clone = <T>(v: T): T => structuredClone(v);
 
+/** addUserRole ile aynı idempotent mantık — gerçek DB'deki on conflict do nothing'in bellek karşılığı. */
+function grantUserRole(userId: string, role: "member" | "creator"): void {
+  const s = store();
+  if (!s.userRoles.some((r) => r.userId === userId && r.role === role)) s.userRoles.push({ userId, role });
+}
+
 function countryPolicies(): CountryPolicy[] {
   const decisions = store().countryDecisions;
   return defaultPolicies().map((base) => {
@@ -202,6 +208,10 @@ export function createMemoryRepository(): Repository {
       const s = store();
       const p = s.userProfiles.find((x) => x.userId === userId);
       if (!p || p.moderationStatus !== "approved" || p.visibility !== "public") return null;
+      // Hesabı askıya alınmış (bkz. Modül E suspend_account triyajı) kullanıcının profili
+      // kamuya kapalı kalır — yalnızca girişi engellemek yetmez.
+      const owner = s.users.find((u) => u.id === userId);
+      if (!owner || owner.status !== "active") return null;
       const age = Math.floor((Date.now() - new Date(p.birthDate).getTime()) / (365.2425 * 86_400_000));
       if (age < 18) return null;
       const policy = countryFeaturePolicies().find((x) => x.countryCode === p.countryCode && x.feature === "social_profiles");
@@ -274,9 +284,11 @@ export function createMemoryRepository(): Repository {
       return clone(row);
     },
     async listMessages(conversationId, { limit }) {
+      // Yalnızca kullanıcı tarafı okuma yolu: silinmiş veya moderasyonla reddedilmiş mesaj
+      // katılımcılara hiç gösterilmez (admin triyajı getMessageById'yi kullanır, burayı değil).
       return clone(
         store()
-          .messages.filter((m) => m.conversationId === conversationId)
+          .messages.filter((m) => m.conversationId === conversationId && m.deletedAt === null && m.moderationStatus !== "rejected")
           .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
           .slice(-limit),
       );
@@ -356,16 +368,24 @@ export function createMemoryRepository(): Repository {
       const s = store();
       const profile = s.userProfiles.find((p) => p.userId === authorId);
       if (!profile || profile.moderationStatus !== "approved") return [];
+      // Hesabı askıya alınmış yazarın gönderileri kamuya kapalı kalır (user_profiles_public ile aynı gerekçe).
+      const author = s.users.find((u) => u.id === authorId);
+      if (!author || author.status !== "active") return [];
       const policy = countryFeaturePolicies().find((x) => x.countryCode === profile.countryCode && x.feature === "digital_content");
       if (!isFeaturePermitted(policy)) return [];
       const rightsReviewed = (mediaAssetId: string) => s.contentRights.some((r) => r.mediaAssetId === mediaAssetId && r.reviewedAt !== null);
+      const mediaRejected = (mediaAssetId: string) => s.mediaAssets.some((m) => m.id === mediaAssetId && m.moderationStatus === "rejected");
       return clone(
         s.posts
           .filter((p) => p.authorId === authorId && p.moderationStatus === "approved" && p.visibility === "public")
           .filter((p) => {
-            if (!p.paid) return true;
             const mediaIds = s.postMedia.filter((pm) => pm.postId === p.id).map((pm) => pm.mediaAssetId);
-            return mediaIds.every(rightsReviewed);
+            // Tek bir medyası reddedilmiş bir gönderi (ücretli olsun olmasın) hiç görünmez —
+            // triageContentReport'un media_asset'e özel "remove_content" eylemi artık etkili olur.
+            if (mediaIds.some(mediaRejected)) return false;
+            if (!p.paid) return true;
+            // Sıfır medyalı ücretli gönderi hak incelemesi kapısını hiç görmeden geçemez (vacuous-true savunması).
+            return mediaIds.length > 0 && mediaIds.every(rightsReviewed);
           })
           .map((p) => ({ id: p.id, authorId: p.authorId, body: p.body, paid: p.paid, createdAt: p.createdAt }))
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
@@ -395,12 +415,11 @@ export function createMemoryRepository(): Repository {
       c.approvedBy = actor.approvedBy;
       c.approvedAt = actor.approvedAt;
       // Veritabanında bu satırı creator_accounts_sync_role tetikleyicisi yazar.
-      if (status === "active") store().userRoles.push({ userId: c.userId, role: "creator" });
+      if (status === "active") grantUserRole(c.userId, "creator");
       return clone(c);
     },
     async addUserRole(userId, role) {
-      const s = store();
-      if (!s.userRoles.some((r) => r.userId === userId && r.role === role)) s.userRoles.push({ userId, role });
+      grantUserRole(userId, role);
     },
     async listUserRoles(userId) {
       return store()
@@ -784,6 +803,17 @@ export function createMemoryRepository(): Repository {
 
     async addAuditLog(input) {
       store().audit.push({ ...input, id: nextId("aud"), createdAt: new Date().toISOString() });
+    },
+    async addSecurityEvent(input) {
+      store().securityEvents.push({ ...input, id: nextId("sev"), createdAt: new Date().toISOString() });
+    },
+    async listSecurityEvents({ limit, actorId }) {
+      return clone(
+        store()
+          .securityEvents.filter((e) => !actorId || e.actorId === actorId)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+          .slice(0, limit),
+      );
     },
     async listAuditLogs({ limit, entityId }) {
       return clone(store().audit.filter((a) => !entityId || a.entityId === entityId))

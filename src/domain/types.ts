@@ -176,6 +176,16 @@ export const CRITICAL_REPORT_CATEGORIES: readonly ReportCategory[] = [
   "csam_suspected",
 ];
 
+/**
+ * Bir şikâyet, içerik tipine göre doğru kritik kategori listesiyle değerlendirilir — profil
+ * şikâyetleri CRITICAL_REPORT_CATEGORIES (auto-unpublish breaker'a bağlı), diğer tüm Modül B/C
+ * içeriği CRITICAL_CONTENT_REPORT_CATEGORIES ile. Admin gösterge paneli ve şikâyet listesi
+ * bu tek fonksiyonu çağırır (bkz. src/app/admin/(panel)/page.tsx, sikayetler/page.tsx).
+ */
+export function isCriticalReport(r: { category: ReportCategory; contentType: ModerationContentType }): boolean {
+  return r.contentType === "profile" ? CRITICAL_REPORT_CATEGORIES.includes(r.category) : CRITICAL_CONTENT_REPORT_CATEGORIES.includes(r.category);
+}
+
 export const REPORT_STATUSES = ["open", "in_review", "resolved", "rejected", "appealed"] as const;
 export type ReportStatus = (typeof REPORT_STATUSES)[number];
 
@@ -291,6 +301,22 @@ export type AuditLog = {
   entityId: string | null;
   metadata: Record<string, unknown>;
   createdAt: string;
+};
+
+export const SECURITY_EVENT_ACTOR_TYPES = ["user", "admin", "anon", "system"] as const;
+export type SecurityEventActorType = (typeof SECURITY_EVENT_ACTOR_TYPES)[number];
+
+/**
+ * Modül A'nın security_events tablosu (20261027000001 migration) — audit_logs'un son
+ * kullanıcı/anon/sistem eşdeğeri (audit_logs.actor_id yalnızca admins(id)'e referans verir).
+ * Phase 5'te ilk gerçek yazarı: Modül B/C'nin yeni serbest metin alanlarına (bio/mesaj/gönderi)
+ * içerik politikası taramasının (domain/content-policy.ts) kaydı — bkz. src/server/services/social.ts.
+ */
+export type NewSecurityEvent = {
+  eventType: string;
+  actorType: SecurityEventActorType;
+  actorId: string | null;
+  metadata: Record<string, unknown>;
 };
 
 export const PRIVACY_REQUEST_TYPES = ["removal", "access", "deletion", "correction", "objection"] as const;

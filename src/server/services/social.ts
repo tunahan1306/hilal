@@ -2,6 +2,9 @@ import "server-only";
 import { z } from "zod";
 import { isAdult } from "@/domain/age";
 import { COUNTRY_CODES, type CountryCode } from "@/domain/countries";
+import { requiresEscalation, scanText } from "@/domain/content-policy";
+import { noHtml, trimmed } from "@/domain/schemas";
+import { sharedRateLimit } from "../rate-limit";
 import {
   allMediaRightsReviewed,
   isActiveCreatorAccount,
@@ -20,7 +23,12 @@ import {
 import type { AppUser } from "@/domain/identity";
 import { getPolicyGate } from "./policy";
 import { getRepository } from "../repositories";
-import { DomainError } from "./errors";
+import { DomainError, RateLimitedError } from "./errors";
+
+const HOUR = 3_600_000;
+/** Mesajlaşma/gönderi gibi yüksek frekanslı yazma yolları için paylaşılan oran sınırı — moderation.ts/content-moderation.ts'teki aynı disiplin. */
+export const MESSAGES_PER_HOUR = 60;
+export const POSTS_PER_HOUR = 20;
 
 export const createUserProfileInputSchema = z.object({
   handle: z
@@ -28,19 +36,37 @@ export const createUserProfileInputSchema = z.object({
     .trim()
     .toLowerCase()
     .regex(/^[a-z0-9_]{3,30}$/, "Kullanıcı adı yalnızca küçük harf, rakam ve alt çizgi içerebilir (3-30 karakter)"),
-  displayName: z.string().trim().min(1, "Görünen ad gerekli").max(60),
-  bio: z.string().trim().max(2000).optional(),
+  displayName: trimmed(1, 60, "Görünen ad").refine(noHtml, "HTML karakterleri kullanılamaz"),
+  bio: trimmed(0, 2000, "Hakkında").refine(noHtml, "HTML karakterleri kullanılamaz").optional(),
   birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-AA-GG formatında olmalı"),
   countryCode: z.enum(COUNTRY_CODES),
 });
 export type CreateUserProfileInput = z.input<typeof createUserProfileInputSchema>;
 
 export const updateUserProfileInputSchema = z.object({
-  displayName: z.string().trim().min(1, "Görünen ad gerekli").max(60).optional(),
-  bio: z.string().trim().max(2000).optional(),
+  displayName: trimmed(1, 60, "Görünen ad").refine(noHtml, "HTML karakterleri kullanılamaz").optional(),
+  bio: trimmed(0, 2000, "Hakkında").refine(noHtml, "HTML karakterleri kullanılamaz").optional(),
   visibility: z.enum(["public", "followers_only", "private"]).optional(),
 });
 export type UpdateUserProfileInput = z.input<typeof updateUserProfileInputSchema>;
+
+/**
+ * Serbest metin alanlarını (bio/mesaj/gönderi) içerik politikası tarayıcısından geçirir
+ * (bkz. domain/content-policy.ts — admin-küratörlü ürünün profiles.ts'te kullandığı aynı
+ * tarayıcı). Hiçbir yazmayı ENGELLEMEZ (admin ürünündeki aynı duruş: bulgular yalnızca
+ * incelemeye düşer) — yalnızca security_events'e kaydeder, çünkü bu aktör bir app_user'dır ve
+ * audit_logs.actor_id yalnızca admins(id)'e referans verir (bkz. Modül A security_events notu).
+ */
+async function logContentPolicyFindings(actorId: string, surface: string, text: string): Promise<void> {
+  const findings = scanText(text);
+  if (findings.length === 0) return;
+  await getRepository().addSecurityEvent({
+    eventType: `content_policy.${surface}`,
+    actorType: "user",
+    actorId,
+    metadata: { findings: findings.map((f) => f.rule), escalated: requiresEscalation(findings) },
+  });
+}
 
 /** Profil oluşturma — tek kullanıcı tek profil; 18 yaş altı reddedilir (admin ürünüyle aynı kural). */
 export async function createOwnProfile(actor: AppUser, raw: CreateUserProfileInput, now = new Date()): Promise<UserProfile> {
@@ -49,6 +75,7 @@ export async function createOwnProfile(actor: AppUser, raw: CreateUserProfileInp
   if (await repo.getUserProfileByUserId(actor.id)) throw new DomainError("Zaten bir profiliniz var", "profile_exists");
   if (await repo.getUserProfileByHandle(input.handle)) throw new DomainError("Bu kullanıcı adı alınmış", "handle_taken");
   if (!isAdult(input.birthDate, now)) throw new DomainError("18 yaşından küçükler hesap oluşturamaz", "underage");
+  if (input.bio) await logContentPolicyFindings(actor.id, "user_profile_bio", input.bio);
   return repo.createUserProfile({
     userId: actor.id,
     handle: input.handle,
@@ -75,6 +102,7 @@ export async function updateOwnProfile(actor: AppUser, raw: UpdateUserProfileInp
     const permitted = await getPolicyGate().isPermitted(profile.countryCode as (typeof COUNTRY_CODES)[number], "social_profiles");
     if (!permitted) throw new DomainError("Bu ülkede sosyal profil özelliği henüz izinli değil", "feature_not_permitted");
   }
+  if (input.bio) await logContentPolicyFindings(actor.id, "user_profile_bio", input.bio);
   return repo.updateUserProfile(actor.id, input);
 }
 
@@ -86,6 +114,9 @@ export async function followUser(actor: AppUser, raw: FollowInput): Promise<void
   const repo = getRepository();
   const blocks = await repo.listBlocksInvolving(actor.id);
   if (!canFollow(actor.id, targetUserId, blocks)) throw new DomainError("Bu kullanıcıyı takip edemezsiniz", "cannot_follow");
+  // İdempotent: çift tıklama/tekrar gönderim aynı satırı iki kez eklemeye çalışmaz — Supabase'de
+  // (follower_id, followee_id) birincil anahtarı yakalanmamış bir DbError'a yol açardı.
+  if ((await repo.listFollowing(actor.id)).includes(targetUserId)) return;
   await repo.addFollow(actor.id, targetUserId);
   await repo.addNotification({ userId: targetUserId, type: "new_follower", payload: { followerId: actor.id } });
 }
@@ -103,7 +134,9 @@ export async function blockUser(actor: AppUser, raw: BlockInput): Promise<void> 
   const { targetUserId } = blockInputSchema.parse(raw);
   if (actor.id === targetUserId) throw new DomainError("Kendinizi engelleyemezsiniz", "cannot_block_self");
   const repo = getRepository();
-  await repo.addBlock(actor.id, targetUserId);
+  // İdempotent — aynı gerekçeyle (bkz. followUser): (blocker_id, blocked_id) birincil anahtarı.
+  const alreadyBlocked = (await repo.listBlocksInvolving(actor.id)).some((b) => b.blockerId === actor.id && b.blockedId === targetUserId);
+  if (!alreadyBlocked) await repo.addBlock(actor.id, targetUserId);
   await repo.removeFollow(actor.id, targetUserId);
   await repo.removeFollow(targetUserId, actor.id);
 }
@@ -113,25 +146,29 @@ export async function unblockUser(actor: AppUser, raw: BlockInput): Promise<void
   await getRepository().removeBlock(actor.id, targetUserId);
 }
 
-export const sendMessageInputSchema = z.object({ targetUserId: z.uuid(), body: z.string().trim().min(1, "Mesaj boş olamaz").max(4000) });
+export const sendMessageInputSchema = z.object({ targetUserId: z.uuid(), body: trimmed(1, 4000, "Mesaj").refine(noHtml, "HTML karakterleri kullanılamaz") });
 export type SendMessageInput = z.input<typeof sendMessageInputSchema>;
 
 /**
- * Mesaj gönderme — PolicyGate'e göre ülkede private_messaging izinli değilse engellenir
- * (veritabanı bugün bu özellik için bir görünürlük kapısı uygulamıyor, çünkü mesajlar
- * kamuya açık değil; asıl risk engellenmiş bir tarafa mesaj gönderebilmek — bu da RLS'e ek
- * olarak messages_block_guard tetikleyicisiyle veritabanı seviyesinde de uygulanıyor).
+ * Mesaj gönderme — PolicyGate'e göre ülkede private_messaging izinli değilse engellenir.
+ * Fail-closed: gönderenin beyan edilmiş bir ülkesi (dolayısıyla sosyal profili) yoksa kapı
+ * ATLANMAZ, reddedilir — ülke bilinmiyorsa Modül G'nin "bilinmeyen = kapalı" ilkesi burada da
+ * geçerlidir (bkz. domain/policy.ts isFeaturePermitted). Veritabanı bugün bu özellik için ayrı
+ * bir görünürlük kapısı uygulamıyor (mesajlar kamuya açık değil); asıl ek risk engellenmiş bir
+ * tarafa mesaj gönderebilmek — bu da RLS'e ek olarak messages_block_guard tetikleyicisiyle
+ * veritabanı seviyesinde de uygulanıyor.
  */
 export async function sendMessage(actor: AppUser, raw: SendMessageInput): Promise<Message> {
   const { targetUserId, body } = sendMessageInputSchema.parse(raw);
+  if (!(await sharedRateLimit(`message:${actor.id}`, MESSAGES_PER_HOUR, HOUR)).ok) throw new RateLimitedError();
   const repo = getRepository();
   const senderProfile = await repo.getUserProfileByUserId(actor.id);
-  if (senderProfile) {
-    const permitted = await getPolicyGate().isPermitted(senderProfile.countryCode as (typeof COUNTRY_CODES)[number], "private_messaging");
-    if (!permitted) throw new DomainError("Bu ülkede mesajlaşma özelliği henüz izinli değil", "feature_not_permitted");
-  }
+  if (!senderProfile) throw new DomainError("Mesaj gönderebilmek için önce bir sosyal profil oluşturmalısınız", "profile_required");
+  const permitted = await getPolicyGate().isPermitted(senderProfile.countryCode as (typeof COUNTRY_CODES)[number], "private_messaging");
+  if (!permitted) throw new DomainError("Bu ülkede mesajlaşma özelliği henüz izinli değil", "feature_not_permitted");
   const blocks = await repo.listBlocksInvolving(actor.id);
   if (isBlockedEitherWay(blocks, actor.id, targetUserId)) throw new DomainError("Bu kullanıcıyla mesajlaşamazsınız", "blocked");
+  await logContentPolicyFindings(actor.id, "message_body", body);
   const conversation = await repo.startOrGetConversation(actor.id, targetUserId);
   const message = await repo.addMessage({ conversationId: conversation.id, senderId: actor.id, body });
   await repo.addNotification({ userId: targetUserId, type: "new_message", payload: { conversationId: conversation.id, senderId: actor.id } });
@@ -187,7 +224,7 @@ export async function listOwnMediaAssets(actor: AppUser): Promise<MediaAsset[]> 
 }
 
 export const createPostInputSchema = z.object({
-  body: z.string().trim().max(4000),
+  body: trimmed(0, 4000, "Gönderi").refine(noHtml, "HTML karakterleri kullanılamaz"),
   mediaAssetIds: z.array(z.string().trim().min(1)).max(10).default([]),
   paid: z.boolean().default(false),
 });
@@ -202,13 +239,17 @@ export type CreatePostInput = z.input<typeof createPostInputSchema>;
  */
 export async function createPost(actor: AppUser, raw: CreatePostInput): Promise<Post> {
   const input = createPostInputSchema.parse(raw);
+  if (!(await sharedRateLimit(`post:${actor.id}`, POSTS_PER_HOUR, HOUR)).ok) throw new RateLimitedError();
   if (!input.body && input.mediaAssetIds.length === 0) throw new DomainError("Gönderi boş olamaz", "empty_post");
   const repo = getRepository();
-  for (const id of input.mediaAssetIds) {
-    const media = await repo.getMediaAsset(id);
-    if (!media || media.ownerId !== actor.id) throw new DomainError("Medya bulunamadı", "not_found");
-  }
+  const ownedMedia = await Promise.all(input.mediaAssetIds.map((id) => repo.getMediaAsset(id)));
+  if (ownedMedia.some((m) => !m || m.ownerId !== actor.id)) throw new DomainError("Medya bulunamadı", "not_found");
+  if (input.body) await logContentPolicyFindings(actor.id, "post_body", input.body);
   if (input.paid) {
+    // Sıfır medyalı ücretli gönderi: allMediaRightsReviewed([], ...) boş dizi için vacuous-true
+    // döner, bu yüzden burada AYRICA kontrol edilir — aksi halde hak incelemesi kapısı hiç
+    // görülmeden geçilir (posts_public view'ında da ikinci bir savunma hattı var, bkz. migration).
+    if (input.mediaAssetIds.length === 0) throw new DomainError("Ücretli gönderi en az bir medya içermeli", "rights_not_reviewed");
     const creator = await repo.getCreatorAccountByUserId(actor.id);
     if (!isActiveCreatorAccount(creator)) throw new DomainError("Yalnızca onaylı creator hesabı ücretli gönderi paylaşabilir", "creator_not_active");
     const permitted = await getPolicyGate().isPermitted(creator!.countryCode as CountryCode, "digital_content");

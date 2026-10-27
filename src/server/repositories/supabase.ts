@@ -721,7 +721,9 @@ export function createSupabaseRepository(): Repository {
       return data ? toAppUser(data as Row) : null;
     },
     async getAppUserByEmail(email): Promise<AppUser | null> {
-      const { data, error } = await service().from("app_users").select("*").ilike("email", email).maybeSingle();
+      // email, citext (zaten büyük/küçük harf duyarsız) — ilike KULLANMA: '_'/'%' SQL joker
+      // karakteri olarak yorumlanır ve yanlış hesabı eşleştirebilir (ör. a_b@x.com, axb@x.com'u eşler).
+      const { data, error } = await service().from("app_users").select("*").eq("email", email).maybeSingle();
       if (error) throw new DbError(error.message, error.code);
       return data ? toAppUser(data as Row) : null;
     },
@@ -776,7 +778,9 @@ export function createSupabaseRepository(): Repository {
       return data ? toUserProfile(data as Row) : null;
     },
     async getUserProfileByHandle(handle): Promise<UserProfile | null> {
-      const { data, error } = await service().from("user_profiles").select("*").ilike("handle", handle).maybeSingle();
+      // handle, citext (zaten büyük/küçük harf duyarsız) — ilike KULLANMA: handle regex'i '_'e
+      // izin verir ve ilike bunu joker karakter sayar, yanlış kullanıcıyı eşleştirebilir.
+      const { data, error } = await service().from("user_profiles").select("*").eq("handle", handle).maybeSingle();
       if (error) throw new DbError(error.message, error.code);
       return data ? toUserProfile(data as Row) : null;
     },
@@ -852,8 +856,17 @@ export function createSupabaseRepository(): Repository {
       return toMessage(row);
     },
     async listMessages(conversationId, { limit }): Promise<Message[]> {
+      // Yalnızca kullanıcı tarafı okuma yolu: silinmiş veya moderasyonla reddedilmiş mesaj
+      // katılımcılara hiç gösterilmez (admin triyajı getMessageById'yi kullanır, burayı değil).
       const rows = check(
-        await service().from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: false }).limit(limit),
+        await service()
+          .from("messages")
+          .select("*")
+          .eq("conversation_id", conversationId)
+          .is("deleted_at", null)
+          .neq("moderation_status", "rejected")
+          .order("created_at", { ascending: false })
+          .limit(limit),
       ) as Row[];
       return rows.map(toMessage).reverse();
     },
@@ -1490,6 +1503,26 @@ export function createSupabaseRepository(): Repository {
           .from("audit_logs")
           .insert({ actor_id: input.actorId, action: input.action, entity_type: input.entityType, entity_id: input.entityId, metadata: input.metadata }),
       );
+    },
+    async addSecurityEvent(input) {
+      check(
+        await service()
+          .from("security_events")
+          .insert({ event_type: input.eventType, actor_type: input.actorType, actor_id: input.actorId, metadata: input.metadata }),
+      );
+    },
+    async listSecurityEvents({ limit, actorId }) {
+      let q = service().from("security_events").select("*").order("created_at", { ascending: false }).limit(limit);
+      if (actorId) q = q.eq("actor_id", actorId);
+      const rows = check(await q) as Row[];
+      return rows.map((r) => ({
+        id: String(r.id),
+        eventType: String(r.event_type),
+        actorType: String(r.actor_type) as "user" | "admin" | "anon" | "system",
+        actorId: r.actor_id === null ? null : String(r.actor_id),
+        metadata: (r.metadata ?? {}) as Record<string, unknown>,
+        createdAt: String(r.created_at),
+      }));
     },
     async listAuditLogs({ limit, entityId }) {
       let q = service().from("audit_logs").select("*").order("created_at", { ascending: false }).limit(limit);
