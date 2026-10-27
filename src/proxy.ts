@@ -10,7 +10,7 @@ const LANG_COOKIE = "hilal_lang";
 /** Yaş kapısının arkasındaki rotalar (profil içeriği gösterenler). */
 const GATED = new Set<ParsedPath["route"]>(["home", "explore", "location", "profile"]);
 /** Modül A — son kullanıcı hesap alanı: admin gibi dil önek mantığının dışında, henüz yerelleştirilmemiş statik rotalar. */
-const USER_AREA_PATHS = ["/giris", "/kayit", "/hesap", "/dogrula"];
+const USER_AREA_PATHS = ["/giris", "/kayit", "/hesap", "/dogrula", "/kullanici"];
 
 /**
  * Proxy:

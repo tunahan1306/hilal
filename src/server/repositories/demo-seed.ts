@@ -2,6 +2,7 @@ import "server-only";
 import type { CountryDecision } from "@/domain/country-policy";
 import type { CountryFeatureDecision } from "@/domain/policy";
 import type { AgeVerificationCheck, AppUser, ConsentRecord } from "@/domain/identity";
+import type { Conversation, ConversationParticipant, Follow, Message, Notification, UserBlock, UserProfile } from "@/domain/social";
 import type { PasswordHash } from "@/server/auth/password";
 import { DEFAULT_PLANS } from "@/domain/subscriptions";
 import { docFromPlainText, docToPlainText, type RichDoc } from "@/domain/rich-text";
@@ -162,6 +163,14 @@ export type DemoStore = {
   emailVerificationTokens: Map<string, string>;
   consentRecords: ConsentRecord[];
   ageVerificationChecks: AgeVerificationCheck[];
+  /** Modül B — sosyal platform (admin-küratörlü profiles'tan AYRI). */
+  userProfiles: UserProfile[];
+  follows: Follow[];
+  userBlocks: UserBlock[];
+  conversations: Conversation[];
+  conversationParticipants: ConversationParticipant[];
+  messages: Message[];
+  notifications: Notification[];
   counter: number;
 };
 
@@ -436,6 +445,13 @@ export function createDemoStore(now: Date): DemoStore {
     emailVerificationTokens: new Map(),
     consentRecords: [],
     ageVerificationChecks: [],
+    userProfiles: [],
+    follows: [],
+    userBlocks: [],
+    conversations: [],
+    conversationParticipants: [],
+    messages: [],
+    notifications: [],
     interests,
     profiles,
     media,

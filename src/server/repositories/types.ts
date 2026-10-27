@@ -2,6 +2,17 @@ import type { CountryCode } from "@/domain/countries";
 import type { CountryDecision, CountryPolicy, NewCountryDecision } from "@/domain/country-policy";
 import type { CountryFeatureDecision, CountryFeaturePolicy, NewCountryFeatureDecision, PolicyFeature } from "@/domain/policy";
 import type { AgeVerificationCheck, AppUser, ConsentRecord, NewAgeVerificationCheck, NewConsentRecord } from "@/domain/identity";
+import type {
+  Conversation,
+  Follow,
+  Message,
+  Notification,
+  PublicUserProfile,
+  UserBlock,
+  UserProfile,
+  UserProfilePatch,
+  NewUserProfile,
+} from "@/domain/social";
 import type { LocationData } from "@/domain/location-directory";
 import type { ProfileFilters } from "@/domain/filters";
 import type {
@@ -80,6 +91,34 @@ export interface Repository {
   /** Yalnızca sağlayıcı entegrasyonunun sonucunu kaydeder; ham belge/biyometrik veri asla geçmez. */
   addAgeVerificationCheck(input: NewAgeVerificationCheck): Promise<AgeVerificationCheck>;
   listAgeVerificationChecks(userId: string): Promise<AgeVerificationCheck[]>;
+
+  // Modül B — sosyal platform (user_profiles; admin-küratörlü profiles'tan AYRI).
+  createUserProfile(input: NewUserProfile): Promise<UserProfile>;
+  getUserProfileByUserId(userId: string): Promise<UserProfile | null>;
+  getUserProfileByHandle(handle: string): Promise<UserProfile | null>;
+  updateUserProfile(userId: string, patch: UserProfilePatch): Promise<UserProfile>;
+  /** user_profiles_public view'ı üzerinden — fail-closed politika+yaş doğrulama kapısı burada uygulanır. */
+  getPublicUserProfile(userId: string): Promise<PublicUserProfile | null>;
+
+  addFollow(followerId: string, followeeId: string): Promise<Follow>;
+  removeFollow(followerId: string, followeeId: string): Promise<void>;
+  listFollowing(userId: string): Promise<string[]>;
+  listFollowers(userId: string): Promise<string[]>;
+
+  addBlock(blockerId: string, blockedId: string): Promise<UserBlock>;
+  removeBlock(blockerId: string, blockedId: string): Promise<void>;
+  /** Her iki yönde de — isBlockedEitherWay ile birlikte kullanılır. */
+  listBlocksInvolving(userId: string): Promise<UserBlock[]>;
+
+  /** 1:1 konuşma — ikili zaten varsa onu döndürür, yoksa oluşturur. */
+  startOrGetConversation(userA: string, userB: string): Promise<Conversation>;
+  listConversationParticipants(conversationId: string): Promise<string[]>;
+  addMessage(input: { conversationId: string; senderId: string; body: string }): Promise<Message>;
+  listMessages(conversationId: string, opts: { limit: number }): Promise<Message[]>;
+
+  addNotification(input: { userId: string; type: Notification["type"]; payload: Record<string, unknown> }): Promise<Notification>;
+  listNotifications(userId: string): Promise<Notification[]>;
+  markNotificationRead(id: string, userId: string): Promise<void>;
 
   // Kamuya açık okuma (yalnızca yayındaki profiller)
   searchPublicProfiles(filters: ProfileFilters, opts: { limit: number; offset: number; cursor?: { publishedAt: string; id: string } }): Promise<SearchResult>;

@@ -4,6 +4,7 @@ import { COUNTRY_CODES, countryOfPlate, isCountry, plateRange, type CountryCode 
 import { defaultPolicies, PUBLICATION_STATUSES, type CountryDecision, type CountryPolicy, type PublicationStatus } from "@/domain/country-policy";
 import { defaultFeaturePolicies, FEATURE_POLICY_STATUSES, POLICY_FEATURES, type CountryFeatureDecision, type CountryFeaturePolicy, type FeaturePolicyStatus, type PolicyFeature } from "@/domain/policy";
 import type { AgeVerificationCheck, AgeVerificationStatus, AppUser, AppUserStatus, ConsentRecord, ConsentRecordType } from "@/domain/identity";
+import type { Conversation, Message, Notification, ProfileVisibility, PublicUserProfile, UserBlock, UserProfile } from "@/domain/social";
 import { sideDistricts } from "@/domain/istanbul";
 import { effectiveStatus, isExpiringSoon } from "@/domain/subscriptions";
 import type {
@@ -449,6 +450,58 @@ function toAgeVerificationCheck(r: Row): AgeVerificationCheck {
   };
 }
 
+function toUserProfile(r: Row): UserProfile {
+  return {
+    id: String(r.id),
+    userId: String(r.user_id),
+    handle: String(r.handle),
+    displayName: String(r.display_name),
+    bio: r.bio === null ? null : String(r.bio),
+    birthDate: String(r.birth_date),
+    countryCode: String(r.country_code),
+    visibility: String(r.visibility) as ProfileVisibility,
+    moderationStatus: String(r.moderation_status) as UserProfile["moderationStatus"],
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function toPublicUserProfile(r: Row): PublicUserProfile {
+  return {
+    id: String(r.id),
+    userId: String(r.user_id),
+    handle: String(r.handle),
+    displayName: String(r.display_name),
+    bio: r.bio === null ? null : String(r.bio),
+    age: Number(r.age),
+    countryCode: String(r.country_code),
+    createdAt: String(r.created_at),
+  };
+}
+
+function toMessage(r: Row): Message {
+  return {
+    id: String(r.id),
+    conversationId: String(r.conversation_id),
+    senderId: String(r.sender_id),
+    body: String(r.body),
+    createdAt: String(r.created_at),
+    deletedAt: r.deleted_at === null ? null : String(r.deleted_at),
+    moderationStatus: String(r.moderation_status) as Message["moderationStatus"],
+  };
+}
+
+function toNotification(r: Row): Notification {
+  return {
+    id: String(r.id),
+    userId: String(r.user_id),
+    type: String(r.type) as Notification["type"],
+    payload: (r.payload ?? {}) as Record<string, unknown>,
+    readAt: r.read_at === null ? null : String(r.read_at),
+    createdAt: String(r.created_at),
+  };
+}
+
 export function createSupabaseRepository(): Repository {
   return {
     kind: "supabase",
@@ -562,6 +615,111 @@ export function createSupabaseRepository(): Repository {
     async listAgeVerificationChecks(userId): Promise<AgeVerificationCheck[]> {
       const rows = check(await service().from("age_verification_checks").select("*").eq("user_id", userId).order("created_at", { ascending: false })) as Row[];
       return rows.map(toAgeVerificationCheck);
+    },
+    async createUserProfile(input): Promise<UserProfile> {
+      const row = check(await service().from("user_profiles").insert({
+        user_id: input.userId,
+        handle: input.handle,
+        display_name: input.displayName,
+        bio: input.bio,
+        birth_date: input.birthDate,
+        country_code: input.countryCode,
+        visibility: input.visibility,
+      }).select("*").single()) as Row;
+      return toUserProfile(row);
+    },
+    async getUserProfileByUserId(userId): Promise<UserProfile | null> {
+      const { data, error } = await service().from("user_profiles").select("*").eq("user_id", userId).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toUserProfile(data as Row) : null;
+    },
+    async getUserProfileByHandle(handle): Promise<UserProfile | null> {
+      const { data, error } = await service().from("user_profiles").select("*").ilike("handle", handle).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toUserProfile(data as Row) : null;
+    },
+    async updateUserProfile(userId, patch): Promise<UserProfile> {
+      const payload: Row = {};
+      if (patch.displayName !== undefined) payload.display_name = patch.displayName;
+      if (patch.bio !== undefined) payload.bio = patch.bio;
+      if (patch.visibility !== undefined) payload.visibility = patch.visibility;
+      const row = check(await service().from("user_profiles").update(payload).eq("user_id", userId).select("*").single()) as Row;
+      return toUserProfile(row);
+    },
+    async getPublicUserProfile(userId): Promise<PublicUserProfile | null> {
+      const { data, error } = await anon().from("user_profiles_public").select("*").eq("user_id", userId).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toPublicUserProfile(data as Row) : null;
+    },
+    async addFollow(followerId, followeeId) {
+      const row = check(await service().from("follows").insert({ follower_id: followerId, followee_id: followeeId }).select("*").single()) as Row;
+      return { followerId: String(row.follower_id), followeeId: String(row.followee_id), createdAt: String(row.created_at) };
+    },
+    async removeFollow(followerId, followeeId) {
+      check(await service().from("follows").delete().eq("follower_id", followerId).eq("followee_id", followeeId).select("follower_id"));
+    },
+    async listFollowing(userId) {
+      const rows = check(await service().from("follows").select("followee_id").eq("follower_id", userId)) as Row[];
+      return rows.map((r) => String(r.followee_id));
+    },
+    async listFollowers(userId) {
+      const rows = check(await service().from("follows").select("follower_id").eq("followee_id", userId)) as Row[];
+      return rows.map((r) => String(r.follower_id));
+    },
+    async addBlock(blockerId, blockedId) {
+      const row = check(await service().from("user_blocks").insert({ blocker_id: blockerId, blocked_id: blockedId }).select("*").single()) as Row;
+      return { blockerId: String(row.blocker_id), blockedId: String(row.blocked_id), createdAt: String(row.created_at) };
+    },
+    async removeBlock(blockerId, blockedId) {
+      check(await service().from("user_blocks").delete().eq("blocker_id", blockerId).eq("blocked_id", blockedId).select("blocker_id"));
+    },
+    async listBlocksInvolving(userId): Promise<UserBlock[]> {
+      const rows = check(await service().from("user_blocks").select("*").or(`blocker_id.eq.${userId},blocked_id.eq.${userId}`)) as Row[];
+      return rows.map((r) => ({ blockerId: String(r.blocker_id), blockedId: String(r.blocked_id), createdAt: String(r.created_at) }));
+    },
+    async startOrGetConversation(userA, userB): Promise<Conversation> {
+      const mine = check(await service().from("conversation_participants").select("conversation_id").eq("user_id", userA)) as Row[];
+      const ids = mine.map((r) => String(r.conversation_id));
+      if (ids.length) {
+        const match = check(
+          await service().from("conversation_participants").select("conversation_id").eq("user_id", userB).in("conversation_id", ids),
+        ) as Row[];
+        if (match[0]) {
+          const conv = check(await service().from("conversations").select("*").eq("id", String(match[0].conversation_id)).single()) as Row;
+          return { id: String(conv.id), createdAt: String(conv.created_at) };
+        }
+      }
+      const conv = check(await service().from("conversations").insert({}).select("*").single()) as Row;
+      check(await service().from("conversation_participants").insert([
+        { conversation_id: conv.id, user_id: userA },
+        { conversation_id: conv.id, user_id: userB },
+      ]));
+      return { id: String(conv.id), createdAt: String(conv.created_at) };
+    },
+    async listConversationParticipants(conversationId) {
+      const rows = check(await service().from("conversation_participants").select("user_id").eq("conversation_id", conversationId)) as Row[];
+      return rows.map((r) => String(r.user_id));
+    },
+    async addMessage(input): Promise<Message> {
+      const row = check(await service().from("messages").insert({ conversation_id: input.conversationId, sender_id: input.senderId, body: input.body }).select("*").single()) as Row;
+      return toMessage(row);
+    },
+    async listMessages(conversationId, { limit }): Promise<Message[]> {
+      const rows = check(
+        await service().from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: false }).limit(limit),
+      ) as Row[];
+      return rows.map(toMessage).reverse();
+    },
+    async addNotification(input): Promise<Notification> {
+      const row = check(await service().from("notifications").insert({ user_id: input.userId, type: input.type, payload: input.payload }).select("*").single()) as Row;
+      return toNotification(row);
+    },
+    async listNotifications(userId): Promise<Notification[]> {
+      const rows = check(await service().from("notifications").select("*").eq("user_id", userId).order("created_at", { ascending: false })) as Row[];
+      return rows.map(toNotification);
+    },
+    async markNotificationRead(id, userId) {
+      check(await service().from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id).eq("user_id", userId).select("id"));
     },
     async getLocations() {
       const cities = check(await anon().from("cities").select("*").order("plate")) as Row[];

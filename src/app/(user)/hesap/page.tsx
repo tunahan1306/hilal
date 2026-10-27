@@ -8,6 +8,11 @@ export const metadata: Metadata = { title: "Hesabım" };
 
 export default async function AccountPage() {
   const user = await requireUser();
-  const checks = await getRepository().listAgeVerificationChecks(user.id);
-  return <AccountPanel user={user} ageVerified={isAgeVerified(checks)} />;
+  const repo = getRepository();
+  const [checks, profile, notifications] = await Promise.all([
+    repo.listAgeVerificationChecks(user.id),
+    repo.getUserProfileByUserId(user.id),
+    repo.listNotifications(user.id),
+  ]);
+  return <AccountPanel user={user} ageVerified={isAgeVerified(checks)} profile={profile} notifications={notifications} />;
 }

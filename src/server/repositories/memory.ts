@@ -4,8 +4,9 @@ import { getProvince, listProvinces, listDistricts } from "@/domain/locations";
 import { toPublicProfile } from "@/domain/projection";
 import { countryOfPlate, type CountryCode } from "@/domain/countries";
 import { defaultPolicies, isPublishable, type CountryPolicy } from "@/domain/country-policy";
-import { defaultFeaturePolicies, type CountryFeaturePolicy, type PolicyFeature } from "@/domain/policy";
+import { defaultFeaturePolicies, isFeaturePermitted, type CountryFeaturePolicy, type PolicyFeature } from "@/domain/policy";
 import type { AppUser } from "@/domain/identity";
+import type { PublicUserProfile } from "@/domain/social";
 import { hashPassword, verifyPassword } from "@/server/auth/password";
 import { sideDistricts } from "@/domain/istanbul";
 import { effectiveStatus, isExpiringSoon } from "@/domain/subscriptions";
@@ -171,6 +172,127 @@ export function createMemoryRepository(): Repository {
     },
     async listAgeVerificationChecks(userId) {
       return clone(store().ageVerificationChecks.filter((c) => c.userId === userId));
+    },
+    async createUserProfile(input) {
+      const s = store();
+      const now = new Date().toISOString();
+      const row = { ...input, id: nextId("uprof"), moderationStatus: "pending" as const, createdAt: now, updatedAt: now };
+      s.userProfiles.push(row);
+      return clone(row);
+    },
+    async getUserProfileByUserId(userId) {
+      return clone(store().userProfiles.find((p) => p.userId === userId) ?? null);
+    },
+    async getUserProfileByHandle(handle) {
+      return clone(store().userProfiles.find((p) => p.handle.toLowerCase() === handle.toLowerCase()) ?? null);
+    },
+    async updateUserProfile(userId, patch) {
+      const p = must(
+        store().userProfiles.find((x) => x.userId === userId),
+        "Profil",
+      );
+      Object.assign(p, patch, { updatedAt: new Date().toISOString() });
+      return clone(p);
+    },
+    async getPublicUserProfile(userId): Promise<PublicUserProfile | null> {
+      const s = store();
+      const p = s.userProfiles.find((x) => x.userId === userId);
+      if (!p || p.moderationStatus !== "approved" || p.visibility !== "public") return null;
+      const age = Math.floor((Date.now() - new Date(p.birthDate).getTime()) / (365.2425 * 86_400_000));
+      if (age < 18) return null;
+      const policy = countryFeaturePolicies().find((x) => x.countryCode === p.countryCode && x.feature === "social_profiles");
+      if (!isFeaturePermitted(policy)) return null;
+      const now = new Date();
+      const verified = s.ageVerificationChecks.some(
+        (v) => v.userId === userId && v.status === "approved" && (!v.expiresAt || new Date(v.expiresAt) >= now),
+      );
+      if (!verified) return null;
+      return clone({ id: p.id, userId: p.userId, handle: p.handle, displayName: p.displayName, bio: p.bio, age, countryCode: p.countryCode, createdAt: p.createdAt });
+    },
+    async addFollow(followerId, followeeId) {
+      const s = store();
+      const row = { followerId, followeeId, createdAt: new Date().toISOString() };
+      s.follows.push(row);
+      return clone(row);
+    },
+    async removeFollow(followerId, followeeId) {
+      const s = store();
+      s.follows = s.follows.filter((f) => !(f.followerId === followerId && f.followeeId === followeeId));
+    },
+    async listFollowing(userId) {
+      return store()
+        .follows.filter((f) => f.followerId === userId)
+        .map((f) => f.followeeId);
+    },
+    async listFollowers(userId) {
+      return store()
+        .follows.filter((f) => f.followeeId === userId)
+        .map((f) => f.followerId);
+    },
+    async addBlock(blockerId, blockedId) {
+      const s = store();
+      const row = { blockerId, blockedId, createdAt: new Date().toISOString() };
+      s.userBlocks.push(row);
+      return clone(row);
+    },
+    async removeBlock(blockerId, blockedId) {
+      const s = store();
+      s.userBlocks = s.userBlocks.filter((b) => !(b.blockerId === blockerId && b.blockedId === blockedId));
+    },
+    async listBlocksInvolving(userId) {
+      return clone(store().userBlocks.filter((b) => b.blockerId === userId || b.blockedId === userId));
+    },
+    async startOrGetConversation(userA, userB) {
+      const s = store();
+      const existing = s.conversations.find((c) => {
+        const participants = s.conversationParticipants.filter((p) => p.conversationId === c.id).map((p) => p.userId);
+        return participants.length === 2 && participants.includes(userA) && participants.includes(userB);
+      });
+      if (existing) return clone(existing);
+      const now = new Date().toISOString();
+      const conversation = { id: nextId("conv"), createdAt: now };
+      s.conversations.push(conversation);
+      s.conversationParticipants.push(
+        { conversationId: conversation.id, userId: userA, joinedAt: now, lastReadAt: null },
+        { conversationId: conversation.id, userId: userB, joinedAt: now, lastReadAt: null },
+      );
+      return clone(conversation);
+    },
+    async listConversationParticipants(conversationId) {
+      return store()
+        .conversationParticipants.filter((p) => p.conversationId === conversationId)
+        .map((p) => p.userId);
+    },
+    async addMessage(input) {
+      const s = store();
+      const row = { ...input, id: nextId("msg"), createdAt: new Date().toISOString(), deletedAt: null, moderationStatus: "approved" as const };
+      s.messages.push(row);
+      return clone(row);
+    },
+    async listMessages(conversationId, { limit }) {
+      return clone(
+        store()
+          .messages.filter((m) => m.conversationId === conversationId)
+          .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+          .slice(-limit),
+      );
+    },
+    async addNotification(input) {
+      const s = store();
+      const row = { ...input, id: nextId("notif"), readAt: null, createdAt: new Date().toISOString() };
+      s.notifications.push(row);
+      return clone(row);
+    },
+    async listNotifications(userId) {
+      return clone(
+        store()
+          .notifications.filter((n) => n.userId === userId)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      );
+    },
+    async markNotificationRead(id, userId) {
+      const n = store().notifications.find((x) => x.id === id && x.userId === userId);
+      if (n) n.readAt = new Date().toISOString();
     },
     async getLocations() { const provinces = listProvinces(); return { provinces, districts: provinces.flatMap((p) => listDistricts(p.plate)) }; },
 
