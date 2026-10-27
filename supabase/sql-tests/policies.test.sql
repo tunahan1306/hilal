@@ -261,6 +261,7 @@ reset role;
 \ir policies-social.test.sql
 \ir policies-creator.test.sql
 \ir policies-moderation.test.sql
+\ir policies-billing.test.sql
 
 select 'ALL DB TESTS PASSED' as result;
 rollback;

@@ -461,6 +461,43 @@ export function createMemoryRepository(): Repository {
     async listCreatorPayouts(creatorId) {
       return clone(store().creatorPayouts.filter((p) => p.creatorId === creatorId));
     },
+    async addPaymentTransaction(input) {
+      const s = store();
+      if (s.paymentTransactions.some((t) => t.idempotencyKey === input.idempotencyKey)) {
+        throw new Error("addPaymentTransaction: idempotencyKey zaten kullanılmış");
+      }
+      const row = { ...input, id: nextId("txn"), createdAt: new Date().toISOString() };
+      s.paymentTransactions.push(row);
+      return clone(row);
+    },
+    async getPaymentTransactionByIdempotencyKey(key) {
+      return clone(store().paymentTransactions.find((t) => t.idempotencyKey === key) ?? null);
+    },
+    async listPaymentTransactions(filter) {
+      return clone(
+        store().paymentTransactions.filter(
+          (t) =>
+            (!filter?.payerId || t.payerId === filter.payerId) &&
+            (!filter?.payeeCreatorId || t.payeeCreatorId === filter.payeeCreatorId) &&
+            (!filter?.kind || t.kind === filter.kind),
+        ),
+      ).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+    async recordWebhookEvent(input) {
+      const s = store();
+      const existing = s.webhookEvents.find((e) => e.providerName === input.providerName && e.externalEventId === input.externalEventId);
+      if (existing) return { event: clone(existing), isNew: false };
+      const row = { ...input, id: nextId("whe"), processedAt: null, createdAt: new Date().toISOString() };
+      s.webhookEvents.push(row);
+      return { event: clone(row), isNew: true };
+    },
+    async markWebhookEventProcessed(id, processedAt) {
+      const e = must(
+        store().webhookEvents.find((x) => x.id === id),
+        "Webhook olayı",
+      );
+      e.processedAt = processedAt;
+    },
     async getLocations() { const provinces = listProvinces(); return { provinces, districts: provinces.flatMap((p) => listDistricts(p.plate)) }; },
 
     async searchPublicProfiles(filters: ProfileFilters, { limit, offset, cursor }) {

@@ -13,6 +13,7 @@ import type {
   CreatorSubscription,
   CreatorSubscriptionTier,
 } from "@/domain/creator";
+import type { PaymentTransaction, WebhookEvent } from "@/domain/billing";
 import { sideDistricts } from "@/domain/istanbul";
 import { effectiveStatus, isExpiringSoon } from "@/domain/subscriptions";
 import type {
@@ -615,6 +616,34 @@ function toCreatorPayout(r: Row): CreatorPayout {
   };
 }
 
+function toPaymentTransaction(r: Row): PaymentTransaction {
+  return {
+    id: String(r.id),
+    kind: String(r.kind) as PaymentTransaction["kind"],
+    payerId: r.payer_id === null ? null : String(r.payer_id),
+    payeeCreatorId: r.payee_creator_id === null ? null : String(r.payee_creator_id),
+    amountMinorUnits: Number(r.amount_minor_units),
+    currency: String(r.currency),
+    status: String(r.status) as PaymentTransaction["status"],
+    providerName: String(r.provider_name),
+    externalRef: r.external_ref === null ? null : String(r.external_ref),
+    idempotencyKey: String(r.idempotency_key),
+    metadata: (r.metadata ?? {}) as Record<string, unknown>,
+    createdAt: String(r.created_at),
+  };
+}
+
+function toWebhookEvent(r: Row): WebhookEvent {
+  return {
+    id: String(r.id),
+    providerName: String(r.provider_name),
+    externalEventId: String(r.external_event_id),
+    payload: (r.payload ?? {}) as Record<string, unknown>,
+    processedAt: r.processed_at === null ? null : String(r.processed_at),
+    createdAt: String(r.created_at),
+  };
+}
+
 export function createSupabaseRepository(): Repository {
   return {
     kind: "supabase",
@@ -1034,6 +1063,56 @@ export function createSupabaseRepository(): Repository {
     async listCreatorPayouts(creatorId): Promise<CreatorPayout[]> {
       const rows = check(await service().from("creator_payouts").select("*").eq("creator_id", creatorId)) as Row[];
       return rows.map(toCreatorPayout);
+    },
+    async addPaymentTransaction(input): Promise<PaymentTransaction> {
+      const row = check(
+        await service()
+          .from("payment_transactions")
+          .insert({
+            kind: input.kind,
+            payer_id: input.payerId,
+            payee_creator_id: input.payeeCreatorId,
+            amount_minor_units: input.amountMinorUnits,
+            currency: input.currency,
+            status: input.status,
+            provider_name: input.providerName,
+            external_ref: input.externalRef,
+            idempotency_key: input.idempotencyKey,
+            metadata: input.metadata,
+          })
+          .select("*")
+          .single(),
+      ) as Row;
+      return toPaymentTransaction(row);
+    },
+    async getPaymentTransactionByIdempotencyKey(key): Promise<PaymentTransaction | null> {
+      const { data, error } = await service().from("payment_transactions").select("*").eq("idempotency_key", key).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toPaymentTransaction(data as Row) : null;
+    },
+    async listPaymentTransactions(filter): Promise<PaymentTransaction[]> {
+      let q = service().from("payment_transactions").select("*").order("created_at", { ascending: false });
+      if (filter?.payerId) q = q.eq("payer_id", filter.payerId);
+      if (filter?.payeeCreatorId) q = q.eq("payee_creator_id", filter.payeeCreatorId);
+      if (filter?.kind) q = q.eq("kind", filter.kind);
+      return (check(await q) as Row[]).map(toPaymentTransaction);
+    },
+    async recordWebhookEvent(input): Promise<{ event: WebhookEvent; isNew: boolean }> {
+      // Tek bir atomik "ekle yoksa yok say" — iki eşzamanlı teslimat arasındaki yarış
+      // durumuna karşı da güvenli (check-then-insert değil).
+      const upserted = await service()
+        .from("webhook_events")
+        .upsert({ provider_name: input.providerName, external_event_id: input.externalEventId, payload: input.payload }, { onConflict: "provider_name,external_event_id", ignoreDuplicates: true })
+        .select("*")
+        .maybeSingle();
+      if (upserted.error) throw new DbError(upserted.error.message, upserted.error.code);
+      if (upserted.data) return { event: toWebhookEvent(upserted.data as Row), isNew: true };
+      const { data, error } = await service().from("webhook_events").select("*").eq("provider_name", input.providerName).eq("external_event_id", input.externalEventId).single();
+      if (error) throw new DbError(error.message, error.code);
+      return { event: toWebhookEvent(data as Row), isNew: false };
+    },
+    async markWebhookEventProcessed(id, processedAt): Promise<void> {
+      check(await service().from("webhook_events").update({ processed_at: processedAt }).eq("id", id).select("id"));
     },
     async getLocations() {
       const cities = check(await anon().from("cities").select("*").order("plate")) as Row[];

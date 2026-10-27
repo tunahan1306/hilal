@@ -33,6 +33,7 @@ import type {
 import type { LocationData } from "@/domain/location-directory";
 import type { ProfileFilters } from "@/domain/filters";
 import type { ModerationContentType } from "@/domain/moderation";
+import type { NewPaymentTransaction, NewWebhookEvent, PaymentTransaction, PaymentTransactionKind, WebhookEvent } from "@/domain/billing";
 import type {
   Admin,
   AuditLog,
@@ -258,6 +259,17 @@ export interface Repository {
   setContentModerationStatus(contentType: Extract<ModerationContentType, "user_profile" | "post" | "media_asset" | "message">, contentId: string, status: "approved" | "rejected", reviewedBy: string): Promise<void>;
   /** Modül E — hesap askıya alma triyaj eylemi (app_users.status). */
   updateAppUserStatus(userId: string, status: AppUserStatus, actorId: string | null): Promise<void>;
+
+  // Modül F — ödeme defteri (yalnızca şema; bkz. src/server/payments.ts başlığındaki tasarım
+  // kararı notu). PaymentProvider her zaman PaymentsDisabledError fırlattığı için bu metotları
+  // çağıran hiçbir Server Action yoktur — gerçek bir sağlayıcı sözleşme imzalanana kadar atıl kalır.
+  addPaymentTransaction(input: NewPaymentTransaction): Promise<PaymentTransaction>;
+  /** idempotency_key tekilliği — webhook'un en-az-bir-kez teslimatı asla çift satır oluşturmaz. */
+  getPaymentTransactionByIdempotencyKey(key: string): Promise<PaymentTransaction | null>;
+  listPaymentTransactions(filter?: { payerId?: string; payeeCreatorId?: string; kind?: PaymentTransactionKind }): Promise<PaymentTransaction[]>;
+  /** (provider_name, external_event_id) üzerinde idempotent ekleme; isNew=false ise olay zaten işlenmiştir, tekrar işlenmez. */
+  recordWebhookEvent(input: NewWebhookEvent): Promise<{ event: WebhookEvent; isNew: boolean }>;
+  markWebhookEventProcessed(id: string, processedAt: string): Promise<void>;
 
   // Abonelikler
   listPlans(): Promise<MembershipPlan[]>;

@@ -4,6 +4,7 @@ import type { CountryFeatureDecision } from "@/domain/policy";
 import type { AgeVerificationCheck, AppUser, ConsentRecord, UserRole } from "@/domain/identity";
 import type { Conversation, ConversationParticipant, Follow, MediaAsset, Message, Notification, Post, UserBlock, UserProfile } from "@/domain/social";
 import type { ContentRights, CreatorAccount, CreatorPayout, CreatorSubscription, CreatorSubscriptionTier } from "@/domain/creator";
+import type { PaymentTransaction, WebhookEvent } from "@/domain/billing";
 import type { PasswordHash } from "@/server/auth/password";
 import { DEFAULT_PLANS } from "@/domain/subscriptions";
 import { docFromPlainText, docToPlainText, type RichDoc } from "@/domain/rich-text";
@@ -183,6 +184,9 @@ export type DemoStore = {
   creatorSubscriptionTiers: CreatorSubscriptionTier[];
   creatorSubscriptions: CreatorSubscription[];
   creatorPayouts: CreatorPayout[];
+  /** Modül F — yalnızca şema; gerçek sağlayıcı olmadan hiçbir satır gerçek bir satın almayla oluşamaz. */
+  paymentTransactions: PaymentTransaction[];
+  webhookEvents: WebhookEvent[];
   counter: number;
 };
 
@@ -477,6 +481,8 @@ export function createDemoStore(now: Date): DemoStore {
     creatorSubscriptionTiers: [],
     creatorSubscriptions: [],
     creatorPayouts: [],
+    paymentTransactions: [],
+    webhookEvents: [],
     interests,
     profiles,
     media,
