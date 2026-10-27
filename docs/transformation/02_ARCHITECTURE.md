@@ -163,3 +163,18 @@ is confirmed, to avoid rework on component naming/class conventions.
 brief), real age-verification vendor selection (the abstraction is designed; which vendor to
 actually contract with is a Phase 4+ operational decision informed by Phase 1's jurisdiction
 research), and anything for module D.
+
+## 8. Sign-off record (2026-10-27)
+
+All three §6 decisions confirmed by the user as recommended:
+
+1. **Design-system register split** — confirmed. Discovery product's existing rules stay unchanged
+   with zero exceptions; Creator Platform gets its own distinct component variants on the same
+   token system, never a shared card/feed type.
+2. **In-place alteration of `moderation_reports`/`moderation_actions`** — confirmed. Proceed per
+   `02a`'s design, shipped with updated `sql-tests/policies.test.sql` coverage and a documented
+   rollback window, early in Phase 3.
+3. **Global "feature flags" admin screen** — confirmed cut. Rely entirely on the per-country
+   `PolicyGate`; not part of Phase 3 scope.
+
+Phase 3 (core implementation) may now proceed on this basis.
