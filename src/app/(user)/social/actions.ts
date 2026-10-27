@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 import { assertUser } from "@/server/auth/user-session";
 import { DomainError } from "@/server/services/errors";
+import { clientFingerprint } from "@/server/rate-limit";
+import { submitContentReport } from "@/server/services/content-moderation";
 import {
   blockUser,
   createOwnProfile,
@@ -109,5 +111,26 @@ export async function createPostAction(_prev: SocialState, formData: FormData): 
     }
     await createPost(actor, { body: String(formData.get("body") ?? ""), mediaAssetIds, paid: formData.get("paid") === "on" });
     return "Gönderi paylaşıldı.";
+  });
+}
+
+/**
+ * Modül B/C içeriği şikâyeti — admin-küratörlü keşif ürününün profil şikâyet formundan
+ * AYRI (bkz. src/server/services/content-moderation.ts). Giriş gerektirmez; ziyaretçi de
+ * bildirebilir (mevcut profil şikâyet akışıyla aynı duruş).
+ */
+export async function reportContentAction(_prev: SocialState, formData: FormData): Promise<SocialState> {
+  return run(async () => {
+    const fingerprint = await clientFingerprint();
+    await submitContentReport(
+      {
+        contentType: String(formData.get("contentType") ?? "") as "post",
+        contentId: String(formData.get("contentId") ?? ""),
+        category: String(formData.get("category") ?? "other") as "other",
+        description: String(formData.get("description") ?? ""),
+      },
+      fingerprint,
+    );
+    return "Bildiriminiz alındı; inceleniyor.";
   });
 }

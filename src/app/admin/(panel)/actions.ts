@@ -16,6 +16,7 @@ import * as profiles from "@/server/services/profiles";
 import * as moderation from "@/server/services/moderation";
 import * as subscriptions from "@/server/services/subscriptions";
 import * as creator from "@/server/services/creator";
+import * as contentModeration from "@/server/services/content-moderation";
 import { recordCountryDecision } from "@/server/services/countries";
 import { recordFeaturePolicyDecision } from "@/server/services/policy";
 import { updatePrivacyRequestStatus } from "@/server/services/privacy";
@@ -381,6 +382,20 @@ export async function contentRightsReviewAction(id: string): Promise<ActionResul
     async (admin) => {
       await creator.reviewContentRights(admin, id);
       return "Hak kaydı incelendi.";
+    },
+    { invalidate: false },
+  );
+}
+
+/**
+ * Modül E — Modül B/C içeriği (profil dışı) şikâyet triyajı. Admin-küratörlü ürünün
+ * reportAction'ından AYRI (bkz. src/server/services/content-moderation.ts).
+ */
+export async function contentReportTriageAction(id: string, action: "dismiss" | "warn" | "remove_content" | "suspend_account", note: string): Promise<ActionResult> {
+  return run(
+    async (admin) => {
+      await contentModeration.triageContentReport(admin, id, { action, note: note || undefined });
+      return "Şikâyet sonuçlandırıldı.";
     },
     { invalidate: false },
   );

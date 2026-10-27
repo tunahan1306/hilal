@@ -202,6 +202,8 @@ export const tr = {
       suspected_minor: "Reşit olmayan kişi şüphesi",
       paid_sexual_services: "Ücretli cinsel hizmet tanıtımı",
       personal_data: "Kişisel veri ihlali",
+      spam: "Spam",
+      csam_suspected: "Çocuk istismarı şüphesi",
       other: "Diğer",
     },
   },

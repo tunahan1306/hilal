@@ -1,7 +1,7 @@
 import type { CountryCode } from "@/domain/countries";
 import type { CountryDecision, CountryPolicy, NewCountryDecision } from "@/domain/country-policy";
 import type { CountryFeatureDecision, CountryFeaturePolicy, NewCountryFeatureDecision, PolicyFeature } from "@/domain/policy";
-import type { AgeVerificationCheck, AppUser, ConsentRecord, NewAgeVerificationCheck, NewConsentRecord, UserRole } from "@/domain/identity";
+import type { AgeVerificationCheck, AppUser, AppUserStatus, ConsentRecord, NewAgeVerificationCheck, NewConsentRecord, UserRole } from "@/domain/identity";
 import type {
   Conversation,
   Follow,
@@ -32,6 +32,7 @@ import type {
 } from "@/domain/creator";
 import type { LocationData } from "@/domain/location-directory";
 import type { ProfileFilters } from "@/domain/filters";
+import type { ModerationContentType } from "@/domain/moderation";
 import type {
   Admin,
   AuditLog,
@@ -58,6 +59,21 @@ export type NewProfile = Omit<
   "id" | "createdAt" | "updatedAt" | "publishedAt" | "archivedAt" | "moderatedAt" | "moderatedBy" | "moderationNote"
 >;
 export type ProfilePatch = Partial<Omit<Profile, "id" | "createdAt" | "createdBy">>;
+
+/**
+ * contentType/contentId isteğe bağlıdır: verilmezse repository bunları 'profile'/profileId
+ * olarak türetir — admin-küratörlü keşif ürününün mevcut, değişmemiş çağrı şekli
+ * (yalnızca profileId verir) böylece kırılmadan content_ref_present kısıtını karşılar.
+ * Modül B/C içeriği için profileId null, contentType/contentId açıkça verilir.
+ */
+export type NewModerationReport = Omit<ModerationReport, "id" | "createdAt" | "updatedAt" | "status" | "resolution" | "contentType" | "contentId"> & {
+  contentType?: ModerationContentType;
+  contentId?: string;
+};
+export type NewModerationAction = Omit<ModerationAction, "id" | "createdAt" | "contentType" | "contentId"> & {
+  contentType?: ModerationContentType;
+  contentId?: string;
+};
 
 export type SearchResult = { items: PublicProfile[]; total: number };
 export type LocationCount = { plate: number; districtSlug: string | null; count: number };
@@ -113,6 +129,8 @@ export interface Repository {
   createUserProfile(input: NewUserProfile): Promise<UserProfile>;
   getUserProfileByUserId(userId: string): Promise<UserProfile | null>;
   getUserProfileByHandle(handle: string): Promise<UserProfile | null>;
+  /** Modül E — content_type='user_profile' şikâyetinin hedefini çözmek için (contentId, user_profiles.id'dir, userId değil). */
+  getUserProfileById(id: string): Promise<UserProfile | null>;
   updateUserProfile(userId: string, patch: UserProfilePatch): Promise<UserProfile>;
   /** user_profiles_public view'ı üzerinden — fail-closed politika+yaş doğrulama kapısı burada uygulanır. */
   getPublicUserProfile(userId: string): Promise<PublicUserProfile | null>;
@@ -132,6 +150,8 @@ export interface Repository {
   listConversationParticipants(conversationId: string): Promise<string[]>;
   addMessage(input: { conversationId: string; senderId: string; body: string }): Promise<Message>;
   listMessages(conversationId: string, opts: { limit: number }): Promise<Message[]>;
+  /** Modül E — content_type='message' şikâyetinin hedefini çözmek için. */
+  getMessageById(id: string): Promise<Message | null>;
 
   addNotification(input: { userId: string; type: Notification["type"]; payload: Record<string, unknown> }): Promise<Notification>;
   listNotifications(userId: string): Promise<Notification[]>;
@@ -222,16 +242,22 @@ export interface Repository {
   listExpiredVerificationDocuments(now: string): Promise<VerificationRecord[]>;
   clearVerificationDocument(id: string): Promise<void>;
 
-  // Moderasyon
-  listReports(filter?: { status?: ModerationReport["status"]; profileId?: string }): Promise<ModerationReport[]>;
+  // Moderasyon (Modül E — genelleştirildi; content_type='profile' admin-küratörlü ürün için değişmedi)
+  listReports(filter?: { status?: ModerationReport["status"]; profileId?: string; contentType?: ModerationContentType; contentId?: string }): Promise<ModerationReport[]>;
   getReport(id: string): Promise<ModerationReport | null>;
-  createReport(input: Omit<ModerationReport, "id" | "createdAt" | "updatedAt" | "status" | "resolution">): Promise<ModerationReport>;
+  createReport(input: NewModerationReport): Promise<ModerationReport>;
   updateReport(id: string, patch: Partial<Pick<ModerationReport, "status" | "resolution">>): Promise<ModerationReport>;
   countRecentReportsByHash(hash: string, sinceIso: string): Promise<number>;
   countRecentReportsForProfile(profileId: string, sinceIso: string): Promise<number>;
+  /** Modül B/C içeriği için — countRecentReportsForProfile'ın genelleştirilmiş eşdeğeri. */
+  countRecentReportsForContent(contentType: ModerationContentType, contentId: string, sinceIso: string): Promise<number>;
   countRecentModerationActions(type: ModerationAction["type"], sinceIso: string): Promise<number>;
-  listModerationActions(filter: { reportId?: string; profileId?: string }): Promise<ModerationAction[]>;
-  addModerationAction(input: Omit<ModerationAction, "id" | "createdAt">): Promise<ModerationAction>;
+  listModerationActions(filter: { reportId?: string; profileId?: string; contentType?: ModerationContentType; contentId?: string }): Promise<ModerationAction[]>;
+  addModerationAction(input: NewModerationAction): Promise<ModerationAction>;
+  /** user_profiles/posts/media_assets ortak moderation_status sütununu ayarlar — triyaj + (ileride) proaktif onay için tek yazma yolu. */
+  setContentModerationStatus(contentType: Extract<ModerationContentType, "user_profile" | "post" | "media_asset" | "message">, contentId: string, status: "approved" | "rejected", reviewedBy: string): Promise<void>;
+  /** Modül E — hesap askıya alma triyaj eylemi (app_users.status). */
+  updateAppUserStatus(userId: string, status: AppUserStatus, actorId: string | null): Promise<void>;
 
   // Abonelikler
   listPlans(): Promise<MembershipPlan[]>;

@@ -376,6 +376,8 @@ export function createDemoStore(now: Date): DemoStore {
     {
       id: id("rep", 1),
       profileId: profiles[3].id,
+      contentType: "profile",
+      contentId: profiles[3].id,
       category: "fake_profile",
       description: "Bu profilin başka bir sitedeki fotoğrafları kullandığını düşünüyorum. (demo)",
       reporterEmail: null,
@@ -388,6 +390,8 @@ export function createDemoStore(now: Date): DemoStore {
     {
       id: id("rep", 2),
       profileId: profiles[8].id,
+      contentType: "profile",
+      contentId: profiles[8].id,
       category: "other",
       description: "Profil açıklamasında yazım hatası var, bilgi amaçlı. (demo)",
       reporterEmail: null,

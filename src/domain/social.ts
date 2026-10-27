@@ -48,7 +48,8 @@ export type Message = {
   moderationStatus: "pending" | "approved" | "rejected";
 };
 
-export type NotificationType = "new_follower" | "new_message";
+/** moderation_warning — Modül E'nin genelleştirilmiş triyajı (bkz. src/server/services/content-moderation.ts); notifications.type bir enum değil, metin kısıtıdır, bu yüzden yeni değer migration gerektirmez. */
+export type NotificationType = "new_follower" | "new_message" | "moderation_warning";
 export type Notification = {
   id: string;
   userId: string;

@@ -6,10 +6,11 @@ import { PageHeader } from "@/components/admin/page-header";
 import { REPORT_STATUS_LABELS, REPORT_STATUS_TONE, StatusBadge } from "@/components/admin/status-badge";
 import { PROFILE_STATUS_LABELS } from "@/domain/publishing";
 import { REPORT_CATEGORY_LABELS } from "@/domain/types";
+import { MODERATION_CONTENT_TYPE_LABELS } from "@/domain/moderation";
 import { formatDate } from "@/lib/site";
 import { requireAdmin } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
-import { reportAction } from "../../actions";
+import { contentReportTriageAction, reportAction } from "../../actions";
 
 export const metadata: Metadata = { title: "Şikâyet ayrıntısı" };
 
@@ -24,6 +25,9 @@ const ACTION_LABELS: Record<string, string> = {
   appeal_accepted: "İtiraz kabul edildi",
   appeal_rejected: "İtiraz reddedildi",
   auto_unpublished: "Otomatik yayından kaldırma",
+  warning_issued: "Uyarı gönderildi",
+  content_rejected: "İçerik reddedildi",
+  account_suspended: "Hesap askıya alındı",
 };
 
 export default async function ReportDetailPage({ params }: PageProps<"/admin/sikayetler/[id]">) {
@@ -32,7 +36,11 @@ export default async function ReportDetailPage({ params }: PageProps<"/admin/sik
   const repo = getRepository();
   const report = await repo.getReport(id);
   if (!report) notFound();
-  const [profile, actions] = await Promise.all([repo.getProfile(report.profileId), repo.listModerationActions({ reportId: id })]);
+  const isProfileReport = report.contentType === "profile";
+  const [profile, actions] = await Promise.all([
+    isProfileReport ? repo.getProfile(report.profileId!) : Promise.resolve(null),
+    repo.listModerationActions({ reportId: id }),
+  ]);
   const open = report.status === "open" || report.status === "in_review";
   const appealed = report.status === "appealed";
   const closed = report.status === "resolved" || report.status === "rejected";
@@ -53,40 +61,65 @@ export default async function ReportDetailPage({ params }: PageProps<"/admin/sik
             <span className="text-muted-foreground">Bildiren e-posta:</span> {report.reporterEmail ?? "Belirtilmedi"}
           </div>
           {report.resolution ? <div className="text-sm"><span className="text-muted-foreground">Karar gerekçesi:</span> {report.resolution}</div> : null}
-          <div className="flex flex-wrap gap-2 border-t border-border/70 pt-4">
-            {report.status === "open" || appealed ? <ActionButton action={reportAction.bind(null, id, "review")} variant="outline">İncelemeye al</ActionButton> : null}
-            {open ? (
-              <>
-                <ActionButton action={reportAction.bind(null, id, "remove")} variant="destructive" confirm={{ title: "İçerik kaldırılsın mı?", description: "Profil yayından kaldırılır ve moderasyon durumu reddedildi olarak işaretlenir.", prompt: "Karar gerekçesi (zorunlu)", destructive: true, confirmLabel: "Kaldır", minLength: 5 }}>
-                  İçeriği kaldır
+          {isProfileReport ? (
+            <div className="flex flex-wrap gap-2 border-t border-border/70 pt-4">
+              {report.status === "open" || appealed ? <ActionButton action={reportAction.bind(null, id, "review")} variant="outline">İncelemeye al</ActionButton> : null}
+              {open ? (
+                <>
+                  <ActionButton action={reportAction.bind(null, id, "remove")} variant="destructive" confirm={{ title: "İçerik kaldırılsın mı?", description: "Profil yayından kaldırılır ve moderasyon durumu reddedildi olarak işaretlenir.", prompt: "Karar gerekçesi (zorunlu)", destructive: true, confirmLabel: "Kaldır", minLength: 5 }}>
+                    İçeriği kaldır
+                  </ActionButton>
+                  <ActionButton action={reportAction.bind(null, id, "keep")} variant="outline" confirm={{ title: "Şikâyet reddedilsin mi?", prompt: "Karar gerekçesi", confirmLabel: "Reddet", minLength: 5 }}>
+                    Şikâyeti reddet
+                  </ActionButton>
+                </>
+              ) : null}
+              {closed ? (
+                <ActionButton action={reportAction.bind(null, id, "appeal")} variant="outline" confirm={{ title: "İtiraz kaydı", description: "Profil sahibi veya şikâyetçiden gelen itirazı kaydedin.", prompt: "İtiraz özeti", confirmLabel: "Kaydet", minLength: 5 }}>
+                  İtiraz kaydet
                 </ActionButton>
-                <ActionButton action={reportAction.bind(null, id, "keep")} variant="outline" confirm={{ title: "Şikâyet reddedilsin mi?", prompt: "Karar gerekçesi", confirmLabel: "Reddet", minLength: 5 }}>
-                  Şikâyeti reddet
-                </ActionButton>
-              </>
-            ) : null}
-            {closed ? (
-              <ActionButton action={reportAction.bind(null, id, "appeal")} variant="outline" confirm={{ title: "İtiraz kaydı", description: "Profil sahibi veya şikâyetçiden gelen itirazı kaydedin.", prompt: "İtiraz özeti", confirmLabel: "Kaydet", minLength: 5 }}>
-                İtiraz kaydet
-              </ActionButton>
-            ) : null}
-            {appealed || (report.status === "in_review" && actions.some((a) => a.type === "appeal_received")) ? (
-              <>
-                <ActionButton action={reportAction.bind(null, id, "appeal-accept")} confirm={{ title: "İtiraz kabul edilsin mi?", prompt: "Gerekçe", confirmLabel: "Kabul et", minLength: 5 }}>İtirazı kabul et</ActionButton>
-                <ActionButton action={reportAction.bind(null, id, "appeal-reject")} variant="outline" confirm={{ title: "İtiraz reddedilsin mi?", prompt: "Gerekçe", confirmLabel: "Reddet", minLength: 5 }}>İtirazı reddet</ActionButton>
-              </>
-            ) : null}
-          </div>
+              ) : null}
+              {appealed || (report.status === "in_review" && actions.some((a) => a.type === "appeal_received")) ? (
+                <>
+                  <ActionButton action={reportAction.bind(null, id, "appeal-accept")} confirm={{ title: "İtiraz kabul edilsin mi?", prompt: "Gerekçe", confirmLabel: "Kabul et", minLength: 5 }}>İtirazı kabul et</ActionButton>
+                  <ActionButton action={reportAction.bind(null, id, "appeal-reject")} variant="outline" confirm={{ title: "İtiraz reddedilsin mi?", prompt: "Gerekçe", confirmLabel: "Reddet", minLength: 5 }}>İtirazı reddet</ActionButton>
+                </>
+              ) : null}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2 border-t border-border/70 pt-4">
+              {open ? (
+                <>
+                  <ActionButton action={contentReportTriageAction.bind(null, id, "dismiss")} variant="outline" confirm={{ title: "Şikâyet reddedilsin mi?", prompt: "Gerekçe", confirmLabel: "Reddet", minLength: 5 }}>
+                    Reddet
+                  </ActionButton>
+                  <ActionButton action={contentReportTriageAction.bind(null, id, "warn")} variant="outline" confirm={{ title: "İçerik sahibine uyarı gönderilsin mi?", description: "İçerik sahibine bir bildirim gönderilir; içerik kalır.", prompt: "Uyarı notu", confirmLabel: "Uyar", minLength: 5 }}>
+                    Uyar
+                  </ActionButton>
+                  <ActionButton action={contentReportTriageAction.bind(null, id, "remove_content")} variant="destructive" confirm={{ title: "İçerik kaldırılsın mı?", description: "İçerik reddedildi olarak işaretlenir ve kamuya kapanır.", prompt: "Karar gerekçesi (zorunlu)", destructive: true, confirmLabel: "Kaldır", minLength: 5 }}>
+                    İçeriği kaldır
+                  </ActionButton>
+                  <ActionButton action={contentReportTriageAction.bind(null, id, "suspend_account")} variant="destructive" confirm={{ title: "Hesap askıya alınsın mı?", description: "İçerik sahibinin hesabı (app_users) askıya alınır.", prompt: "Gerekçe (zorunlu)", destructive: true, confirmLabel: "Askıya al", minLength: 5 }}>
+                    Hesabı askıya al
+                  </ActionButton>
+                </>
+              ) : null}
+            </div>
+          )}
         </section>
         <div className="space-y-6">
           <section className="rounded-lg border border-hairline p-5 text-sm">
-            <h2 className="mb-2 font-semibold">İlgili profil</h2>
-            {profile ? (
-              <>
-                <Link prefetch={false} href={`/admin/profiller/${profile.id}`} className="font-medium hover:underline">{profile.nickname}</Link>
-                <p className="text-muted-foreground">Durum: {PROFILE_STATUS_LABELS[profile.status]}</p>
-              </>
-            ) : <p className="text-muted-foreground">Profil silinmiş.</p>}
+            <h2 className="mb-2 font-semibold">{isProfileReport ? "İlgili profil" : "İlgili içerik"}</h2>
+            {isProfileReport ? (
+              profile ? (
+                <>
+                  <Link prefetch={false} href={`/admin/profiller/${profile.id}`} className="font-medium hover:underline">{profile.nickname}</Link>
+                  <p className="text-muted-foreground">Durum: {PROFILE_STATUS_LABELS[profile.status]}</p>
+                </>
+              ) : <p className="text-muted-foreground">Profil silinmiş.</p>
+            ) : (
+              <p className="text-muted-foreground">{MODERATION_CONTENT_TYPE_LABELS[report.contentType]} · #{report.contentId}</p>
+            )}
           </section>
           <section className="rounded-lg border border-hairline p-5">
             <h2 className="mb-3 font-semibold">Moderasyon geçmişi</h2>

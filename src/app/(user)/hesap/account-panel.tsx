@@ -111,7 +111,11 @@ export function AccountPanel({
             {notifications.map((n) => (
               <li key={n.id} className="flex items-center justify-between gap-2 border-b border-hairline pb-2 last:border-b-0">
                 <span className={n.readAt ? "text-muted-foreground" : ""}>
-                  {n.type === "new_follower" ? "Yeni bir takipçiniz var." : "Yeni bir mesajınız var."}
+                  {n.type === "new_follower"
+                    ? "Yeni bir takipçiniz var."
+                    : n.type === "moderation_warning"
+                      ? `Moderasyon uyarısı${typeof n.payload.note === "string" && n.payload.note ? `: ${n.payload.note}` : "."}`
+                      : "Yeni bir mesajınız var."}
                 </span>
                 {!n.readAt ? (
                   <form action={markNotificationReadAction}>

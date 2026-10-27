@@ -187,6 +187,9 @@ export function createMemoryRepository(): Repository {
     async getUserProfileByHandle(handle) {
       return clone(store().userProfiles.find((p) => p.handle.toLowerCase() === handle.toLowerCase()) ?? null);
     },
+    async getUserProfileById(id) {
+      return clone(store().userProfiles.find((p) => p.id === id) ?? null);
+    },
     async updateUserProfile(userId, patch) {
       const p = must(
         store().userProfiles.find((x) => x.userId === userId),
@@ -277,6 +280,9 @@ export function createMemoryRepository(): Repository {
           .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
           .slice(-limit),
       );
+    },
+    async getMessageById(id) {
+      return clone(store().messages.find((m) => m.id === id) ?? null);
     },
     async addNotification(input) {
       const s = store();
@@ -637,7 +643,11 @@ export function createMemoryRepository(): Repository {
     async listReports(filter) {
       return clone(
         store().reports.filter(
-          (r) => (!filter?.status || r.status === filter.status) && (!filter?.profileId || r.profileId === filter.profileId),
+          (r) =>
+            (!filter?.status || r.status === filter.status) &&
+            (!filter?.profileId || r.profileId === filter.profileId) &&
+            (!filter?.contentType || r.contentType === filter.contentType) &&
+            (!filter?.contentId || r.contentId === filter.contentId),
         ),
       ).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
@@ -646,7 +656,12 @@ export function createMemoryRepository(): Repository {
     },
     async createReport(input) {
       const now = new Date().toISOString();
-      const row = { ...input, id: nextId("rep"), status: "open" as const, resolution: null, createdAt: now, updatedAt: now };
+      // Admin-küratörlü ürünün mevcut çağrı şekli (yalnızca profileId) burada 'profile'/profileId'ye
+      // türetilir — enforce_moderation_content_ref() tetikleyicisiyle aynı garanti, uygulama katmanında.
+      const contentType = input.contentType ?? "profile";
+      const contentId = input.contentId ?? input.profileId;
+      if (!contentId) throw new Error("createReport: contentId veya profileId gerekli");
+      const row = { ...input, contentType, contentId, id: nextId("rep"), status: "open" as const, resolution: null, createdAt: now, updatedAt: now };
       store().reports.push(row);
       return clone(row);
     },
@@ -658,6 +673,9 @@ export function createMemoryRepository(): Repository {
     async countRecentReportsForProfile(profileId, sinceIso) {
       return store().reports.filter((r) => r.profileId === profileId && r.createdAt >= sinceIso).length;
     },
+    async countRecentReportsForContent(contentType, contentId, sinceIso) {
+      return store().reports.filter((r) => r.contentType === contentType && r.contentId === contentId && r.createdAt >= sinceIso).length;
+    },
     async countRecentModerationActions(type, sinceIso) {
       return store().actions.filter((a) => a.type === type && a.createdAt >= sinceIso).length;
     },
@@ -667,14 +685,42 @@ export function createMemoryRepository(): Repository {
     async listModerationActions(filter) {
       return clone(
         store().actions.filter(
-          (a) => (!filter.reportId || a.reportId === filter.reportId) && (!filter.profileId || a.profileId === filter.profileId),
+          (a) =>
+            (!filter.reportId || a.reportId === filter.reportId) &&
+            (!filter.profileId || a.profileId === filter.profileId) &&
+            (!filter.contentType || a.contentType === filter.contentType) &&
+            (!filter.contentId || a.contentId === filter.contentId),
         ),
       ).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
     async addModerationAction(input) {
-      const row = { ...input, id: nextId("act"), createdAt: new Date().toISOString() };
+      const contentType = input.contentType ?? "profile";
+      const contentId = input.contentId ?? input.profileId;
+      if (!contentId) throw new Error("addModerationAction: contentId veya profileId gerekli");
+      const row = { ...input, contentType, contentId, id: nextId("act"), createdAt: new Date().toISOString() };
       store().actions.push(row);
       return clone(row);
+    },
+    async setContentModerationStatus(contentType, contentId, status) {
+      const s = store();
+      if (contentType === "user_profile") {
+        const p = must(s.userProfiles.find((x) => x.id === contentId), "Profil");
+        p.moderationStatus = status;
+      } else if (contentType === "post") {
+        const p = must(s.posts.find((x) => x.id === contentId), "Gönderi");
+        p.moderationStatus = status;
+      } else if (contentType === "media_asset") {
+        const m = must(s.mediaAssets.find((x) => x.id === contentId), "Medya");
+        m.moderationStatus = status;
+      } else if (contentType === "message") {
+        const m = must(s.messages.find((x) => x.id === contentId), "Mesaj");
+        m.moderationStatus = status;
+      }
+    },
+    async updateAppUserStatus(userId, status) {
+      const u = must(store().users.find((x) => x.id === userId), "Kullanıcı");
+      u.status = status;
+      u.updatedAt = new Date().toISOString();
     },
 
     async listPlans() {

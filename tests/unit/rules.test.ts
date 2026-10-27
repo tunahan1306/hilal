@@ -60,7 +60,7 @@ describe("yayın ön koşulları", () => {
     expect(failed(ctx({ phoneInUseElsewhere: true }))).toEqual(["contact_unique"]);
   });
   it("açık kritik şikâyet varken engeller", () => {
-    const reports = [{ id: "r", profileId: "p1", category: "suspected_minor" as const, description: "", reporterEmail: null, status: "open" as const, resolution: null, reporterHash: "", createdAt: "", updatedAt: "" }];
+    const reports = [{ id: "r", profileId: "p1", contentType: "profile" as const, contentId: "p1", category: "suspected_minor" as const, description: "", reporterEmail: null, status: "open" as const, resolution: null, reporterHash: "", createdAt: "", updatedAt: "" }];
     expect(failed(ctx({ reports }))).toEqual(["no_critical_reports"]);
     expect(failed(ctx({ reports: reports.map((r) => ({ ...r, status: "rejected" as const })) }))).toEqual([]);
   });

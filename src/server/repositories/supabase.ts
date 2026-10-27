@@ -216,7 +216,9 @@ const toVerification = (r: Row): VerificationRecord => ({
 
 const toReport = (r: Row): ModerationReport => ({
   id: r.id as string,
-  profileId: r.profile_id as string,
+  profileId: (r.profile_id as string) ?? null,
+  contentType: r.content_type as ModerationReport["contentType"],
+  contentId: r.content_id as string,
   category: r.category as ModerationReport["category"],
   description: r.description as string,
   reporterEmail: (r.reporter_email as string) ?? null,
@@ -230,7 +232,9 @@ const toReport = (r: Row): ModerationReport => ({
 const toAction = (r: Row): ModerationAction => ({
   id: r.id as string,
   reportId: (r.report_id as string) ?? null,
-  profileId: r.profile_id as string,
+  profileId: (r.profile_id as string) ?? null,
+  contentType: r.content_type as ModerationAction["contentType"],
+  contentId: r.content_id as string,
   type: r.type as ModerationAction["type"],
   note: (r.note as string) ?? null,
   actorId: (r.actor_id as string) ?? null,
@@ -747,6 +751,11 @@ export function createSupabaseRepository(): Repository {
       if (error) throw new DbError(error.message, error.code);
       return data ? toUserProfile(data as Row) : null;
     },
+    async getUserProfileById(id): Promise<UserProfile | null> {
+      const { data, error } = await service().from("user_profiles").select("*").eq("id", id).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toUserProfile(data as Row) : null;
+    },
     async updateUserProfile(userId, patch): Promise<UserProfile> {
       const payload: Row = {};
       if (patch.displayName !== undefined) payload.display_name = patch.displayName;
@@ -818,6 +827,11 @@ export function createSupabaseRepository(): Repository {
         await service().from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: false }).limit(limit),
       ) as Row[];
       return rows.map(toMessage).reverse();
+    },
+    async getMessageById(id): Promise<Message | null> {
+      const { data, error } = await service().from("messages").select("*").eq("id", id).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toMessage(data as Row) : null;
     },
     async addNotification(input): Promise<Notification> {
       const row = check(await service().from("notifications").insert({ user_id: input.userId, type: input.type, payload: input.payload }).select("*").single()) as Row;
@@ -1255,6 +1269,8 @@ export function createSupabaseRepository(): Repository {
       let q = service().from("moderation_reports").select("*").order("created_at", { ascending: false });
       if (filter?.status) q = q.eq("status", filter.status);
       if (filter?.profileId) q = q.eq("profile_id", filter.profileId);
+      if (filter?.contentType) q = q.eq("content_type", filter.contentType);
+      if (filter?.contentId) q = q.eq("content_id", filter.contentId);
       return (check(await q) as Row[]).map(toReport);
     },
     async getReport(id) {
@@ -1267,6 +1283,10 @@ export function createSupabaseRepository(): Repository {
           .from("moderation_reports")
           .insert({
             profile_id: input.profileId,
+            // content_type/content_id verilmezse DB tetikleyicisi (enforce_moderation_content_ref)
+            // 'profile'/profileId'den türetir — bkz. 20261027000005 migration.
+            content_type: input.contentType,
+            content_id: input.contentId,
             category: input.category,
             description: input.description,
             reporter_email: input.reporterEmail,
@@ -1282,6 +1302,16 @@ export function createSupabaseRepository(): Repository {
     },
     async countRecentReportsForProfile(profileId, sinceIso) {
       const res = await service().from("moderation_reports").select("id", { count: "exact", head: true }).eq("profile_id", profileId).gte("created_at", sinceIso);
+      if (res.error) throw new Error(res.error.message);
+      return res.count ?? 0;
+    },
+    async countRecentReportsForContent(contentType, contentId, sinceIso) {
+      const res = await service()
+        .from("moderation_reports")
+        .select("id", { count: "exact", head: true })
+        .eq("content_type", contentType)
+        .eq("content_id", contentId)
+        .gte("created_at", sinceIso);
       if (res.error) throw new Error(res.error.message);
       return res.count ?? 0;
     },
@@ -1303,17 +1333,34 @@ export function createSupabaseRepository(): Repository {
       let q = service().from("moderation_actions").select("*").order("created_at", { ascending: false });
       if (filter.reportId) q = q.eq("report_id", filter.reportId);
       if (filter.profileId) q = q.eq("profile_id", filter.profileId);
+      if (filter.contentType) q = q.eq("content_type", filter.contentType);
+      if (filter.contentId) q = q.eq("content_id", filter.contentId);
       return (check(await q) as Row[]).map(toAction);
     },
     async addModerationAction(input) {
       const r = check(
         await service()
           .from("moderation_actions")
-          .insert({ report_id: input.reportId, profile_id: input.profileId, type: input.type, note: input.note, actor_id: input.actorId })
+          .insert({
+            report_id: input.reportId,
+            profile_id: input.profileId,
+            content_type: input.contentType,
+            content_id: input.contentId,
+            type: input.type,
+            note: input.note,
+            actor_id: input.actorId,
+          })
           .select()
           .single(),
       ) as Row;
       return toAction(r);
+    },
+    async setContentModerationStatus(contentType, contentId, status) {
+      const table = contentType === "user_profile" ? "user_profiles" : contentType === "post" ? "posts" : contentType === "message" ? "messages" : "media_assets";
+      check(await service().from(table).update({ moderation_status: status }).eq("id", contentId).select("id"));
+    },
+    async updateAppUserStatus(userId, status) {
+      check(await service().from("app_users").update({ status }).eq("id", userId).select("id"));
     },
 
     async listPlans() {

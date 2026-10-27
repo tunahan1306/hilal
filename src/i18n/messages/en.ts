@@ -204,6 +204,8 @@ export const en: DeepPartial<Messages> = {
       suspected_minor: "Suspected minor",
       paid_sexual_services: "Promotion of paid sexual services",
       personal_data: "Personal data violation",
+      spam: "Spam",
+      csam_suspected: "Suspected child exploitation",
       other: "Other",
     },
   },
