@@ -2,6 +2,7 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { COUNTRY_CODES, countryOfPlate, isCountry, plateRange, type CountryCode } from "@/domain/countries";
 import { defaultPolicies, PUBLICATION_STATUSES, type CountryDecision, type CountryPolicy, type PublicationStatus } from "@/domain/country-policy";
+import { defaultFeaturePolicies, FEATURE_POLICY_STATUSES, POLICY_FEATURES, type CountryFeatureDecision, type CountryFeaturePolicy, type FeaturePolicyStatus, type PolicyFeature } from "@/domain/policy";
 import { sideDistricts } from "@/domain/istanbul";
 import { effectiveStatus, isExpiringSoon } from "@/domain/subscriptions";
 import type {
@@ -393,6 +394,22 @@ function toDecision(r: Row): CountryDecision {
   };
 }
 
+function toFeatureDecision(r: Row): CountryFeatureDecision {
+  return {
+    id: String(r.id),
+    countryCode: String(r.country_code) as CountryCode,
+    feature: String(r.feature_code) as PolicyFeature,
+    status: String(r.status) as FeaturePolicyStatus,
+    approverName: String(r.approver_name),
+    evidenceRef: r.evidence_ref === null ? null : String(r.evidence_ref),
+    reviewDue: r.review_due === null ? null : String(r.review_due),
+    restrictions: r.restrictions === null ? null : String(r.restrictions),
+    note: r.note === null ? null : String(r.note),
+    decidedBy: String(r.decided_by),
+    decidedAt: String(r.decided_at),
+  };
+}
+
 export function createSupabaseRepository(): Repository {
   return {
     kind: "supabase",
@@ -422,6 +439,43 @@ export function createSupabaseRepository(): Repository {
         decided_by: input.decidedBy,
       }).select("*").single()) as Row;
       return toDecision(row);
+    },
+    async listCountryFeaturePolicies(): Promise<CountryFeaturePolicy[]> {
+      const rows = check(await anon().from("country_feature_policies").select("country_code, feature_code, status, review_due, decision_id")) as Row[];
+      return defaultFeaturePolicies().map((base) => {
+        const r = rows.find((x) => x.country_code === base.countryCode && x.feature_code === base.feature);
+        const status = r ? String(r.status) : undefined;
+        if (!r || !status || !(FEATURE_POLICY_STATUSES as readonly string[]).includes(status)) return base;
+        return {
+          countryCode: base.countryCode,
+          feature: base.feature,
+          status: status as CountryFeaturePolicy["status"],
+          reviewDue: r.review_due === null ? null : String(r.review_due),
+          decisionId: r.decision_id === null ? null : String(r.decision_id),
+        };
+      });
+    },
+    async listCountryFeatureDecisions(country?: CountryCode, feature?: PolicyFeature) {
+      let q = service().from("country_feature_decisions").select("*").order("decided_at", { ascending: false }).limit(200);
+      if (country) q = q.eq("country_code", country);
+      if (feature) q = q.eq("feature_code", feature);
+      return (check(await q) as Row[])
+        .map(toFeatureDecision)
+        .filter((d) => isCountry(d.countryCode) && COUNTRY_CODES.includes(d.countryCode) && (POLICY_FEATURES as readonly string[]).includes(d.feature));
+    },
+    async addCountryFeatureDecision(input) {
+      const row = check(await service().from("country_feature_decisions").insert({
+        country_code: input.countryCode,
+        feature_code: input.feature,
+        status: input.status,
+        approver_name: input.approverName,
+        evidence_ref: input.evidenceRef,
+        review_due: input.reviewDue,
+        restrictions: input.restrictions,
+        note: input.note,
+        decided_by: input.decidedBy,
+      }).select("*").single()) as Row;
+      return toFeatureDecision(row);
     },
     async getLocations() {
       const cities = check(await anon().from("cities").select("*").order("plate")) as Row[];

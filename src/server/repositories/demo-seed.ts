@@ -1,5 +1,6 @@
 import "server-only";
 import type { CountryDecision } from "@/domain/country-policy";
+import type { CountryFeatureDecision } from "@/domain/policy";
 import { DEFAULT_PLANS } from "@/domain/subscriptions";
 import { docFromPlainText, docToPlainText, type RichDoc } from "@/domain/rich-text";
 import { slugifyTr } from "@/domain/text";
@@ -149,6 +150,8 @@ export type DemoStore = {
   privateFiles: Map<string, { data: Buffer; contentType: string }>;
   /** Ülke yayın kararları (yalnızca eklenir). */
   countryDecisions: CountryDecision[];
+  /** Modül G — ülke×özellik politika kararları (yalnızca eklenir; varsayılan boş = fail-closed). */
+  featureDecisions: CountryFeatureDecision[];
   counter: number;
 };
 
@@ -415,6 +418,8 @@ export function createDemoStore(now: Date): DemoStore {
       decidedBy: adminId,
       decidedAt: iso(-30),
     }],
+    // Yeni modüllerin (B/C/F) hiçbiri için henüz bir karar yok — demo verisinde de fail-closed.
+    featureDecisions: [],
     interests,
     profiles,
     media,

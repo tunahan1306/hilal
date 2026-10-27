@@ -1,5 +1,6 @@
 import type { CountryCode } from "@/domain/countries";
 import type { CountryDecision, CountryPolicy, NewCountryDecision } from "@/domain/country-policy";
+import type { CountryFeatureDecision, CountryFeaturePolicy, NewCountryFeatureDecision, PolicyFeature } from "@/domain/policy";
 import type { LocationData } from "@/domain/location-directory";
 import type { ProfileFilters } from "@/domain/filters";
 import type {
@@ -59,6 +60,13 @@ export interface Repository {
   listCountryDecisions(country?: CountryCode): Promise<CountryDecision[]>;
   /** Yalnızca eklenir; ülke durumu bu kayıttan türetilir. Yetki (sahip rolü) servis katmanında denetlenir. */
   addCountryDecision(input: NewCountryDecision): Promise<CountryDecision>;
+
+  // Modül G — genelleştirilmiş ülke×özellik politika motoru (country-policy.ts'ten AYRI;
+  // yalnızca yeni modüllerin (B/C/F) özelliklerini yönetir, keşif ürününe dokunmaz).
+  listCountryFeaturePolicies(): Promise<CountryFeaturePolicy[]>;
+  listCountryFeatureDecisions(country?: CountryCode, feature?: PolicyFeature): Promise<CountryFeatureDecision[]>;
+  /** Yalnızca eklenir; politika durumu bu kayıttan türetilir. Yetki (sahip rolü) servis katmanında denetlenir. */
+  addCountryFeatureDecision(input: NewCountryFeatureDecision): Promise<CountryFeatureDecision>;
 
   // Kamuya açık okuma (yalnızca yayındaki profiller)
   searchPublicProfiles(filters: ProfileFilters, opts: { limit: number; offset: number; cursor?: { publishedAt: string; id: string } }): Promise<SearchResult>;

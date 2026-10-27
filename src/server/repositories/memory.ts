@@ -4,6 +4,7 @@ import { getProvince, listProvinces, listDistricts } from "@/domain/locations";
 import { toPublicProfile } from "@/domain/projection";
 import { countryOfPlate, type CountryCode } from "@/domain/countries";
 import { defaultPolicies, isPublishable, type CountryPolicy } from "@/domain/country-policy";
+import { defaultFeaturePolicies, type CountryFeaturePolicy, type PolicyFeature } from "@/domain/policy";
 import { sideDistricts } from "@/domain/istanbul";
 import { effectiveStatus, isExpiringSoon } from "@/domain/subscriptions";
 import type { Profile, PublicProfile } from "@/domain/types";
@@ -43,6 +44,16 @@ function countryPolicies(): CountryPolicy[] {
   return defaultPolicies().map((base) => {
     const last = decisions.filter((d) => d.countryCode === base.code).sort((a, b) => b.decidedAt.localeCompare(a.decidedAt))[0];
     return last ? { code: base.code, status: last.status, reviewDue: last.reviewDue, decisionId: last.id } : base;
+  });
+}
+
+function countryFeaturePolicies(): CountryFeaturePolicy[] {
+  const decisions = store().featureDecisions;
+  return defaultFeaturePolicies().map((base) => {
+    // decidedAt milisaniye çözünürlüğünde olduğundan (iki karar aynı ms içinde eklenebilir),
+    // "en son karar" eklenme sırasına göre belirlenir (string sıralamaya göre değil).
+    const last = decisions.findLast((d) => d.countryCode === base.countryCode && d.feature === base.feature);
+    return last ? { countryCode: base.countryCode, feature: base.feature, status: last.status, reviewDue: last.reviewDue, decisionId: last.id } : base;
   });
 }
 
@@ -93,6 +104,32 @@ export function createMemoryRepository(): Repository {
       s.countryDecisions.push(row);
       // Veritabanında bu kaydı apply_country_decision tetikleyicisi yazar.
       s.audit.push({ id: nextId("aud"), actorId: input.decidedBy, action: "country.publication_decision", entityType: "country", entityId: input.countryCode, metadata: { decision_id: row.id, status: row.status, review_due: row.reviewDue, approver_name: row.approverName }, createdAt: row.decidedAt });
+      return clone(row);
+    },
+    async listCountryFeaturePolicies() {
+      return clone(countryFeaturePolicies());
+    },
+    async listCountryFeatureDecisions(country?: CountryCode, feature?: PolicyFeature) {
+      return clone(
+        store()
+          .featureDecisions.filter((d) => (!country || d.countryCode === country) && (!feature || d.feature === feature))
+          .sort((a, b) => b.decidedAt.localeCompare(a.decidedAt)),
+      );
+    },
+    async addCountryFeatureDecision(input) {
+      const s = store();
+      const row = { ...input, id: nextId("fdec"), decidedAt: new Date().toISOString() };
+      s.featureDecisions.push(row);
+      // Veritabanında bu kaydı apply_country_feature_decision tetikleyicisi yazar.
+      s.audit.push({
+        id: nextId("aud"),
+        actorId: input.decidedBy,
+        action: "country_feature.policy_decision",
+        entityType: "country_feature_policy",
+        entityId: `${input.countryCode}:${input.feature}`,
+        metadata: { decision_id: row.id, country_code: row.countryCode, feature_code: row.feature, status: row.status, review_due: row.reviewDue, approver_name: row.approverName },
+        createdAt: row.decidedAt,
+      });
       return clone(row);
     },
     async getLocations() { const provinces = listProvinces(); return { provinces, districts: provinces.flatMap((p) => listDistricts(p.plate)) }; },

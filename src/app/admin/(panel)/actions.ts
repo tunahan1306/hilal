@@ -16,6 +16,7 @@ import * as profiles from "@/server/services/profiles";
 import * as moderation from "@/server/services/moderation";
 import * as subscriptions from "@/server/services/subscriptions";
 import { recordCountryDecision } from "@/server/services/countries";
+import { recordFeaturePolicyDecision } from "@/server/services/policy";
 import { updatePrivacyRequestStatus } from "@/server/services/privacy";
 import { deleteContactMessage, markContactMessageUnread, updateContactMessageStatus } from "@/server/services/contact";
 
@@ -333,4 +334,31 @@ export async function countryDecisionAction(_p: ActionResult, fd: FormData): Pro
     });
     return `${d.countryCode.toUpperCase()} için karar kaydedildi.`;
   });
+}
+
+/**
+ * Modül G — ülke×özellik politika kararı (yalnızca sahip; hassas işlem: ülke kodu ve özellik
+ * birlikte yeniden yazılarak onaylanır, ör. "de:digital_content"). country_publication
+ * kararından AYRI: yalnızca yeni modüllerin (B/C/F) özelliklerini yönetir.
+ */
+export async function featureDecisionAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+  return run(
+    async (admin) => {
+      const d = await recordFeaturePolicyDecision(admin, {
+        countryCode: str(fd, "countryCode") as "tr",
+        feature: str(fd, "feature") as "social_profiles",
+        status: str(fd, "status") as "not_reviewed",
+        approverName: str(fd, "approverName"),
+        evidenceRef: str(fd, "evidenceRef"),
+        reviewDue: str(fd, "reviewDue"),
+        restrictions: str(fd, "restrictions"),
+        note: str(fd, "note"),
+        confirm: str(fd, "confirm"),
+      });
+      return `${d.countryCode.toUpperCase()} / ${d.feature} için karar kaydedildi.`;
+    },
+    // Bu yeni modüllerin hiçbiri kamuya açık önbellekli bir okuma yolu sunmuyor henüz
+    // (B/C/F implementasyonu bekliyor); erken invalidasyon gereksiz ağ çağrısı olur.
+    { invalidate: false },
+  );
 }

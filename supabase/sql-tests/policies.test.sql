@@ -257,6 +257,7 @@ end $$;
 reset role;
 
 \ir policies-country-gate.test.sql
+\ir policies-feature-gate.test.sql
 
 select 'ALL DB TESTS PASSED' as result;
 rollback;
