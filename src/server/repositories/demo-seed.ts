@@ -1,6 +1,8 @@
 import "server-only";
 import type { CountryDecision } from "@/domain/country-policy";
 import type { CountryFeatureDecision } from "@/domain/policy";
+import type { AgeVerificationCheck, AppUser, ConsentRecord } from "@/domain/identity";
+import type { PasswordHash } from "@/server/auth/password";
 import { DEFAULT_PLANS } from "@/domain/subscriptions";
 import { docFromPlainText, docToPlainText, type RichDoc } from "@/domain/rich-text";
 import { slugifyTr } from "@/domain/text";
@@ -152,6 +154,14 @@ export type DemoStore = {
   countryDecisions: CountryDecision[];
   /** Modül G — ülke×özellik politika kararları (yalnızca eklenir; varsayılan boş = fail-closed). */
   featureDecisions: CountryFeatureDecision[];
+  /** Modül A — son kullanıcı hesapları (admins'ten AYRI). */
+  users: AppUser[];
+  /** Yalnızca demo modu: Supabase Auth olmadığında şifre karşılaştırması için (kullanıcı id -> hash). */
+  userCredentials: Map<string, PasswordHash>;
+  /** Yalnızca demo modu: gerçek e-posta gönderimi yoktur, doğrulama jetonu bellekte tutulur. */
+  emailVerificationTokens: Map<string, string>;
+  consentRecords: ConsentRecord[];
+  ageVerificationChecks: AgeVerificationCheck[];
   counter: number;
 };
 
@@ -420,6 +430,12 @@ export function createDemoStore(now: Date): DemoStore {
     }],
     // Yeni modüllerin (B/C/F) hiçbiri için henüz bir karar yok — demo verisinde de fail-closed.
     featureDecisions: [],
+    // Modül A: demo verisinde henüz kayıtlı son kullanıcı yok; kayıt akışıyla eklenir.
+    users: [],
+    userCredentials: new Map(),
+    emailVerificationTokens: new Map(),
+    consentRecords: [],
+    ageVerificationChecks: [],
     interests,
     profiles,
     media,

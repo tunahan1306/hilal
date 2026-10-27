@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { COUNTRY_CODES, countryOfPlate, isCountry, plateRange, type CountryCode } from "@/domain/countries";
 import { defaultPolicies, PUBLICATION_STATUSES, type CountryDecision, type CountryPolicy, type PublicationStatus } from "@/domain/country-policy";
 import { defaultFeaturePolicies, FEATURE_POLICY_STATUSES, POLICY_FEATURES, type CountryFeatureDecision, type CountryFeaturePolicy, type FeaturePolicyStatus, type PolicyFeature } from "@/domain/policy";
+import type { AgeVerificationCheck, AgeVerificationStatus, AppUser, AppUserStatus, ConsentRecord, ConsentRecordType } from "@/domain/identity";
 import { sideDistricts } from "@/domain/istanbul";
 import { effectiveStatus, isExpiringSoon } from "@/domain/subscriptions";
 import type {
@@ -410,6 +411,44 @@ function toFeatureDecision(r: Row): CountryFeatureDecision {
   };
 }
 
+function toAppUser(r: Row): AppUser {
+  return {
+    id: String(r.id),
+    email: String(r.email),
+    emailVerifiedAt: r.email_verified_at === null ? null : String(r.email_verified_at),
+    status: String(r.status) as AppUserStatus,
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function toConsentRecord(r: Row): ConsentRecord {
+  return {
+    id: String(r.id),
+    userId: String(r.user_id),
+    type: String(r.type) as ConsentRecordType,
+    grantedAt: String(r.granted_at),
+    revokedAt: r.revoked_at === null ? null : String(r.revoked_at),
+    method: String(r.method),
+    evidenceRef: r.evidence_ref === null ? null : String(r.evidence_ref),
+    createdAt: String(r.created_at),
+  };
+}
+
+function toAgeVerificationCheck(r: Row): AgeVerificationCheck {
+  return {
+    id: String(r.id),
+    userId: String(r.user_id),
+    provider: String(r.provider),
+    providerRef: String(r.provider_ref),
+    status: String(r.status) as AgeVerificationStatus,
+    checkedAt: r.checked_at === null ? null : String(r.checked_at),
+    expiresAt: r.expires_at === null ? null : String(r.expires_at),
+    note: r.note === null ? null : String(r.note),
+    createdAt: String(r.created_at),
+  };
+}
+
 export function createSupabaseRepository(): Repository {
   return {
     kind: "supabase",
@@ -476,6 +515,53 @@ export function createSupabaseRepository(): Repository {
         decided_by: input.decidedBy,
       }).select("*").single()) as Row;
       return toFeatureDecision(row);
+    },
+    async createAppUser(input): Promise<AppUser> {
+      const row = check(await service().from("app_users").insert({ id: input.id, email: input.email }).select("*").single()) as Row;
+      return toAppUser(row);
+    },
+    async getAppUserById(id): Promise<AppUser | null> {
+      const { data, error } = await service().from("app_users").select("*").eq("id", id).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toAppUser(data as Row) : null;
+    },
+    async getAppUserByEmail(email): Promise<AppUser | null> {
+      const { data, error } = await service().from("app_users").select("*").ilike("email", email).maybeSingle();
+      if (error) throw new DbError(error.message, error.code);
+      return data ? toAppUser(data as Row) : null;
+    },
+    async markAppUserEmailVerified(id, verifiedAt): Promise<void> {
+      check(await service().from("app_users").update({ email_verified_at: verifiedAt }).eq("id", id).select("id"));
+    },
+    async addConsentRecord(input): Promise<ConsentRecord> {
+      const row = check(await service().from("consent_records").insert({
+        user_id: input.userId,
+        type: input.type,
+        evidence_ref: input.evidenceRef,
+        method: input.method,
+        revoked_at: input.revokedAt ?? null,
+      }).select("*").single()) as Row;
+      return toConsentRecord(row);
+    },
+    async listConsentRecords(userId): Promise<ConsentRecord[]> {
+      const rows = check(await service().from("consent_records").select("*").eq("user_id", userId)) as Row[];
+      return rows.map(toConsentRecord);
+    },
+    async addAgeVerificationCheck(input): Promise<AgeVerificationCheck> {
+      const row = check(await service().from("age_verification_checks").insert({
+        user_id: input.userId,
+        provider: input.provider,
+        provider_ref: input.providerRef,
+        status: input.status,
+        checked_at: input.checkedAt,
+        expires_at: input.expiresAt,
+        note: input.note,
+      }).select("*").single()) as Row;
+      return toAgeVerificationCheck(row);
+    },
+    async listAgeVerificationChecks(userId): Promise<AgeVerificationCheck[]> {
+      const rows = check(await service().from("age_verification_checks").select("*").eq("user_id", userId).order("created_at", { ascending: false })) as Row[];
+      return rows.map(toAgeVerificationCheck);
     },
     async getLocations() {
       const cities = check(await anon().from("cities").select("*").order("plate")) as Row[];

@@ -5,6 +5,8 @@ import { toPublicProfile } from "@/domain/projection";
 import { countryOfPlate, type CountryCode } from "@/domain/countries";
 import { defaultPolicies, isPublishable, type CountryPolicy } from "@/domain/country-policy";
 import { defaultFeaturePolicies, type CountryFeaturePolicy, type PolicyFeature } from "@/domain/policy";
+import type { AppUser } from "@/domain/identity";
+import { hashPassword, verifyPassword } from "@/server/auth/password";
 import { sideDistricts } from "@/domain/istanbul";
 import { effectiveStatus, isExpiringSoon } from "@/domain/subscriptions";
 import type { Profile, PublicProfile } from "@/domain/types";
@@ -131,6 +133,44 @@ export function createMemoryRepository(): Repository {
         createdAt: row.decidedAt,
       });
       return clone(row);
+    },
+    async createAppUser(input) {
+      const s = store();
+      const now = new Date().toISOString();
+      const row: AppUser = { id: input.id, email: input.email, emailVerifiedAt: null, status: "active", createdAt: now, updatedAt: now };
+      s.users.push(row);
+      return clone(row);
+    },
+    async getAppUserById(id) {
+      return clone(store().users.find((u) => u.id === id) ?? null);
+    },
+    async getAppUserByEmail(email) {
+      return clone(store().users.find((u) => u.email.toLowerCase() === email.toLowerCase()) ?? null);
+    },
+    async markAppUserEmailVerified(id, verifiedAt) {
+      const u = store().users.find((x) => x.id === id);
+      if (u) {
+        u.emailVerifiedAt = verifiedAt;
+        u.updatedAt = verifiedAt;
+      }
+    },
+    async addConsentRecord(input) {
+      const s = store();
+      const row = { ...input, id: nextId("cons"), grantedAt: new Date().toISOString(), revokedAt: input.revokedAt ?? null, createdAt: new Date().toISOString() };
+      s.consentRecords.push(row);
+      return clone(row);
+    },
+    async listConsentRecords(userId) {
+      return clone(store().consentRecords.filter((c) => c.userId === userId));
+    },
+    async addAgeVerificationCheck(input) {
+      const s = store();
+      const row = { ...input, id: nextId("avc"), createdAt: new Date().toISOString() };
+      s.ageVerificationChecks.push(row);
+      return clone(row);
+    },
+    async listAgeVerificationChecks(userId) {
+      return clone(store().ageVerificationChecks.filter((c) => c.userId === userId));
     },
     async getLocations() { const provinces = listProvinces(); return { provinces, districts: provinces.flatMap((p) => listDistricts(p.plate)) }; },
 
@@ -511,6 +551,34 @@ export function createMemoryRepository(): Repository {
       return clone(store().admins.find((a) => a.email.toLowerCase() === email.toLowerCase()) ?? null);
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Modül A — demo modu şifre saklama. Yalnızca Supabase yapılandırılmadığında
+// kullanılır (Supabase modunda şifreyi Supabase Auth saklar; bu fonksiyonlar hiç
+// çağrılmaz). Admin girişinin demo-credentials.ts'teki tek sabit hesabından farklı
+// olarak burada gerçekten çok kullanıcılı, kendi kendine kayıt olunan bir mağaza var.
+export function setDemoUserPassword(userId: string, password: string): void {
+  store().userCredentials.set(userId, hashPassword(password));
+}
+
+export function verifyDemoUserPassword(userId: string, password: string): boolean {
+  const stored = store().userCredentials.get(userId);
+  return Boolean(stored) && verifyPassword(password, stored!);
+}
+
+/** Demo modunda gerçek e-posta gönderilmez; jeton burada tutulur ve doğrulama bununla yapılır. */
+export function issueDemoEmailVerificationToken(userId: string): string {
+  const token = crypto.randomUUID().replace(/-/g, "");
+  store().emailVerificationTokens.set(userId, token);
+  return token;
+}
+
+export function consumeDemoEmailVerificationToken(userId: string, token: string): boolean {
+  const expected = store().emailVerificationTokens.get(userId);
+  if (!expected || expected !== token) return false;
+  store().emailVerificationTokens.delete(userId);
+  return true;
 }
 
 

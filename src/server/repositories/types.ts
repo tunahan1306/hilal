@@ -1,6 +1,7 @@
 import type { CountryCode } from "@/domain/countries";
 import type { CountryDecision, CountryPolicy, NewCountryDecision } from "@/domain/country-policy";
 import type { CountryFeatureDecision, CountryFeaturePolicy, NewCountryFeatureDecision, PolicyFeature } from "@/domain/policy";
+import type { AgeVerificationCheck, AppUser, ConsentRecord, NewAgeVerificationCheck, NewConsentRecord } from "@/domain/identity";
 import type { LocationData } from "@/domain/location-directory";
 import type { ProfileFilters } from "@/domain/filters";
 import type {
@@ -67,6 +68,18 @@ export interface Repository {
   listCountryFeatureDecisions(country?: CountryCode, feature?: PolicyFeature): Promise<CountryFeatureDecision[]>;
   /** Yalnızca eklenir; politika durumu bu kayıttan türetilir. Yetki (sahip rolü) servis katmanında denetlenir. */
   addCountryFeatureDecision(input: NewCountryFeatureDecision): Promise<CountryFeatureDecision>;
+
+  // Modül A — son kullanıcı kimliği (app_users; admins'ten AYRI, farklı güven modeli).
+  // id, Supabase modunda auth.users.id ile birebir; memory modunda repository üretir.
+  createAppUser(input: { id: string; email: string }): Promise<AppUser>;
+  getAppUserById(id: string): Promise<AppUser | null>;
+  getAppUserByEmail(email: string): Promise<AppUser | null>;
+  markAppUserEmailVerified(id: string, verifiedAt: string): Promise<void>;
+  addConsentRecord(input: NewConsentRecord): Promise<ConsentRecord>;
+  listConsentRecords(userId: string): Promise<ConsentRecord[]>;
+  /** Yalnızca sağlayıcı entegrasyonunun sonucunu kaydeder; ham belge/biyometrik veri asla geçmez. */
+  addAgeVerificationCheck(input: NewAgeVerificationCheck): Promise<AgeVerificationCheck>;
+  listAgeVerificationChecks(userId: string): Promise<AgeVerificationCheck[]>;
 
   // Kamuya açık okuma (yalnızca yayındaki profiller)
   searchPublicProfiles(filters: ProfileFilters, opts: { limit: number; offset: number; cursor?: { publishedAt: string; id: string } }): Promise<SearchResult>;
